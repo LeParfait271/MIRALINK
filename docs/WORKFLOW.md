@@ -83,10 +83,18 @@ et sa commande d'arrêt neutre reste locale. La file BTstack est bornée et
 vidée lors d'une déconnexion ; un build réussi ou un test synthétique ne vaut
 pas une preuve de retour haptique sur une manette réelle.
 
-La version 1.6.0 ne conserve aucun chemin d’effet de gâchette adaptative non
+La version 1.7.0 ne conserve aucun chemin d’effet de gâchette adaptative non
 exposé ou non validé. Toute nouvelle sortie doit d’abord avoir une commande
 typée, une capacité négociée, des limites documentées et un test matériel
 distinct avant de pouvoir être annoncée comme supportée.
+
+Pour le lot firmware 1.7.0, la persistance des clés Bluetooth est celle du SDK
+Pico déjà initialisée par `cyw43_arch_init()` ; aucune seconde instance de
+stockage ne doit être créée. La séparation entre cette banque et les secteurs
+de configuration MiraLink est vérifiée à la compilation. Une liaison HID qui
+ne produit aucun rapport valide est fermée après un délai borné, puis repasse
+par la reconnexion locale. Cette preuve de build ne remplace pas le test sur
+un Pico 2 W et une DualSense réels.
 
 Le chemin d’appairage Bluetooth classique peut répondre `0000` uniquement dans
 la fenêtre locale explicitement ouverte ou pour une adresse déjà mémorisée.

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.0 - 2026-08-13
+
+- Corrected automatic DualSense reconnection so a failed controller does not
+  exhaust the retry index permanently and multiple remembered controllers are
+  retried in a bounded rotation.
+- Kept Bluetooth link-key persistence on the Pico SDK's local BTstack store and
+  added compile-time flash separation checks against MiraLink configuration.
+- Added SSP reconnection for remembered controllers, a ten-second HID
+  handshake timeout and recovery through the normal local reconnect path.
+- Kept the bridge local, manual-flash-only and explicit about unsupported audio
+  streaming and adaptive-trigger effects.
+
 ## 1.6.0 - 2026-08-12
 
 - Accepted the legacy DualSense Bluetooth PIN `0000` only during the explicit

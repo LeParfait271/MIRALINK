@@ -12,6 +12,7 @@
 #include "bsp/board_api.h"
 #include "hardware/flash.h"
 #include "pico/bootrom.h"
+#include "pico/btstack_flash_bank.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
@@ -32,6 +33,12 @@ constexpr std::array<std::uint8_t, 4> kRecoveryToken = {'R', 'C', 'V', '1'};
 // link-key bank near the end of RP2350 flash. The final sector remains free
 // for the RP2350 erratum reservation used by the SDK on supported revisions.
 constexpr std::uint32_t kFlashStorageOffset = PICO_FLASH_SIZE_BYTES - (5u * FLASH_SECTOR_SIZE);
+constexpr std::uint32_t kFlashStorageEnd = kFlashStorageOffset
+    + static_cast<std::uint32_t>(miralink::kConfigStorageSlots * FLASH_SECTOR_SIZE);
+static_assert(kFlashStorageEnd <= PICO_FLASH_BANK_STORAGE_OFFSET,
+    "MiraLink configuration flash overlaps BTstack link-key storage");
+static_assert(PICO_FLASH_BANK_STORAGE_OFFSET + PICO_FLASH_BANK_TOTAL_SIZE <= PICO_FLASH_SIZE_BYTES,
+    "BTstack link-key storage exceeds Pico flash");
 
 class PicoFlashBackend final : public miralink::FlashBackend {
 public:
@@ -395,6 +402,7 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
         }
         case miralink::Command::CommitConfig:
             if (!g_config_store.commit()) { set_error(sequence, decoded.frame.command, "flash verification failed"); return; }
+            g_config_was_loaded = true;
             append_log("configuration committed");
             set_response(sequence, decoded.frame.command, 0, {});
             return;
