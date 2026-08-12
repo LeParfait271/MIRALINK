@@ -72,14 +72,14 @@ Exports are user initiated. Sensitive identifiers are masked by default and can 
 ## 7. Visual language
 
 - dark-only interface;
-- black and graphite surfaces;
-- emerald primary signal colour;
-- restrained cyan and warm warning accents;
+- deep blue-black and transparent oceanic surfaces;
+- cyan primary signal colour with emerald secondary accents;
+- crystalline blue fragments, cool white highlights and restrained warm warnings;
 - octagonal panels and clipped corners;
 - compact HUD typography with readable body text;
 - animation only when it communicates state;
 - visible focus rings and high contrast;
-- no copied logos, game assets or proprietary artwork.
+- original crystalline geometry only; no copied logos, game assets or proprietary artwork.
 
 ## 8. Languages
 

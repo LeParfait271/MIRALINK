@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">MiraLink</title>
-  <desc id="desc">Original emerald octagonal MiraLink mark</desc>
-  <rect width="512" height="512" rx="96" fill="#060a0b"/>
-  <path d="M156 72h200l84 84v200l-84 84H156l-84-84V156z" fill="#0b1915" stroke="#59e8b5" stroke-width="12"/>
-  <path d="M184 164h144l32 32v120l-32 32H184l-32-32V196z" fill="none" stroke="#16c989" stroke-width="20"/>
-  <path d="M206 226h100M206 276h100" stroke="#b2ffe2" stroke-width="14" stroke-linecap="round"/>
-  <circle cx="178" cy="226" r="8" fill="#b2ffe2"/>
-  <circle cx="334" cy="276" r="8" fill="#b2ffe2"/>
+  <desc id="desc">Original cyan crystalline octagonal MiraLink mark</desc>
+  <rect width="512" height="512" rx="96" fill="#020a12"/>
+  <path d="M156 72h200l84 84v200l-84 84H156l-84-84V156z" fill="#082438" stroke="#73eaff" stroke-width="12"/>
+  <path d="M184 164h144l32 32v120l-32 32H184l-32-32V196z" fill="none" stroke="#43bdf4" stroke-width="20"/>
+  <path d="M206 226h100M206 276h100" stroke="#c2f8ff" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="178" cy="226" r="8" fill="#c2f8ff"/>
+  <circle cx="334" cy="276" r="8" fill="#c2f8ff"/>
 </svg>

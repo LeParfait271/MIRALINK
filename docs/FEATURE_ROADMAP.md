@@ -520,3 +520,35 @@ Une fonctionnalité n’est livrable que si :
 ## 7. Ordre de décision recommandé
 
 La prochaine décision utile n’est pas de choisir une couleur ou une commande isolée. Il faut valider le Lot 0 puis le Lot 1, car ils fixent le modèle de capacité, la simulation, les profils, la confirmation et les données exportables. Les lots suivants pourront alors s’appuyer sur des contrats déjà testés sans réécrire l’application.
+
+## 8. Backlog complémentaire ajouté le 2026-08-12
+
+Ces demandes complètent les lots précédents. Elles restent soumises au même modèle local, aux capacités négociées et aux états `supporté`, `partiel`, `indisponible` ou `non testé`.
+
+| Fonctionnalité | Priorité proposée | Lot cible | Valeur et limite principale |
+|---|---|---|---|
+| Remappage des boutons et profils de commandes | Haute | Lot 1 — simulation + profils | Adapter les commandes par bridge ou manette avec aperçu, confirmation et restauration ; aucune écriture automatique. |
+| Benchmark de latence avec score de connexion | Moyenne | Lot 3 — cockpit | Donner un score explicable à partir de mesures locales ; ne jamais transformer le score en télémétrie externe ni inventer une mesure radio. |
+| Détection automatique de dérive ou de batterie anormale | Moyenne | Lots 2 et 3 | Signaler une tendance locale avec seuils expliqués ; distinguer alerte, mesure indisponible et diagnostic confirmé. |
+| Mode urgence pour remettre rapidement des réglages sûrs | Haute | Lot 0 puis Lot 1 | Restaurer un profil sûr minimal après confirmation renforcée ; relecture obligatoire et procédure d’arrêt si la liaison est instable. |
+| Retour arrière firmware avec version précédente | Moyenne | Lot 6 — firmware sécurisé | Préparer une version locale précédente et guider une récupération manuelle ; aucun flash automatique et aucune garantie si l’image précédente n’est pas disponible. |
+| Tableau de compatibilité firmware/manettes | Haute | Lot 0 | Montrer les combinaisons testées, partielles, indisponibles ou non testées ; séparer clairement firmware, modèle et version d’adapter. |
+| Tableau de bord personnalisable | Moyenne | Lot 3 — cockpit | Choisir les cartes et leur ordre sans perdre la vue textuelle accessible ; préférences uniquement locales. |
+| Notifications locales configurables | Moyenne | Lot 7 — automatisations | Alerter pour batterie, reconnexion ou erreur avec niveaux et horaires locaux ; aucune notification distante. |
+| Groupes de manettes et renommage des appareils | Haute | Lot 1 | Organiser plusieurs appareils et profils sans exposer les identifiants sensibles ; les groupes ne déclenchent aucune action implicite. |
+| Mode verrouillage contre les modifications accidentelles | Haute | Lot 0 | Bloquer les écritures et les tests à risque jusqu’au déverrouillage explicite ; rester compatible avec le mode lecture seule global. |
+| Centre d’aide hors ligne intégré | Haute | Lots 0 et 1 | Expliquer les écrans, limites et procédures de récupération sans connexion réseau ; contenu versionné avec le produit. |
+| Génération de rapports de diagnostic lisibles | Moyenne | Lot 4 — diagnostics guidés | Produire un rapport local compréhensible, exportable et masqué par défaut ; distinguer observations, hypothèses et solutions. |
+| Système d’extensions pour futurs adaptateurs | Long terme | Lot 7 | Ajouter des adapters isolés sans modifier le cœur ; extensions déclaratives, locales, versionnées et refusées si leur contrat est incomplet. |
+| Comparaison de deux manettes ou deux profils | Moyenne | Lots 1 et 2 | Comparer commandes, calibrations et capacités avec un diff lisible ; ne jamais mélanger les historiques de deux appareils. |
+| Gestion avancée de l’énergie et de la veille | Moyenne | Lot 5 | Ajuster veille, réveil, LED et consommation selon les capacités du Pico 2 W et de la manette ; confirmation avant persistance. |
+| Mode test automatique répété pour problèmes intermittents | Moyenne | Lot 4 | Répéter des contrôles locaux avec durée et taille bornées ; arrêt explicite, aucune capture permanente par défaut et statut `non testé` sans matériel réel. |
+
+### 8.1 Répartition de conception
+
+- **Socle immédiat :** mode verrouillage, tableau de compatibilité, centre d’aide hors ligne, remappage et groupes d’appareils.
+- **Après le MVP :** comparaison de profils/manettes, score de latence, anomalies de dérive/batterie, tableau de bord et rapports lisibles.
+- **Après les diagnostics :** mode test répété, énergie/veille, notifications locales et retour arrière firmware guidé.
+- **Long terme :** système d’extensions, avec un contrat d’adapter stable et des tests d’isolation obligatoires.
+
+Le mode urgence doit rester disponible depuis Overview et Diagnostics, mais il ne doit jamais contourner le mode verrouillage, la confirmation ou la relecture après écriture.

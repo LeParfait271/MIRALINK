@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-08-12
+
+- Published a versioned Pico 2 W firmware delivery artifact with checksum and local release notes.
+- Refined the application into an original blue/cyan crystalline HUD visual system inspired by the supplied mood references without copying game assets.
+- Added service-worker cache rotation and synchronized application metadata with the release version.
+
 ## 0.1.0 — 2026-08-12
 
 - Created the independent MiraLink project from zero.

@@ -15,5 +15,6 @@ The firmware currently provides:
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-Building produces UF2/BIN/HEX files locally. MiraLink never flashes the board
-automatically.
+Building produces UF2/BIN/HEX files locally. The versioned delivery artifact
+for this commit is in `firmware/releases/0.2.0/` with SHA-256 checksums and
+manual-use notes. MiraLink never flashes the board automatically.

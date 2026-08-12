@@ -1,7 +1,7 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `0.1.0`
+Version: `0.2.0`
 Developer: `MaruChiwa`
 Scope: local software and firmware build only
 
@@ -10,19 +10,20 @@ Scope: local software and firmware build only
 - JavaScript protocol tests: 6 passed.
 - JavaScript UF2 tests: 4 passed.
 - JavaScript syntax checks: `app.js`, `protocol.js`, `storage.js`, `i18n.js` passed.
-- Local application build: `MiraLink 0.1.0 built`.
+- Local application build: `MiraLink 0.2.0 built`.
 - Local browser check: 7 tabs visible, Bridge controls present, Firmware panel
   present, backup file input present, no console errors.
 - Pico 2 W configure/build: ARM GCC 15.2.1, SDK 2.3.0, board `pico2_w`,
   RP2350 ARM Secure target; build completed.
-- `picotool` inspection: firmware name `MiraLink Pico 2 W`, version `0.1.0`,
+- `picotool` inspection: firmware name `MiraLink Pico 2 W`, version `0.2.0`,
   target `RP2350`, board `pico2_w`, SDK `2.3.0`.
 - MiraLink UF2 parser: `338` program blocks, `173568` bytes, accepted.
 - ARM toolchain archive: MD5 verified before extraction.
 
 ## Generated artifacts
 
-The verified firmware build directory contains:
+The verified `firmware/releases/0.2.0/` directory contains the copied release
+artifacts from the local Pico build:
 
 - `miralink_pico_firmware.elf` — `994620` bytes;
 - `miralink_pico_firmware.bin` — `86412` bytes;
