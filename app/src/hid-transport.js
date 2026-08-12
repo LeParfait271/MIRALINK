@@ -9,6 +9,26 @@ import {
 const DEFAULT_TIMEOUT_MS = 1400;
 const DEFAULT_POLL_INTERVAL_MS = 20;
 
+export function inspectWebHidAvailability({ navigator: browserNavigator = null, document: browserDocument = null, isSecureContext = false } = {}) {
+  const available = Boolean(browserNavigator && 'hid' in browserNavigator);
+  let permissionsPolicy = null;
+  try {
+    if (browserDocument?.permissionsPolicy && typeof browserDocument.permissionsPolicy.allowsFeature === 'function') {
+      permissionsPolicy = browserDocument.permissionsPolicy.allowsFeature('hid');
+    }
+  } catch {
+    permissionsPolicy = null;
+  }
+  const reason = available
+    ? 'available'
+    : !isSecureContext
+      ? 'insecure-context'
+      : permissionsPolicy === false
+        ? 'permissions-policy'
+        : 'browser-or-context';
+  return Object.freeze({ available, isSecureContext: Boolean(isSecureContext), permissionsPolicy, reason });
+}
+
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

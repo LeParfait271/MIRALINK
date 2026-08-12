@@ -13,7 +13,21 @@ import {
   encodeConfig,
   encodeFrame
 } from '../src/protocol.js';
-import { transactFeatureReport } from '../src/hid-transport.js';
+import { inspectWebHidAvailability, transactFeatureReport } from '../src/hid-transport.js';
+
+test('WebHID availability identifies a blocked permissions policy locally', () => {
+  const status = inspectWebHidAvailability({
+    navigator: {},
+    isSecureContext: true,
+    document: { permissionsPolicy: { allowsFeature: (name) => name !== 'hid' } }
+  });
+  assert.deepEqual(status, { available: false, isSecureContext: true, permissionsPolicy: false, reason: 'permissions-policy' });
+});
+
+test('WebHID availability identifies an insecure local context', () => {
+  const status = inspectWebHidAvailability({ navigator: {}, isSecureContext: false });
+  assert.deepEqual(status, { available: false, isSecureContext: false, permissionsPolicy: null, reason: 'insecure-context' });
+});
 
 test('frame round trip preserves sequence, command and payload', () => {
   const frame = encodeFrame({ sequence: 42, command: COMMANDS.hello, payload: Uint8Array.from([1, 2, 3]) });

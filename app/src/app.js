@@ -16,7 +16,7 @@ import { createBackup, downloadJson, logs as logStore, validateBackup } from './
 import { applyTranslations, setupLanguage, translate } from './i18n.js';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
-import { transactFeatureReport } from './hid-transport.js';
+import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
 
 const state = {
   devices: new Map(),
@@ -25,7 +25,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.8.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '0.9.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -175,8 +175,24 @@ async function loadMetadata() {
   $('#version-chip').textContent = label; $('#footer-version').textContent = label; $('#footer-updated').textContent = state.version.lastUpdated || '2026-08-12';
 }
 
+function webHidStatus() {
+  return inspectWebHidAvailability({
+    navigator: typeof navigator !== 'undefined' ? navigator : null,
+    document: typeof document !== 'undefined' ? document : null,
+    isSecureContext: typeof window !== 'undefined' && window.isSecureContext
+  });
+}
+
 function hasHid() {
-  return typeof navigator !== 'undefined' && 'hid' in navigator;
+  return webHidStatus().available;
+}
+
+function requireHid() {
+  const status = webHidStatus();
+  if (status.available) return true;
+  $('#hid-warning').hidden = false;
+  addLog('error', `WebHID unavailable: ${status.reason} (secure context: ${status.isSecureContext ? 'yes' : 'no'}).`);
+  return false;
 }
 
 function nextSequence() { state.sequence = (state.sequence + 1) & 0xffff; return state.sequence; }
@@ -248,7 +264,7 @@ async function registerDevice(device) {
 }
 
 async function connectDevice() {
-  if (!hasHid()) { $('#hid-warning').hidden = false; addLog('error', 'WebHID is unavailable in this browser.'); return; }
+  if (!requireHid()) return;
   try {
     setGlobalStatus('Waiting for device', 'busy');
     const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: HID_USAGE_PAGE }, ...dualSenseWebHidFilters()] });
@@ -258,7 +274,7 @@ async function connectDevice() {
 }
 
 async function refreshDevices() {
-  if (!hasHid()) { $('#hid-warning').hidden = false; return; }
+  if (!requireHid()) return;
   try { const devices = await navigator.hid.getDevices(); for (const device of devices) await registerDevice(device); renderDevices(); } catch (error) { addLog('error', `Device refresh failed: ${error.message}`); }
 }
 
@@ -371,7 +387,7 @@ function init() {
   $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
   wireDraftControls();
   window.addEventListener('miralink:open-pairing-window', openPairingWindow);
-  if (!hasHid()) $('#hid-warning').hidden = false;
+  if (!requireHid()) addLog('info', 'WebHID diagnostics are visible in the local event log.');
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();

@@ -22,6 +22,8 @@ l’utilisateur.
 - Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
   fonctionnalité et tester la lecture explicite des réponses avec
   `receiveFeatureReport`.
+- Pour chaque déploiement WebHID, vérifier la présence de la politique
+  `Permissions-Policy: hid=(self)` et conserver un diagnostic local du contexte.
 - Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
 
 ## Clôture de chaque prompt de travail

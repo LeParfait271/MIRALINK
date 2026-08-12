@@ -1,9 +1,17 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `0.8.0` application transport fix; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
+Version: `0.9.0` WebHID deployment compatibility; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
 Developer: `MaruChiwa`
 Scope: local software checks and firmware source inspection
+
+## 0.9.0 software checks
+
+- WebHID availability now records whether the page is secure and whether the
+  Permissions Policy reports `hid` as blocked.
+- Cloudflare Pages headers explicitly allow WebHID for the MiraLink origin.
+- The previous UF2 was inspected read-only as a behavioral reference; no source
+  or firmware content was imported.
 
 ## 0.8.0 software checks
 

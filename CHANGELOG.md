@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 — 2026-08-12
+
+- Ajouté l’autorisation de déploiement `Permissions-Policy: hid=(self)` pour Cloudflare Pages.
+- Ajouté un diagnostic local distinguant contexte non sécurisé, politique de permissions et navigateur/contexte incompatible.
+- Analysé l’ancien UF2 en lecture seule comme référence de comportement, sans réutiliser son code ni son firmware.
+
 ## 0.8.0 — 2026-08-12
 
 - Corrigé l’échange WebHID du bridge : les réponses de commandes sont maintenant lues comme rapports HID de fonctionnalité avec `receiveFeatureReport(2)`.
