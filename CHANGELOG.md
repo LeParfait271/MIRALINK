@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — 2026-08-12
+
+- Ajouté la recherche locale de DualSense pendant la fenêtre d’appairage du Pico 2 W, avec filtrage d’identité, demande de nom et reconnexion après fermeture.
+- Ajouté les diagnostics firmware structurés : radio, appairage, recherche, connexion, rapports validés et rapports rejetés.
+- Ajouté les commandes locales bornées de reconnexion USB, journalisation en RAM et entrée recovery confirmation-gated ; aucune action n’est automatique.
+- Ajouté le candidat firmware Pico 2 W `firmware/releases/1.1.0/` avec ELF, BIN, HEX, UF2 et manifestes SHA-256.
+- Aucun flash, test matériel réel, push ou publication n’a été effectué ; les limites audio, batterie, haptique, gâchettes adaptatives et VID/PID de production restent explicites.
+
 ## 1.0.0 — 2026-08-12
 
 - Rendu le build statique compatible avec les deux sorties Cloudflare Pages : `app/` et `app/dist/`.

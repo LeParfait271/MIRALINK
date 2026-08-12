@@ -112,8 +112,38 @@ export function decodeHelloPayload(input) {
 
 export function decodeDiagnosticsPayload(input) {
   const bytes = bytesOf(input);
-  if (bytes.length !== 3) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
-  return Object.freeze({ schema: bytes[0], configLoaded: Boolean(bytes[1]), usbMounted: Boolean(bytes[2]) });
+  if (bytes.length === 3) {
+    return Object.freeze({
+      schema: bytes[0],
+      configLoaded: Boolean(bytes[1]),
+      usbMounted: Boolean(bytes[2]),
+      bluetoothAvailable: false,
+      pairingWindowOpen: false,
+      inquiryActive: false,
+      connectionPending: false,
+      controllerConnected: false,
+      descriptorAvailable: false,
+      inputAvailable: false,
+      sampleCount: 0,
+      rejectedReportCount: 0
+    });
+  }
+  if (bytes.length !== 18 || bytes[0] !== 2) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Object.freeze({
+    schema: bytes[0],
+    configLoaded: Boolean(bytes[1]),
+    usbMounted: Boolean(bytes[2]),
+    bluetoothAvailable: Boolean(bytes[3]),
+    pairingWindowOpen: Boolean(bytes[4]),
+    inquiryActive: Boolean(bytes[5]),
+    connectionPending: Boolean(bytes[6]),
+    controllerConnected: Boolean(bytes[7]),
+    descriptorAvailable: Boolean(bytes[8]),
+    inputAvailable: Boolean(bytes[9]),
+    sampleCount: view.getUint32(10, true),
+    rejectedReportCount: view.getUint32(14, true)
+  });
 }
 
 export function decodeControllerStatePayload(input) {
@@ -162,6 +192,8 @@ export function decodeControllerStatePayload(input) {
     inputAvailable,
     bluetoothAvailable: Boolean(flags & (1 << 3)),
     pairingWindowOpen: Boolean(flags & (1 << 4)),
+    inquiryActive: Boolean(flags & (1 << 5)),
+    connectionPending: Boolean(flags & (1 << 6)),
     sample
   });
 }

@@ -14,6 +14,8 @@ The firmware currently provides:
 - a Classic HID host for DualSense Bluetooth input reports with CRC validation;
 - typed controller-state responses and event reports over USB;
 - a five-minute, confirmation-gated pairing window that is closed at boot;
+- local DualSense inquiry during that window, with Sony identity/name filtering
+  before a Classic HID connection is attempted;
 - separate flash reservations for MiraLink configuration and BTstack link keys.
 
 The current controller tranche is input-only. Battery, audio, haptics and
@@ -23,15 +25,22 @@ paths are implemented and validated.
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-The current source version is `0.6.0`. The source was rebuilt locally with
+The current source version is `1.1.0`. The source was rebuilt locally with
 Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1` and `picotool` `2.3.0`; the
-resulting local 0.6.0 manual-test candidate is in
-`firmware/releases/0.6.0/`. It has not been flashed or published. The
+resulting local 1.1.0 manual-test candidate is in
+`firmware/releases/1.1.0/`. It has not been flashed or published. The
 previously built delivery artifact in `firmware/releases/0.2.0/` is retained
 as historical evidence. No physical Pico 2 W or controller was connected
 during this validation.
 
-Building produces the binary formats locally. The files in
-`firmware/releases/0.6.0/` are a manually testable local candidate with a
+Building produces the ELF, BIN and HEX formats locally. The UF2 is then
+generated from that same ELF with the local SDK-matched `picotool` command:
+
+```text
+picotool uf2 convert miralink_pico_firmware.elf miralink_pico_firmware.uf2 --family rp2350-arm-s --platform rp2350 --abs-block
+```
+
+The files in
+`firmware/releases/1.1.0/` are a manually testable local candidate with a
 SHA-256 manifest; the files in `firmware/releases/0.2.0/` are historical
 artifacts. MiraLink never flashes the board automatically.

@@ -25,7 +25,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.0.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '1.1.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -350,10 +350,13 @@ async function runDiagnostics() {
     const response = await transact(entry, COMMANDS.getDiagnostics);
     const diagnostics = decodeDiagnosticsPayload(response.payload);
     $('[data-diagnostic="usb"]').textContent = diagnostics.usbMounted ? 'PASS' : 'FAIL';
-    $('[data-diagnostic="radio"]').textContent = 'Unavailable';
+    $('[data-diagnostic="radio"]').textContent = diagnostics.bluetoothAvailable ? 'PASS' : 'Unavailable';
     $('[data-diagnostic="audio"]').textContent = 'Unavailable';
     $('[data-diagnostic="storage"]').textContent = diagnostics.configLoaded ? 'PASS' : 'Not tested';
-    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; radio and audio are not implemented in this firmware.`;
+    const radioState = diagnostics.bluetoothAvailable
+      ? diagnostics.controllerConnected ? 'connected' : diagnostics.pairingWindowOpen ? 'pairing window open' : 'ready'
+      : 'unavailable';
+    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio remains unavailable in this firmware.`;
     addLog('info', 'Diagnostics completed with capability limits reported.');
   } catch (error) {
     for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';

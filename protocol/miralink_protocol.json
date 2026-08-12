@@ -27,10 +27,23 @@
     "OPEN_PAIRING_WINDOW": 12
   },
   "diagnostics": {
-    "payloadBytes": 3,
-    "schemaOffset": 0,
-    "configLoadedOffset": 1,
-    "usbMountedOffset": 2
+    "payloadBytes": 18,
+    "schema": 2,
+    "fields": [
+      { "name": "schema", "offset": 0, "type": "u8" },
+      { "name": "configLoaded", "offset": 1, "type": "bool" },
+      { "name": "usbMounted", "offset": 2, "type": "bool" },
+      { "name": "bluetoothAvailable", "offset": 3, "type": "bool" },
+      { "name": "pairingWindowOpen", "offset": 4, "type": "bool" },
+      { "name": "inquiryActive", "offset": 5, "type": "bool" },
+      { "name": "connectionPending", "offset": 6, "type": "bool" },
+      { "name": "controllerConnected", "offset": 7, "type": "bool" },
+      { "name": "descriptorAvailable", "offset": 8, "type": "bool" },
+      { "name": "inputAvailable", "offset": 9, "type": "bool" },
+      { "name": "sampleCount", "offset": 10, "type": "u32le" },
+      { "name": "rejectedReportCount", "offset": 14, "type": "u32le" }
+    ],
+    "legacyPayloadBytes": 3
   },
   "controllerState": {
     "payloadBytes": 16,
@@ -40,7 +53,9 @@
       "descriptorAvailable": 1,
       "inputAvailable": 2,
       "bluetoothAvailable": 3,
-      "pairingWindowOpen": 4
+      "pairingWindowOpen": 4,
+      "inquiryActive": 5,
+      "connectionPending": 6
     },
     "transport": "pico-2-w-bluetooth-to-usb-hid-event"
   },

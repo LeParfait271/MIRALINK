@@ -6,8 +6,11 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Controller radio, audio, GPIO policy and recovery flows remain separate work
-items. They are not claimed as implemented by the current milestone.
+The current firmware tranche includes the local Bluetooth inquiry/connection
+path for DualSense input, bounded diagnostics, local RAM logs, USB
+reconnection and a confirmation-token recovery command. Audio, battery,
+haptics and adaptive triggers remain separate capability-gated work items and
+are not claimed as implemented.
 
 ## Core and hardware builds
 

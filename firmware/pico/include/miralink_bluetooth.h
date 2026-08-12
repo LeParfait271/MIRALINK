@@ -18,6 +18,8 @@ struct Snapshot {
     LinkState state = LinkState::Unavailable;
     bool bluetooth_available = false;
     bool pairing_window_open = false;
+    bool inquiry_active = false;
+    bool connection_pending = false;
     bool descriptor_available = false;
     bool input_available = false;
     dualsense::InputState input{};

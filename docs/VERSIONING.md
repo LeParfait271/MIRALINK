@@ -5,7 +5,7 @@ MiraLink starts at `0.1.0`.
 For every commit that changes the project, increase the minor version by `0.1` and update the date in `VERSION.json`:
 
 ```text
-0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.6.0 → 0.7.0 → 0.8.0 → 0.9.0 → 1.0.0
+0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.6.0 → 0.7.0 → 0.8.0 → 0.9.0 → 1.0.0 → 1.1.0
 ```
 
 The same version must be reflected in:

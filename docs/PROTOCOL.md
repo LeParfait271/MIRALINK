@@ -48,17 +48,28 @@ or the command is not supported.
 
 ### 3.1 Current diagnostics payload
 
-`GET_DIAGNOSTICS` currently returns exactly three bytes, not text:
+`GET_DIAGNOSTICS` returns 18 structured bytes for schema `2`. The application
+keeps accepting the historical three-byte schema `1` so an older local build
+does not become unreadable:
 
-| Offset | Meaning |
-|---:|---|
-| 0 | Diagnostics schema (`1`) |
-| 1 | Configuration loaded from a valid flash record (`0` or `1`) |
-| 2 | MiraLink USB device mounted (`0` or `1`) |
+| Offset | Size | Meaning |
+|---:|---:|---|
+| 0 | 1 | Diagnostics schema (`2`) |
+| 1 | 1 | Configuration loaded from a valid flash record (`0` or `1`) |
+| 2 | 1 | MiraLink USB device mounted (`0` or `1`) |
+| 3 | 1 | Pico Bluetooth host initialized (`0` or `1`) |
+| 4 | 1 | Pairing window open (`0` or `1`) |
+| 5 | 1 | Bluetooth inquiry active (`0` or `1`) |
+| 6 | 1 | Controller connection pending (`0` or `1`) |
+| 7 | 1 | Controller link connected (`0` or `1`) |
+| 8 | 1 | Controller HID descriptor received (`0` or `1`) |
+| 9 | 1 | At least one validated input report received (`0` or `1`) |
+| 10 | 4 | Validated input sample count, little-endian |
+| 14 | 4 | Rejected input report count, little-endian |
 
-Radio and audio are not represented as successful merely because the Pico
-answered; the application reports them as unavailable until a real source is
-implemented.
+`bluetoothAvailable` means that the Pico radio host initialized; it does not
+claim that a controller is connected. Audio, battery, haptics and adaptive
+triggers remain explicitly unavailable in this firmware tranche.
 
 ### 3.2 Pico controller state payload
 
@@ -67,7 +78,7 @@ implemented.
 | Offset | Meaning |
 |---:|---|
 | 0 | State schema (`1`) |
-| 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4` |
+| 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4`, inquiry `5`, connection pending `6` |
 | 2 | Controller report ID |
 | 3..6 | Left X/Y and right X/Y, raw bytes `0..255` |
 | 7..8 | Left and right trigger, raw bytes `0..255` |
@@ -83,7 +94,20 @@ not record controller input in flash.
 minutes. It does not flash firmware or write configuration. Incoming HID
 connections outside that window are declined.
 
-### 3.3 DualSense adapter boundary
+### 3.3 Local diagnostics and recovery commands
+
+`GET_LOG_PAGE` accepts an optional one-byte page index and returns a bounded
+local record: schema, page, presence, timestamp, message length and at most
+40 UTF-8 message bytes. The records live in a 12-entry RAM ring and are lost
+when the Pico restarts; controller input is never written to this log.
+
+`RECONNECT_USB` accepts no payload and schedules a local USB re-enumeration
+after the acknowledgement. `ENTER_RECOVERY` accepts exactly the confirmation
+token `RCV1` and schedules the Pico BOOTSEL recovery path. The application must
+confirm both actions separately; the firmware never triggers either one from a
+background event.
+
+### 3.4 DualSense adapter boundary
 
 The application can identify a standard wired DualSense locally through Sony
 VID `0x054c` and product ID `0x0ce6`, then decode its USB input report ID

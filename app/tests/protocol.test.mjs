@@ -106,7 +106,34 @@ test('HELLO payload is decoded as structured binary data', () => {
 });
 
 test('diagnostics payload keeps unavailable capabilities out of binary status', () => {
-  assert.deepEqual(decodeDiagnosticsPayload(Uint8Array.from([1, 1, 1])), { schema: 1, configLoaded: true, usbMounted: true });
+  assert.deepEqual(decodeDiagnosticsPayload(Uint8Array.from([1, 1, 1])), {
+    schema: 1,
+    configLoaded: true,
+    usbMounted: true,
+    bluetoothAvailable: false,
+    pairingWindowOpen: false,
+    inquiryActive: false,
+    connectionPending: false,
+    controllerConnected: false,
+    descriptorAvailable: false,
+    inputAvailable: false,
+    sampleCount: 0,
+    rejectedReportCount: 0
+  });
+  assert.deepEqual(decodeDiagnosticsPayload(Uint8Array.from([2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 5, 0, 0, 0, 2, 0, 0, 0])), {
+    schema: 2,
+    configLoaded: true,
+    usbMounted: true,
+    bluetoothAvailable: true,
+    pairingWindowOpen: true,
+    inquiryActive: true,
+    connectionPending: false,
+    controllerConnected: true,
+    descriptorAvailable: true,
+    inputAvailable: true,
+    sampleCount: 5,
+    rejectedReportCount: 2
+  });
   assert.throws(() => decodeDiagnosticsPayload(Uint8Array.from([1])), /diagnostics/i);
 });
 
@@ -116,6 +143,8 @@ test('controller state payload exposes Bluetooth input without inventing unsuppo
   assert.equal(decoded.connected, true);
   assert.equal(decoded.bluetoothAvailable, true);
   assert.equal(decoded.pairingWindowOpen, false);
+  assert.equal(decoded.inquiryActive, false);
+  assert.equal(decoded.connectionPending, false);
   assert.equal(decoded.sample.transport, 'bluetooth');
   assert.equal(decoded.sample.buttons.cross, true);
   assert.equal(decoded.sample.buttons.square, true);
@@ -125,6 +154,13 @@ test('controller state payload exposes Bluetooth input without inventing unsuppo
 test('controller state exposes an explicitly opened pairing window', () => {
   const payload = Uint8Array.from([1, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   assert.equal(decodeControllerStatePayload(payload).pairingWindowOpen, true);
+});
+
+test('controller state exposes inquiry and pending connection flags', () => {
+  const payload = Uint8Array.from([1, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const decoded = decodeControllerStatePayload(payload);
+  assert.equal(decoded.inquiryActive, true);
+  assert.equal(decoded.connectionPending, true);
 });
 
 test('configuration round trip preserves all fields', () => {

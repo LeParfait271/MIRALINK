@@ -55,6 +55,11 @@ input report (`0x31`, CRC checked) and relays validated samples back over a
 typed USB event report. Bluetooth discoverability is closed at boot and can
 only be opened through the confirmation-gated local pairing command.
 
+During that explicit window the Pico performs a bounded Bluetooth inquiry and
+filters Sony DualSense identities before attempting a Classic HID connection.
+The firmware also exposes bounded diagnostics and in-memory diagnostic logs;
+these are local state and are never uploaded or persisted as controller input.
+
 This is still an input-only tranche: battery, audio, haptics and adaptive
 triggers remain unavailable unless a real capability is negotiated and tested.
 The direct WebHID path and the Pico bridge path are kept distinct so a direct

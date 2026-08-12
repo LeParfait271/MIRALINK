@@ -26,6 +26,9 @@ l’utilisateur.
   `Permissions-Policy: hid=(self)` et conserver un diagnostic local du contexte.
 - Si Cloudflare Pages publie `app/dist/`, vérifier que le build y copie aussi
   `_headers`; si Pages publie `app/` directement, vérifier le fichier source.
+- L’ancien UF2 peut uniquement servir de référence observée en lecture seule
+  pour les capacités attendues ; ne jamais en extraire ni réutiliser du code,
+  du binaire ou une structure interne.
 - Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
 
 ## Clôture de chaque prompt de travail
@@ -48,3 +51,8 @@ pas de commit vide artificiel.
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement.
 - Données : locales à l’ordinateur et au Pico 2 W.
 - Publication : uniquement après autorisation explicite.
+
+Un nouvel artefact UF2 doit provenir du build MiraLink courant, être inspecté
+localement avec son identifiant de famille et être accompagné d'un SHA-256.
+Cette génération ne vaut pas test matériel et ne déclenche jamais un flash
+automatique.

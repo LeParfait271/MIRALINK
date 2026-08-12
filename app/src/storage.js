@@ -41,7 +41,7 @@ export const drafts = {
   clear: (deviceId) => { if (available) localStorage.removeItem(`${KEYS.drafts}:${deviceId}`); }
 };
 
-export function createBackup({ config, device = {}, version = '1.0.0' }) {
+export function createBackup({ config, device = {}, version = '1.1.0' }) {
   return { format: 'miralink-backup', formatVersion: 1, product: 'MiraLink', version, exportedAt: new Date().toISOString(), device: { type: device.type || 'unknown', label: device.label || 'MiraLink device' }, config };
 }
 

@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 0.6.0
+- Version produit concernée : 1.1.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -74,7 +74,24 @@ au démarrage. L’ouverture de la fenêtre d’appairage reste une action local
 confirmée ; le branchement au bouton visible est laissé à la conversation qui
 travaille sur le visuel.
 
-### 1.5 Limites Pico 2 W
+### 1.5 Tranche firmware 1.1.0
+
+La tranche firmware actuelle complete le chemin d'entree DualSense cote Pico
+sans etendre artificiellement les capacites materielles :
+
+- la fenetre d'appairage confirmee lance une recherche Bluetooth bornee ;
+- les resultats sont filtres par identite Sony DualSense/Edge ou nom distant
+  avant toute tentative HID ;
+- les diagnostics exposent l'etat radio, la recherche, la connexion et les
+  compteurs de rapports valides/rejetes ;
+- les journaux restent en RAM, les commandes de reconnexion sont manuelles et
+  la recuperation exige le jeton de confirmation `RCV1` ;
+- l'UF2 1.1.0 est empaquete localement, mais reste non teste sur materiel.
+
+Cette tranche ne pretend pas fournir batterie, audio, haptique, gachettes
+adaptatives ou identite USB de production.
+
+### 1.6 Limites Pico 2 W
 
 Le Pico 2 W est un bridge et une cible de configuration ; il ne suffit pas à lui seul à fournir toutes les mesures demandées. Les valeurs radio, audio, température, batterie et mémoire doivent être exposées seulement si le firmware possède une source de mesure fiable. Sinon, l’interface doit indiquer `indisponible` ou `non testé`.
 
@@ -737,6 +754,8 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [x] Modèle local du cockpit et de la carte des connexions avec statuts `supporté`, `partiel`, `indisponible` et `non testé`.
 - [x] Métriques bornées, historique mémoire limité et absence d'identifiants sensibles dans la carte des connexions.
 - [x] Contrat de remappage local des boutons avec diff, cible et confirmation.
+- [x] Recherche Bluetooth DualSense bornee, filtre d'identite/nom, diagnostics structures, journaux RAM et commandes de reconnexion/recuperation confirmation-gated.
+- [x] Rebuild ARM du firmware 1.1.0 et candidat UF2 local avec SHA-256 ; flash manuel et test materiel restent a faire.
 - [x] Mode urgence vers le profil Basique avec aperçu, confirmation et aucune persistance implicite.
 - [x] Matrice locale de compatibilité firmware/manettes avec état `not-tested` par défaut.
 - [x] Plan de diagnostics guidés et rapport local anonymisé sans identifiants sensibles.

@@ -1,9 +1,29 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `1.0.0` WebHID deployment compatibility; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
+Version: `1.1.0` DualSense inquiry and structured firmware diagnostics; historical firmware artifact `0.2.0`
 Developer: `MaruChiwa`
 Scope: local software checks and firmware source inspection
+
+## 1.1.0 software and firmware checks
+
+- JavaScript tests: `55` passed.
+- The Pico 2 W ARM firmware rebuilt successfully from the current source after
+  adding bounded Bluetooth inquiry, DualSense filtering, structured diagnostics,
+  local RAM logs, USB reconnect and confirmation-token recovery.
+- `picotool` `2.3.0` packaged a fresh RP2350 ARM Secure UF2 with family ID
+  `rp2350-arm-s`; the UF2 was inspected locally and not flashed.
+- The release candidate is `firmware/releases/1.1.0/` with ELF, BIN, HEX, UF2
+  and SHA-256 manifest.
+- The 1.1.0 UF2 is `863232` bytes with SHA-256
+  `E5364B835F5CC3A57D0B54206EB6196005BD5EAE31C20088F6102DCE8EF1A86B`.
+- The source image hashes are recorded in `firmware/releases/1.1.0/SHA256SUMS.txt`:
+  BIN `0E90CA9B03E728D8D78E7CE6DE15E46B00F68ACC00E4A65CD689397D68A835BC`,
+  ELF `02F4B966A0580F8EF19067D8FDEDD6A50C63BE36EE47C13BF6A754ADEF57BAC8`,
+  HEX `C11D1B68F2FDE04D10505F9F35800844C27E6AFE8D0ABF185713A76703363144`.
+- No Pico 2 W or DualSense was connected. These results prove source build and
+  format generation only, not enumeration, pairing, flash persistence or input
+  behavior on physical hardware.
 
 ## 1.0.0 software checks
 

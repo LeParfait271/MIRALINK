@@ -12,6 +12,12 @@ constexpr std::uint8_t kMagic1 = 0x4c;
 constexpr std::size_t kHidReportBytes = 64;
 constexpr std::size_t kFrameOverheadBytes = 13;
 constexpr std::size_t kMaxPayload = kHidReportBytes - kFrameOverheadBytes - 3;
+constexpr std::uint8_t kFeatureConfigPersistence = 1u << 0;
+constexpr std::uint8_t kFeatureControllerInput = 1u << 1;
+constexpr std::uint8_t kFeatureBluetoothPairing = 1u << 2;
+constexpr std::uint8_t kFeatureUsbReconnect = 1u << 3;
+constexpr std::uint8_t kFeatureRecovery = 1u << 4;
+constexpr std::uint8_t kFeatureLocalLogs = 1u << 5;
 
 enum class Command : std::uint8_t {
     Hello = 0x01,
