@@ -23,6 +23,12 @@ constexpr std::uint16_t kSonyVendorId = dualsense::kSonyVendorId;
 constexpr std::uint16_t kDualSenseProductId = dualsense::kDualSenseProductId;
 constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::size_t kMaxRememberedControllers = 4;
+constexpr std::uint16_t kHapticMaxDurationMs = 3000;
+
+struct OutputPacket {
+    std::array<std::uint8_t, dualsense::kBluetoothOutputReportBytes> bytes{};
+    bool occupied = false;
+};
 
 std::uint8_t g_hid_descriptor_storage[kHidDescriptorStorageBytes]{};
 btstack_packet_callback_registration_t g_hci_event_registration{};
@@ -38,6 +44,12 @@ bool g_connection_pending = false;
 std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
 std::size_t g_paired_address_count = 0;
 std::size_t g_reconnect_index = 0;
+std::array<OutputPacket, 2> g_output_packets{};
+int g_output_in_flight = -1;
+int g_output_queued = -1;
+std::uint8_t g_output_sequence = 0;
+bool g_haptic_stop_pending = false;
+std::uint64_t g_haptic_stop_deadline_ms = 0;
 
 struct InquiryCandidate {
     bd_addr_t address{};
@@ -50,6 +62,7 @@ struct InquiryCandidate {
 InquiryCandidate g_candidate{};
 
 void try_next_paired_controller();
+void try_send_output();
 
 std::uint64_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
@@ -204,8 +217,61 @@ void set_link_state(const LinkState state) {
     critical_section_exit(&g_state_lock);
 }
 
+void clear_output_queue() {
+    g_output_packets = {};
+    g_output_in_flight = -1;
+    g_output_queued = -1;
+    g_haptic_stop_pending = false;
+    g_haptic_stop_deadline_ms = 0;
+}
+
+bool output_link_ready() {
+    critical_section_enter_blocking(&g_state_lock);
+    const bool ready = g_hid_cid != 0 && g_snapshot.descriptor_available
+        && g_snapshot.state == LinkState::Connected;
+    critical_section_exit(&g_state_lock);
+    return ready;
+}
+
+int output_free_slot() {
+    for (std::size_t index = 0; index < g_output_packets.size(); ++index) {
+        if (static_cast<int>(index) != g_output_in_flight && static_cast<int>(index) != g_output_queued) {
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
+}
+
+bool queue_output(const dualsense::OutputRequest& request) {
+    if (!output_link_ready() || g_output_queued >= 0) return false;
+    const auto slot = output_free_slot();
+    if (slot < 0) return false;
+    g_output_packets[slot].bytes = dualsense::build_bluetooth_output_report(request, g_output_sequence++ & 0x0fu);
+    g_output_packets[slot].occupied = true;
+    g_output_queued = slot;
+    try_send_output();
+    return true;
+}
+
+void try_send_output() {
+    if (g_output_queued < 0 || !output_link_ready()) return;
+
+    const auto slot = g_output_queued;
+    const auto status = hid_host_send_report(g_hid_cid, dualsense::kBluetoothOutputReportId,
+        g_output_packets[slot].bytes.data() + 1,
+        static_cast<std::uint16_t>(g_output_packets[slot].bytes.size() - 1));
+    if (status != ERROR_CODE_SUCCESS) return;
+
+    if (g_output_in_flight >= 0) {
+        g_output_packets[g_output_in_flight].occupied = false;
+    }
+    g_output_in_flight = slot;
+    g_output_queued = -1;
+}
+
 void set_connection_closed() {
     g_connection_pending = false;
+    clear_output_queue();
     critical_section_enter_blocking(&g_state_lock);
     g_hid_cid = 0;
     g_snapshot.connection_pending = false;
@@ -236,6 +302,7 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
         g_snapshot.rejected_report_count += 1;
     }
     critical_section_exit(&g_state_lock);
+    try_send_output();
 }
 
 void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_t* packet, std::uint16_t size) {
@@ -271,6 +338,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_pairing_requested = false;
                 g_connection_pending = false;
                 g_hid_cid = 0;
+                clear_output_queue();
                 clear_candidate();
                 critical_section_enter_blocking(&g_state_lock);
                 g_snapshot.bluetooth_available = false;
@@ -387,6 +455,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         g_snapshot.input_available = false;
                         g_snapshot.state = LinkState::Starting;
                         critical_section_exit(&g_state_lock);
+                        clear_output_queue();
                     } else {
                         set_connection_closed();
                     }
@@ -396,6 +465,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     critical_section_enter_blocking(&g_state_lock);
                     g_snapshot.descriptor_available = hid_subevent_descriptor_available_get_status(packet) == ERROR_CODE_SUCCESS;
                     critical_section_exit(&g_state_lock);
+                    try_send_output();
                     break;
 
                 case HID_SUBEVENT_REPORT:
@@ -448,6 +518,36 @@ bool open_pairing_window() {
     return true;
 }
 
+bool send_haptic(const std::uint8_t left_motor, const std::uint8_t right_motor, const std::uint16_t duration_ms) {
+    if (duration_ms == 0 || duration_ms > kHapticMaxDurationMs) return false;
+    dualsense::OutputRequest request{};
+    request.haptics = true;
+    request.left_motor = left_motor;
+    request.right_motor = right_motor;
+    if (!queue_output(request)) return false;
+    g_haptic_stop_pending = true;
+    g_haptic_stop_deadline_ms = now_ms() + duration_ms;
+    return true;
+}
+
+bool set_lightbar(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue, const std::uint8_t player_leds_mask) {
+    dualsense::OutputRequest request{};
+    request.lightbar = true;
+    request.lightbar_red = red;
+    request.lightbar_green = green;
+    request.lightbar_blue = blue;
+    request.player_leds = true;
+    request.player_leds_mask = static_cast<std::uint8_t>(player_leds_mask & 0x1fu);
+    return queue_output(request);
+}
+
+bool set_microphone_mute(const bool muted) {
+    dualsense::OutputRequest request{};
+    request.microphone_mute = true;
+    request.microphone_muted = muted;
+    return queue_output(request);
+}
+
 void poll() {
     if (!g_initialized) return;
     if (g_pairing_window_deadline_ms != 0 && !pairing_window_active()) {
@@ -463,6 +563,15 @@ void poll() {
     } else if (pairing_window_active() && !g_connection_pending) {
         start_inquiry();
     }
+    if (g_haptic_stop_pending && g_haptic_stop_deadline_ms != 0 && now_ms() >= g_haptic_stop_deadline_ms) {
+        dualsense::OutputRequest request{};
+        request.haptics = true;
+        if (queue_output(request)) {
+            g_haptic_stop_pending = false;
+            g_haptic_stop_deadline_ms = 0;
+        }
+    }
+    try_send_output();
 }
 
 Snapshot snapshot() {

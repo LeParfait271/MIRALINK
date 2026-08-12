@@ -4,6 +4,7 @@ import {
   COMMANDS,
   ProtocolError,
   assertValidConfig,
+  decodeControllerCapabilities,
   decodeControllerStatePayload,
   decodeConfig,
   decodeDiagnosticsPayload,
@@ -11,6 +12,9 @@ import {
   decodeFrame,
   defaultConfig,
   encodeConfig,
+  encodeHapticRequest,
+  encodeLightbarRequest,
+  encodeMicrophoneMuteRequest,
   encodeFrame
 } from '../src/protocol.js';
 import { inspectWebHidAvailability, transactFeatureReport } from '../src/hid-transport.js';
@@ -162,6 +166,40 @@ test('controller state payload exposes Bluetooth input without inventing unsuppo
   assert.equal(decoded.sample.buttons.cross, true);
   assert.equal(decoded.sample.buttons.square, true);
   assert.equal(decoded.sample.capabilities.haptics, 'not-implemented');
+});
+
+test('extended controller state decodes battery, sensors, touch and supported output limits', () => {
+  const payload = new Uint8Array(48);
+  payload.set([2, 0x0f, 0x31, 128, 128, 128, 128, 0, 0, 8, 0, 0, 72, 2, 0, 0, 75, 2, 0x3f, 9], 0);
+  const view = new DataView(payload.buffer);
+  view.setInt16(20, -100, true); view.setInt16(22, 200, true); view.setInt16(24, 300, true);
+  view.setUint32(32, 1234, true); view.setUint16(36, 100, true); view.setUint16(38, 200, true);
+  const decoded = decodeControllerStatePayload(payload);
+  assert.equal(decoded.schema, 2);
+  assert.equal(decoded.sample.batteryPercent, 75);
+  assert.equal(decoded.sample.batteryState, 'charging');
+  assert.equal(decoded.sample.extended.gyro.x, -100);
+  assert.equal(decoded.sample.extended.sensorTimestamp, 1234);
+  assert.equal(decoded.sample.extended.touchPoints[0].x, 100);
+  assert.equal(decoded.sample.capabilities.haptics, 'supported');
+  assert.equal(decoded.sample.capabilities.adaptiveTriggers, 'not-implemented');
+});
+
+test('controller output payloads are versioned and bounded', () => {
+  assert.deepEqual([...encodeHapticRequest({ leftMotor: 1, rightMotor: 2, durationMs: 3000 })], [1, 1, 2, 0xb8, 0x0b]);
+  assert.deepEqual([...encodeLightbarRequest({ red: 1, green: 2, blue: 3, playerLeds: 0x1f })], [1, 1, 2, 3, 0x1f]);
+  assert.deepEqual([...encodeMicrophoneMuteRequest(true)], [1, 1]);
+  assert.throws(() => encodeHapticRequest({ durationMs: 3001 }), /between 1 and 3000/);
+  assert.throws(() => encodeLightbarRequest({ playerLeds: 0x20 }), /between 0 and 31/);
+});
+
+test('controller capabilities payload keeps transport and feature bits explicit', () => {
+  const payload = Uint8Array.from([1, 1, 1, 1, 0x7f, 0, 0xb8, 0x0b]);
+  const decoded = decodeControllerCapabilities(payload);
+  assert.equal(decoded.transport, 'bluetooth');
+  assert.equal(decoded.model, 'DualSense');
+  assert.equal(decoded.capabilities, 0x7f);
+  assert.equal(decoded.maxHapticDurationMs, 3000);
 });
 
 test('controller state exposes an explicitly opened pairing window', () => {

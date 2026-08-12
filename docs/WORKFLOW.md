@@ -71,3 +71,19 @@ transformer une adresse connue en preuve de connexion matérielle.
 La collection HID gamepad standard et le canal vendor MiraLink doivent rester
 séparés ; un rapport gamepad ne peut être envoyé qu'après validation d'un
 rapport DualSense, et toute déconnexion doit remettre les boutons à zéro.
+
+Les rapports DualSense doivent être décodés avec leurs offsets documentés :
+l'octet de séquence précède les trois groupes de boutons et ne peut pas être
+traité comme un bouton. Les données de batterie, mouvement, tactile et audio
+de statut ne sont exposées qu'après validation d'un rapport complet.
+
+Les sorties vers une manette doivent utiliser des commandes MiraLink bornées,
+jamais un rapport HID brut. Une vibration est temporaire, plafonnée à 3000 ms,
+et sa commande d'arrêt neutre reste locale. La file BTstack est bornée et
+vidée lors d'une déconnexion ; un build réussi ou un test synthétique ne vaut
+pas une preuve de retour haptique sur une manette réelle.
+
+La version 1.5.0 ne conserve aucun chemin d’effet de gâchette adaptative non
+exposé ou non validé. Toute nouvelle sortie doit d’abord avoir une commande
+typée, une capacité négociée, des limites documentées et un test matériel
+distinct avant de pouvoir être annoncée comme supportée.

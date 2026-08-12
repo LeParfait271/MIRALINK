@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0 - 2026-08-12
+
+- Corrected the DualSense USB/Bluetooth input offsets for buttons, motion,
+  touch and battery status instead of treating the sequence byte as buttons.
+- Added schema-2 controller state data with local battery, headset, microphone,
+  motion and touch fields, plus explicit capability negotiation.
+- Added bounded Bluetooth-compatible rumble, lightbar/player LEDs and
+  microphone mute output commands with CRC-protected reports and automatic
+  haptic stop handling.
+- Kept adaptive-trigger effects and audio streaming explicitly unavailable;
+  no physical Pico 2 W or DualSense test is claimed until the candidate is
+  manually flashed and observed on real hardware.
+
 ## 1.4.0 - 2026-08-12
 
 - Added local BTstack link-key discovery and bounded automatic reconnection for

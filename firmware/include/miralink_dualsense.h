@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <array>
 #include <vector>
 
 namespace miralink::dualsense {
@@ -12,6 +13,22 @@ constexpr std::uint8_t kUsbInputReportId = 0x01;
 constexpr std::size_t kUsbInputReportBytes = 64;
 constexpr std::uint8_t kBluetoothInputReportId = 0x31;
 constexpr std::size_t kBluetoothInputReportBytes = 78;
+constexpr std::uint8_t kBluetoothOutputReportId = 0x31;
+constexpr std::size_t kBluetoothOutputReportBytes = 78;
+
+enum class BatteryState : std::uint8_t {
+    Unknown = 0,
+    Discharging = 1,
+    Charging = 2,
+    Full = 3,
+    Error = 4
+};
+
+struct TouchPoint {
+    bool active = false;
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+};
 
 enum class InputReportError {
     None,
@@ -32,6 +49,22 @@ struct InputState {
     std::uint8_t dpad_face = 0;
     std::uint8_t shoulder = 0;
     std::uint8_t system = 0;
+    std::uint8_t input_sequence = 0;
+    std::int16_t gyro_x = 0;
+    std::int16_t gyro_y = 0;
+    std::int16_t gyro_z = 0;
+    std::int16_t accel_x = 0;
+    std::int16_t accel_y = 0;
+    std::int16_t accel_z = 0;
+    std::uint32_t sensor_timestamp = 0;
+    std::array<TouchPoint, 2> touch{};
+    std::uint8_t battery_percent = 0xff;
+    BatteryState battery_state = BatteryState::Unknown;
+    bool battery_valid = false;
+    bool headphone_connected = false;
+    bool microphone_connected = false;
+    bool microphone_muted = false;
+    bool touchpad_pressed = false;
 };
 
 struct InputReportResult {
@@ -48,5 +81,23 @@ InputReportResult parse_bluetooth_input_report(const std::uint8_t* report, std::
 InputReportResult parse_bluetooth_input_report(const std::vector<std::uint8_t>& report);
 std::uint32_t bluetooth_input_crc32(const std::uint8_t* report, std::size_t length);
 std::uint32_t bluetooth_input_crc32(const std::vector<std::uint8_t>& report);
+
+struct OutputRequest {
+    bool haptics = false;
+    std::uint8_t left_motor = 0;
+    std::uint8_t right_motor = 0;
+    bool lightbar = false;
+    std::uint8_t lightbar_red = 0;
+    std::uint8_t lightbar_green = 0;
+    std::uint8_t lightbar_blue = 0;
+    bool player_leds = false;
+    std::uint8_t player_leds_mask = 0;
+    bool microphone_mute = false;
+    bool microphone_muted = false;
+};
+
+std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_report(const OutputRequest& request, std::uint8_t sequence);
+std::uint32_t bluetooth_output_crc32(const std::uint8_t* report, std::size_t length);
+std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report);
 
 } // namespace miralink::dualsense

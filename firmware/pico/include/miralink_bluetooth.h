@@ -30,6 +30,9 @@ struct Snapshot {
 
 void init();
 bool open_pairing_window();
+bool send_haptic(std::uint8_t left_motor, std::uint8_t right_motor, std::uint16_t duration_ms);
+bool set_lightbar(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t player_leds_mask);
+bool set_microphone_mute(bool muted);
 void poll();
 Snapshot snapshot();
 

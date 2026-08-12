@@ -5,6 +5,7 @@ import {
   ProtocolError,
   assertValidConfig,
   decodeConfig,
+  decodeControllerCapabilities,
   decodeControllerStatePayload,
   decodeDiagnosticsPayload,
   decodeFrame,
@@ -25,7 +26,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.4.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '1.5.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -224,7 +225,7 @@ async function identify(entry) {
     });
     entry.adapter.start();
     entry.state = 'ready';
-    addLog('info', `${entry.label} identified as a DualSense controller. Wired input is available; haptics and adaptive triggers are not implemented.`);
+    addLog('info', `${entry.label} identified as a DualSense controller. Direct wired input is available; use the Pico 2 W bridge for Bluetooth output features.`);
     return;
   }
   try {
@@ -233,6 +234,13 @@ async function identify(entry) {
     entry.kind = 'bridge'; entry.kindLabel = 'MiraLink bridge'; entry.firmwareVersion = `protocol ${hello.protocolVersion}`; entry.hello = hello;
     entry.transport = 'usb';
     entry.state = 'ready';
+    try {
+      const capabilityResponse = await transact(entry, COMMANDS.getControllerCapabilities, new Uint8Array(), 500);
+      entry.controllerCapabilities = decodeControllerCapabilities(capabilityResponse.payload);
+    } catch (error) {
+      entry.controllerCapabilities = null;
+      addLog('info', `${entry.label} does not expose controller capabilities yet: ${error.message}`);
+    }
     addLog('info', `${entry.label} identified as MiraLink bridge.`);
     startBridgePolling(entry);
   } catch (error) {

@@ -19,7 +19,22 @@ export const COMMANDS = Object.freeze({
   getLogPage: 0x09,
   enterRecovery: 0x0a,
   getControllerState: 0x0b,
-  openPairingWindow: 0x0c
+  openPairingWindow: 0x0c,
+  getControllerCapabilities: 0x0d,
+  sendHaptic: 0x0e,
+  setLightbar: 0x0f,
+  setMicrophoneMute: 0x10
+});
+
+export const CONTROLLER_CAPABILITIES = Object.freeze({
+  battery: 1 << 0,
+  haptics: 1 << 1,
+  lightbar: 1 << 2,
+  motion: 1 << 3,
+  touchpad: 1 << 4,
+  audioStatus: 1 << 5,
+  microphoneMute: 1 << 6,
+  adaptiveTriggers: 1 << 7
 });
 
 export const CONFIG_SCHEMA = 1;
@@ -148,7 +163,7 @@ export function decodeDiagnosticsPayload(input) {
 
 export function decodeControllerStatePayload(input) {
   const bytes = bytesOf(input);
-  if (bytes.length !== 16 || bytes[0] !== 1) throw new ProtocolError('Controller state payload is invalid', 'invalid_controller_state_payload');
+  if ((bytes.length !== 16 || bytes[0] !== 1) && (bytes.length !== 48 || bytes[0] !== 2)) throw new ProtocolError('Controller state payload is invalid', 'invalid_controller_state_payload');
   const flags = bytes[1];
   const inputAvailable = Boolean(flags & (1 << 2));
   const dpadFace = bytes[9];
@@ -165,6 +180,22 @@ export function decodeControllerStatePayload(input) {
   ];
   const axis = (value) => (value / 127.5) - 1;
   const pressed = (value, bit) => Boolean(value & (1 << bit));
+  const extended = bytes[0] === 2 ? Object.freeze({
+    batteryPercent: bytes[16] === 0xff ? null : bytes[16],
+    batteryState: ['unknown', 'discharging', 'charging', 'full', 'error'][bytes[17]] || 'unknown',
+    batteryValid: Boolean(bytes[18] & (1 << 0)),
+    headphoneConnected: Boolean(bytes[18] & (1 << 1)),
+    microphoneConnected: Boolean(bytes[18] & (1 << 2)),
+    microphoneMuted: Boolean(bytes[18] & (1 << 3)),
+    touchPoints: Object.freeze([
+      Object.freeze({ active: Boolean(bytes[18] & (1 << 4)), x: new DataView(bytes.buffer, bytes.byteOffset + 36, 2).getUint16(0, true), y: new DataView(bytes.buffer, bytes.byteOffset + 38, 2).getUint16(0, true) }),
+      Object.freeze({ active: Boolean(bytes[18] & (1 << 5)), x: new DataView(bytes.buffer, bytes.byteOffset + 40, 2).getUint16(0, true), y: new DataView(bytes.buffer, bytes.byteOffset + 42, 2).getUint16(0, true) })
+    ]),
+    inputSequence: bytes[19],
+    gyro: Object.freeze({ x: new DataView(bytes.buffer, bytes.byteOffset + 20, 2).getInt16(0, true), y: new DataView(bytes.buffer, bytes.byteOffset + 22, 2).getInt16(0, true), z: new DataView(bytes.buffer, bytes.byteOffset + 24, 2).getInt16(0, true) }),
+    accelerometer: Object.freeze({ x: new DataView(bytes.buffer, bytes.byteOffset + 26, 2).getInt16(0, true), y: new DataView(bytes.buffer, bytes.byteOffset + 28, 2).getInt16(0, true), z: new DataView(bytes.buffer, bytes.byteOffset + 30, 2).getInt16(0, true) }),
+    sensorTimestamp: new DataView(bytes.buffer, bytes.byteOffset + 32, 4).getUint32(0, true)
+  }) : null;
   const sample = inputAvailable ? Object.freeze({
     timestamp: new Date().toISOString(),
     source: 'hardware',
@@ -183,7 +214,10 @@ export function decodeControllerStatePayload(input) {
       create: pressed(bytes[10], 4), options: pressed(bytes[10], 5), l3: pressed(bytes[10], 6), r3: pressed(bytes[10], 7),
       ps: pressed(bytes[11], 0), touchpad: pressed(bytes[11], 1), mute: pressed(bytes[11], 2)
     }),
-    capabilities: Object.freeze({ input: 'supported', battery: 'unavailable', haptics: 'not-implemented', adaptiveTriggers: 'not-implemented', calibration: 'local-analysis-only' })
+    batteryPercent: extended?.batteryValid ? extended.batteryPercent : null,
+    batteryState: extended?.batteryState || 'unknown',
+    capabilities: Object.freeze({ input: 'supported', battery: extended?.batteryValid ? 'supported' : 'unavailable', haptics: extended ? 'supported' : 'not-implemented', lightbar: extended ? 'supported' : 'not-implemented', adaptiveTriggers: 'not-implemented', calibration: 'local-analysis-only' }),
+    extended
   }) : null;
   return Object.freeze({
     schema: bytes[0],
@@ -195,8 +229,45 @@ export function decodeControllerStatePayload(input) {
     inquiryActive: Boolean(flags & (1 << 5)),
     connectionPending: Boolean(flags & (1 << 6)),
     pairedControllerKnown: Boolean(flags & (1 << 7)),
+    extended,
     sample
   });
+}
+
+export function decodeControllerCapabilities(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length !== 8 || bytes[0] !== 1) throw new ProtocolError('Controller capabilities payload is invalid', 'invalid_controller_capabilities_payload');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Object.freeze({
+    schema: bytes[0],
+    connected: Boolean(bytes[1]),
+    transport: bytes[2] === 1 ? 'bluetooth' : 'unknown',
+    model: bytes[3] === 1 ? 'DualSense' : 'unknown',
+    capabilities: view.getUint16(4, true),
+    maxHapticDurationMs: view.getUint16(6, true)
+  });
+}
+
+function boundedByte(value, name) {
+  if (!Number.isInteger(value) || value < 0 || value > 255) throw new ProtocolError(`${name} must be between 0 and 255`, 'invalid_controller_output');
+  return value;
+}
+
+export function encodeHapticRequest({ leftMotor = 0, rightMotor = 0, durationMs = 250 } = {}) {
+  boundedByte(leftMotor, 'leftMotor'); boundedByte(rightMotor, 'rightMotor');
+  if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > 3000) throw new ProtocolError('durationMs must be between 1 and 3000', 'invalid_controller_output');
+  const bytes = new Uint8Array(5); bytes[0] = 1; bytes[1] = leftMotor; bytes[2] = rightMotor; new DataView(bytes.buffer).setUint16(3, durationMs, true); return bytes;
+}
+
+export function encodeLightbarRequest({ red = 0, green = 0, blue = 0, playerLeds = 0 } = {}) {
+  boundedByte(red, 'red'); boundedByte(green, 'green'); boundedByte(blue, 'blue');
+  if (!Number.isInteger(playerLeds) || playerLeds < 0 || playerLeds > 0x1f) throw new ProtocolError('playerLeds must be between 0 and 31', 'invalid_controller_output');
+  return Uint8Array.from([1, red, green, blue, playerLeds]);
+}
+
+export function encodeMicrophoneMuteRequest(muted) {
+  if (typeof muted !== 'boolean') throw new ProtocolError('muted must be boolean', 'invalid_controller_output');
+  return Uint8Array.from([1, muted ? 1 : 0]);
 }
 
 export function defaultConfig() {

@@ -4,7 +4,7 @@ export const DUALSENSE_VENDOR_ID = 0x054c;
 export const DUALSENSE_PRODUCT_ID = 0x0ce6;
 export const DUALSENSE_USB_REPORT_ID = 0x01;
 
-const MIN_INPUT_PAYLOAD_BYTES = 9;
+const MIN_INPUT_PAYLOAD_BYTES = 10;
 
 function bytesOf(input) {
   if (input instanceof Uint8Array) return input;
@@ -66,9 +66,9 @@ export function parseDualSenseInputReport(input, { reportId = null, timestamp = 
   if (id !== DUALSENSE_USB_REPORT_ID) throw new ProtocolError('Only the wired DualSense input report is supported in this adapter', 'unsupported_dualsense_report');
   if (bytes.length < offset + MIN_INPUT_PAYLOAD_BYTES) throw new ProtocolError('DualSense input report is too short', 'short_dualsense_report');
 
-  const dpadFace = bytes[offset + 6];
-  const shoulder = bytes[offset + 7];
-  const system = bytes[offset + 8];
+  const dpadFace = bytes[offset + 7];
+  const shoulder = bytes[offset + 8];
+  const system = bytes[offset + 9];
   const dpad = dpadState(dpadFace);
   return Object.freeze({
     timestamp,

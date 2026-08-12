@@ -112,9 +112,10 @@ test('DualSense USB reports decode into hardware input samples', () => {
   report[4] = 64;
   report[5] = 64;
   report[6] = 255;
-  report[7] = 0x30;
-  report[8] = 0x03;
-  report[9] = 0x01;
+  report[7] = 0x2a;
+  report[8] = 0x30;
+  report[9] = 0x03;
+  report[10] = 0x01;
   const parsed = parseDualSenseInputReport(report, { timestamp: '2026-08-12T00:00:00.000Z' });
   assert.equal(parsed.source, 'hardware');
   assert.equal(parsed.hardwareTested, true);

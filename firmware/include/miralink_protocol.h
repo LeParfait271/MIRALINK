@@ -33,7 +33,11 @@ enum class Command : std::uint8_t {
     GetLogPage = 0x09,
     EnterRecovery = 0x0a,
     GetControllerState = 0x0b,
-    OpenPairingWindow = 0x0c
+    OpenPairingWindow = 0x0c,
+    GetControllerCapabilities = 0x0d,
+    SendHaptic = 0x0e,
+    SetLightbar = 0x0f,
+    SetMicrophoneMute = 0x10
 };
 
 struct Frame {

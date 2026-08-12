@@ -45,6 +45,10 @@ or the command is not supported.
 - `ENTER_RECOVERY` — enter a documented recovery state after confirmation.
 - `GET_CONTROLLER_STATE` — return the latest validated Pico-side controller state.
 - `OPEN_PAIRING_WINDOW` — open the Pico Bluetooth pairing window after an explicit local confirmation.
+- `GET_CONTROLLER_CAPABILITIES` — return the connected controller model, transport and explicitly supported local capabilities.
+- `SEND_HAPTIC` — request one bounded, temporary DualSense compatible-rumble pulse; the firmware automatically schedules a neutral stop.
+- `SET_LIGHTBAR` — set the DualSense RGB lightbar and player indicator mask through a bounded local request.
+- `SET_MICROPHONE_MUTE` — request the DualSense microphone mute LED/power state.
 
 ### 3.1 Current diagnostics payload
 
@@ -68,16 +72,19 @@ does not become unreadable:
 | 14 | 4 | Rejected input report count, little-endian |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Audio, battery, haptics and adaptive
-triggers remain explicitly unavailable in this firmware tranche.
+claim that a controller is connected. Audio streaming and adaptive-trigger
+effects remain explicitly unavailable. Battery status, compatible rumble,
+lightbar, motion, touch and microphone state are reported only after a
+validated DualSense input report has been received.
 
 ### 3.2 Pico controller state payload
 
-`GET_CONTROLLER_STATE` and event report `0x03` use a 16-byte payload:
+`GET_CONTROLLER_STATE` and event report `0x03` use a 48-byte payload for schema
+`2`. The application still accepts the historical 16-byte schema `1`:
 
 | Offset | Meaning |
 |---:|---|
-| 0 | State schema (`1`) |
+| 0 | State schema (`2`) |
 | 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4`, inquiry `5`, connection pending `6` |
 | 2 | Controller report ID |
 | 3..6 | Left X/Y and right X/Y, raw bytes `0..255` |
@@ -85,7 +92,15 @@ triggers remain explicitly unavailable in this firmware tranche.
 | 9 | D-pad and face-button byte |
 | 10 | Shoulder, stick and option-button byte |
 | 11 | System, touchpad and mute-button byte |
-| 12..15 | Reserved and zero-filled |
+| 12..15 | Reserved and zero-filled for the legacy portion |
+| 16 | Battery percentage, or `0xff` when unknown |
+| 17 | Battery state: `0` unknown, `1` discharging, `2` charging, `3` full, `4` error |
+| 18 | Status bits: battery valid `0`, headphone `1`, microphone `2`, mute `3`, touch 0 `4`, touch 1 `5` |
+| 19 | DualSense input sequence byte |
+| 20..31 | Gyroscope and accelerometer signed little-endian 16-bit values |
+| 32..35 | Sensor timestamp, little-endian |
+| 36..43 | Two touch points as little-endian X/Y pairs |
+| 44..47 | Reserved and zero-filled |
 
 The event is persistent only in the current USB transfer; the firmware does
 not record controller input in flash.
@@ -107,14 +122,31 @@ token `RCV1` and schedules the Pico BOOTSEL recovery path. The application must
 confirm both actions separately; the firmware never triggers either one from a
 background event.
 
-### 3.4 DualSense adapter boundary
+### 3.4 DualSense output payloads
+
+`GET_CONTROLLER_CAPABILITIES` returns eight bytes: schema, connected flag,
+transport (`1` for Bluetooth), model (`1` for DualSense), a little-endian
+capability mask and the maximum haptic duration. The capability mask currently
+includes battery, compatible rumble, lightbar, motion, touchpad, audio-status
+and microphone-mute state. Adaptive triggers are deliberately not advertised.
+
+`SEND_HAPTIC` accepts `[schema=1, left motor, right motor, duration-ms-le16]`
+with a duration from 1 to 3000 ms. `SET_LIGHTBAR` accepts
+`[schema=1, red, green, blue, player-led-mask]`; `SET_MICROPHONE_MUTE` accepts
+`[schema=1, muted]`. These commands never write flash, never accept raw HID
+frames and remain unavailable unless the Pico has a ready validated controller
+link. The Bluetooth output packet is held in a bounded local queue and its
+compatible-rumble pulse is stopped automatically.
+
+### 3.5 DualSense adapter boundary
 
 The application can identify a standard wired DualSense locally through Sony
 VID `0x054c` and product ID `0x0ce6`, then decode its USB input report ID
 `0x01` into local Controller Lab samples. This is a direct computer-to-controller
 adapter for software verification; it is not the Pico bridge path. The Pico
 host accepts the Bluetooth input report ID `0x31` only after length and CRC
-validation. No battery, haptics or adaptive-trigger output is claimed.
+validation. Direct WebHID controller mode remains input-only; the output
+commands above are bridge-only.
 
 ## 4. Configuration record
 

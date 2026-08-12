@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 1.4.0
+- Version produit concernée : 1.5.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -770,6 +770,15 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [x] Rebuild ARM du firmware 0.6.0 et test C++ natif du cœur protocole/parseurs validés.
 - [x] Candidat UF2 0.6.0 empaqueté localement avec picotool 2.3.0 et SHA-256 ; flash manuel et test matériel restent à faire.
 - [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
+
+### Tranche firmware 1.5.0 verifiee
+
+- [x] Rapport DualSense Bluetooth complet decode avec sequence, boutons, mouvement, tactile et batterie.
+- [x] Etat controleur schema 2 et negotiation locale des capacites apres rapport valide.
+- [x] Sorties typees et bornees pour vibration compatible, barre lumineuse/LEDs joueur et mute micro.
+- [x] File de sortie locale bornee, CRC de sortie et arret neutre automatique des vibrations.
+- [x] Audio streaming et gachettes adaptatives conserves en `indisponible` tant qu'ils ne sont pas implementes et valides.
+- [x] Candidat UF2 1.5.0 reconstruit pour Pico 2 W/RP2350 avec manifeste SHA-256.
 
 ### Prochaines tâches, dans l’ordre
 

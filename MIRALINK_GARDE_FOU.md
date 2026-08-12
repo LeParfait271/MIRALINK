@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0` → `1.5.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -124,3 +124,8 @@ automatique.
 - `2026-08-12` — Le correctif USB est livré dans le candidat 1.3.0 ; le polling local et l’ouverture confirmée de la fenêtre d’appairage ne valent pas une connexion DualSense tant que les compteurs du Pico réellement flashé ne progressent pas.
 - `2026-08-12` — La reconnexion automatique MiraLink ne parcourt que les adresses présentes dans la base locale de clés BTstack ; une manette inconnue reste soumise à la fenêtre d’appairage confirmée, et aucun identifiant radio n’est exporté par défaut.
 - `2026-08-12` — Le bridge USB peut exposer une collection HID gamepad standard distincte du canal vendor MiraLink ; seuls les rapports DualSense validés peuvent l’alimenter, et une déconnexion doit produire un rapport neutre sans être déclarée testée avant validation physique.
+- `2026-08-12` — Le schéma DualSense MiraLink 2 conserve la partie historique de l’état, mais les offsets de boutons, mouvement, tactile et batterie doivent suivre le rapport complet validé ; un octet de séquence ne doit jamais être interprété comme un bouton.
+- `2026-08-12` — Les sorties DualSense passent uniquement par des commandes MiraLink bornées et typées ; aucun rapport HID brut fourni par l’application n’est accepté. Les vibrations sont temporaires, limitées à 3000 ms et doivent revenir automatiquement à l’état neutre.
+- `2026-08-12` — Les capacités haptique compatible, barre lumineuse, LEDs joueur, mute micro, batterie, mouvement et tactile ne sont annoncées qu’après un rapport DualSense Bluetooth complet validé ; audio streaming et gâchettes adaptatives restent indisponibles et doivent être affichés comme tels.
+- `2026-08-12` — La file de sortie Bluetooth est locale, bornée à deux buffers, conserve les données jusqu’à l’acceptation par BTstack et est vidée à chaque déconnexion ; son fonctionnement synthétique ne vaut pas validation d’une vibration réelle.
+- `2026-08-12` — La version 1.5.0 n’expose que les sorties DualSense bornées et annoncées ; aucun chemin interne de gâchettes adaptatives ne doit être conservé tant qu’il n’est pas documenté, négocié et validé sur matériel.

@@ -107,6 +107,15 @@ void write_u32(std::vector<std::uint8_t>& bytes, const std::uint32_t value) {
     for (std::size_t index = 0; index < 4; ++index) bytes.push_back(static_cast<std::uint8_t>((value >> (index * 8)) & 0xffu));
 }
 
+void write_u16_at(std::vector<std::uint8_t>& bytes, const std::size_t offset, const std::uint16_t value) {
+    bytes[offset] = static_cast<std::uint8_t>(value & 0xffu);
+    bytes[offset + 1] = static_cast<std::uint8_t>((value >> 8u) & 0xffu);
+}
+
+void write_i16_at(std::vector<std::uint8_t>& bytes, const std::size_t offset, const std::int16_t value) {
+    write_u16_at(bytes, offset, static_cast<std::uint16_t>(value));
+}
+
 std::vector<std::uint8_t> log_page_payload(const std::uint8_t page) {
     std::vector<std::uint8_t> payload = {kLogSchema, page, 0};
     if (page >= g_log_count) {
@@ -161,8 +170,8 @@ void set_error(std::uint16_t sequence, miralink::Command command, const char* me
 }
 
 std::vector<std::uint8_t> controller_state_payload(const miralink::bluetooth::Snapshot& snapshot) {
-    std::vector<std::uint8_t> payload(16, 0);
-    payload[0] = 1;
+    std::vector<std::uint8_t> payload(48, 0);
+    payload[0] = 2;
     if (snapshot.state == miralink::bluetooth::LinkState::Connected) payload[1] |= 1u << 0;
     if (snapshot.descriptor_available) payload[1] |= 1u << 1;
     if (snapshot.input_available) payload[1] |= 1u << 2;
@@ -182,7 +191,51 @@ std::vector<std::uint8_t> controller_state_payload(const miralink::bluetooth::Sn
         payload[9] = snapshot.input.dpad_face;
         payload[10] = snapshot.input.shoulder;
         payload[11] = snapshot.input.system;
+        payload[16] = snapshot.input.battery_percent;
+        payload[17] = static_cast<std::uint8_t>(snapshot.input.battery_state);
+        if (snapshot.input.battery_valid) payload[18] |= 1u << 0;
+        if (snapshot.input.headphone_connected) payload[18] |= 1u << 1;
+        if (snapshot.input.microphone_connected) payload[18] |= 1u << 2;
+        if (snapshot.input.microphone_muted) payload[18] |= 1u << 3;
+        if (snapshot.input.touch[0].active) payload[18] |= 1u << 4;
+        if (snapshot.input.touch[1].active) payload[18] |= 1u << 5;
+        payload[19] = snapshot.input.input_sequence;
+        write_i16_at(payload, 20, snapshot.input.gyro_x);
+        write_i16_at(payload, 22, snapshot.input.gyro_y);
+        write_i16_at(payload, 24, snapshot.input.gyro_z);
+        write_i16_at(payload, 26, snapshot.input.accel_x);
+        write_i16_at(payload, 28, snapshot.input.accel_y);
+        write_i16_at(payload, 30, snapshot.input.accel_z);
+        payload[32] = static_cast<std::uint8_t>(snapshot.input.sensor_timestamp & 0xffu);
+        payload[33] = static_cast<std::uint8_t>((snapshot.input.sensor_timestamp >> 8u) & 0xffu);
+        payload[34] = static_cast<std::uint8_t>((snapshot.input.sensor_timestamp >> 16u) & 0xffu);
+        payload[35] = static_cast<std::uint8_t>((snapshot.input.sensor_timestamp >> 24u) & 0xffu);
+        write_u16_at(payload, 36, snapshot.input.touch[0].x);
+        write_u16_at(payload, 38, snapshot.input.touch[0].y);
+        write_u16_at(payload, 40, snapshot.input.touch[1].x);
+        write_u16_at(payload, 42, snapshot.input.touch[1].y);
     }
+    return payload;
+}
+
+std::vector<std::uint8_t> controller_capabilities_payload(const miralink::bluetooth::Snapshot& snapshot) {
+    constexpr std::uint16_t kBattery = 1u << 0;
+    constexpr std::uint16_t kHaptics = 1u << 1;
+    constexpr std::uint16_t kLightbar = 1u << 2;
+    constexpr std::uint16_t kMotion = 1u << 3;
+    constexpr std::uint16_t kTouchpad = 1u << 4;
+    constexpr std::uint16_t kAudioStatus = 1u << 5;
+    constexpr std::uint16_t kMicrophoneMute = 1u << 6;
+    std::vector<std::uint8_t> payload(8, 0);
+    payload[0] = 1;
+    payload[1] = snapshot.input_available ? 1 : 0;
+    payload[2] = snapshot.input.report_id == miralink::dualsense::kBluetoothInputReportId ? 1 : 0;
+    payload[3] = snapshot.input_available ? 1 : 0;
+    std::uint16_t capabilities = 0;
+    if (snapshot.input_available && snapshot.input.battery_valid) capabilities |= kBattery;
+    if (snapshot.input_available) capabilities |= kHaptics | kLightbar | kMotion | kTouchpad | kAudioStatus | kMicrophoneMute;
+    write_u16_at(payload, 4, capabilities);
+    write_u16_at(payload, 6, 3000);
     return payload;
 }
 
@@ -355,6 +408,44 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
             return;
         case miralink::Command::GetControllerState:
             set_response(sequence, decoded.frame.command, 0, controller_state_payload(miralink::bluetooth::snapshot()));
+            return;
+        case miralink::Command::GetControllerCapabilities:
+            if (!decoded.frame.payload.empty()) { set_error(sequence, decoded.frame.command, "capabilities payload is invalid"); return; }
+            set_response(sequence, decoded.frame.command, 0, controller_capabilities_payload(miralink::bluetooth::snapshot()));
+            return;
+        case miralink::Command::SendHaptic:
+            if (decoded.frame.payload.size() != 5 || decoded.frame.payload[0] != 1) {
+                set_error(sequence, decoded.frame.command, "haptic payload is invalid");
+                return;
+            }
+            if (!miralink::bluetooth::send_haptic(decoded.frame.payload[1], decoded.frame.payload[2],
+                static_cast<std::uint16_t>(decoded.frame.payload[3] | (decoded.frame.payload[4] << 8u)))) {
+                set_error(sequence, decoded.frame.command, "haptic output unavailable or busy");
+                return;
+            }
+            set_response(sequence, decoded.frame.command, 0, {});
+            return;
+        case miralink::Command::SetLightbar:
+            if (decoded.frame.payload.size() != 5 || decoded.frame.payload[0] != 1) {
+                set_error(sequence, decoded.frame.command, "lightbar payload is invalid");
+                return;
+            }
+            if (!miralink::bluetooth::set_lightbar(decoded.frame.payload[1], decoded.frame.payload[2], decoded.frame.payload[3], decoded.frame.payload[4])) {
+                set_error(sequence, decoded.frame.command, "lightbar output unavailable or busy");
+                return;
+            }
+            set_response(sequence, decoded.frame.command, 0, {});
+            return;
+        case miralink::Command::SetMicrophoneMute:
+            if (decoded.frame.payload.size() != 2 || decoded.frame.payload[0] != 1 || decoded.frame.payload[1] > 1) {
+                set_error(sequence, decoded.frame.command, "microphone payload is invalid");
+                return;
+            }
+            if (!miralink::bluetooth::set_microphone_mute(decoded.frame.payload[1] != 0)) {
+                set_error(sequence, decoded.frame.command, "microphone output unavailable or busy");
+                return;
+            }
+            set_response(sequence, decoded.frame.command, 0, {});
             return;
         case miralink::Command::OpenPairingWindow:
             if (!miralink::bluetooth::open_pairing_window()) {
