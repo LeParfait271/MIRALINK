@@ -231,7 +231,6 @@ std::vector<std::uint8_t> controller_capabilities_payload(const miralink::blueto
     constexpr std::uint16_t kLightbar = 1u << 2;
     constexpr std::uint16_t kMotion = 1u << 3;
     constexpr std::uint16_t kTouchpad = 1u << 4;
-    constexpr std::uint16_t kAudioStatus = 1u << 5;
     constexpr std::uint16_t kMicrophoneMute = 1u << 6;
     std::vector<std::uint8_t> payload(8, 0);
     payload[0] = 1;
@@ -240,7 +239,7 @@ std::vector<std::uint8_t> controller_capabilities_payload(const miralink::blueto
     payload[3] = snapshot.input_available ? 1 : 0;
     std::uint16_t capabilities = 0;
     if (snapshot.input_available && snapshot.input.battery_valid) capabilities |= kBattery;
-    if (snapshot.input_available) capabilities |= kHaptics | kLightbar | kMotion | kTouchpad | kAudioStatus | kMicrophoneMute;
+    if (snapshot.input_available) capabilities |= kHaptics | kLightbar | kMotion | kTouchpad | kMicrophoneMute;
     write_u16_at(payload, 4, capabilities);
     write_u16_at(payload, 6, 3000);
     return payload;

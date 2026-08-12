@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0` → `1.5.0` → `1.6.0` → `1.7.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0` → `1.5.0` → `1.6.0` → `1.7.0` → `1.8.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -131,3 +131,4 @@ automatique.
 - `2026-08-12` — La version 1.5.0 n’expose que les sorties DualSense bornées et annoncées ; aucun chemin interne de gâchettes adaptatives ne doit être conservé tant qu’il n’est pas documenté, négocié et validé sur matériel.
 - `2026-08-12` — La version 1.6.0 accepte le PIN Bluetooth classique `0000` uniquement pendant la fenêtre d'appairage locale ou pour une adresse déjà mémorisée ; toute autre demande PIN est refusée.
 - `2026-08-13` — Le candidat firmware 1.7.0 utilise exclusivement la banque de clés Bluetooth locale initialisée par le SDK Pico, vérifie statiquement sa séparation avec la flash MiraLink, borne la reconnexion, ferme une liaison HID sans rapport valide après 10 secondes et reste soumis à une validation manuelle sur Pico 2 W réel.
+- `2026-08-13` — L'objectif firmware 1.8.0 est la parité fonctionnelle complète avec les fonctions observables du firmware de référence : mêmes résultats utilisateur sur Pico 2 W, sans réutiliser son code, son binaire, son protocole propriétaire ou ses structures internes ; toute capacité non réalisable sur le matériel doit rester explicitement signalée.

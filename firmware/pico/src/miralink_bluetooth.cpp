@@ -14,14 +14,16 @@
 namespace miralink::bluetooth {
 namespace {
 
-constexpr std::size_t kHidDescriptorStorageBytes = 512;
+// Keep enough room for the complete SDP HID descriptor of DualSense
+// revisions, including the Edge model, without allowing descriptor data to
+// consume the rest of the controller state memory.
+constexpr std::size_t kHidDescriptorStorageBytes = 2048;
 constexpr std::uint32_t kPairingWindowMs = 300000;
 constexpr std::uint8_t kInquiryDuration = 8;
 constexpr std::uint8_t kBluetoothHidInputHeader = 0xa1;
 constexpr std::uint8_t kDualSenseBluetoothReportId = dualsense::kBluetoothInputReportId;
 constexpr std::uint16_t kSonyVendorId = dualsense::kSonyVendorId;
 constexpr std::uint16_t kDualSenseProductId = dualsense::kDualSenseProductId;
-constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::size_t kMaxRememberedControllers = 4;
 constexpr std::uint16_t kHapticMaxDurationMs = 3000;
 constexpr std::uint32_t kReconnectDelayMs = 250;
@@ -49,6 +51,7 @@ std::size_t g_paired_address_count = 0;
 std::size_t g_reconnect_index = 0;
 std::uint64_t g_reconnect_deadline_ms = 0;
 std::uint64_t g_connection_deadline_ms = 0;
+std::uint16_t g_ignored_hid_cid = 0;
 std::array<OutputPacket, 2> g_output_packets{};
 int g_output_in_flight = -1;
 int g_output_queued = -1;
@@ -115,11 +118,13 @@ bool inquiry_result_is_dualsense(const std::uint8_t* packet) {
     if (gap_event_inquiry_result_get_device_id_available(packet)) {
         const auto vendor = gap_event_inquiry_result_get_device_id_vendor_id(packet);
         const auto product = gap_event_inquiry_result_get_device_id_product_id(packet);
-        if (vendor == kSonyVendorId && (product == kDualSenseProductId || product == kDualSenseEdgeProductId)) return true;
-        if (vendor != 0 || product != 0) return false;
+        if (vendor == kSonyVendorId && (product == kDualSenseProductId || product == dualsense::kDualSenseEdgeProductId)) return true;
     }
-    if (!gap_event_inquiry_result_get_name_available(packet)) return false;
-    return name_is_dualsense(gap_event_inquiry_result_get_name(packet), gap_event_inquiry_result_get_name_len(packet));
+    // Some controller revisions expose an incomplete device-id during
+    // inquiry. A matching local name is a valid pairing hint; the complete
+    // HID report is still validated before any input is exposed.
+    return gap_event_inquiry_result_get_name_available(packet)
+        && name_is_dualsense(gap_event_inquiry_result_get_name(packet), gap_event_inquiry_result_get_name_len(packet));
 }
 
 bool inquiry_result_may_be_gamepad(const std::uint8_t* packet) {
@@ -366,6 +371,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_pairing_requested = false;
                 g_connection_pending = false;
                 g_hid_cid = 0;
+                g_ignored_hid_cid = 0;
                 g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 clear_output_queue();
@@ -527,7 +533,15 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     break;
 
                 case HID_SUBEVENT_CONNECTION_CLOSED:
-                    set_connection_closed();
+                    {
+                        const auto closed_cid = hid_subevent_connection_closed_get_hid_cid(packet);
+                        if (closed_cid == g_ignored_hid_cid) {
+                            g_ignored_hid_cid = 0;
+                            break;
+                        }
+                        if (g_hid_cid != 0 && closed_cid != g_hid_cid) break;
+                        set_connection_closed();
+                    }
                     break;
 
                 default:
@@ -579,6 +593,7 @@ bool open_pairing_window() {
     const auto current = snapshot();
     if (g_hid_cid != 0 && current.state != LinkState::Connected && !current.input_available) {
         const auto stale_cid = g_hid_cid;
+        g_ignored_hid_cid = stale_cid;
         hid_host_disconnect(stale_cid);
         // The close event will still arrive asynchronously, but releasing the
         // local gate here lets poll() retry inquiry while BTstack completes

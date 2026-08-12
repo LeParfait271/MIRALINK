@@ -88,6 +88,13 @@ exposé ou non validé. Toute nouvelle sortie doit d’abord avoir une commande
 typée, une capacité négociée, des limites documentées et un test matériel
 distinct avant de pouvoir être annoncée comme supportée.
 
+Le lot firmware 1.8.0 vise la parité fonctionnelle complète avec les fonctions
+observables du firmware de référence, sans reprendre son code, son binaire,
+son protocole propriétaire ou ses structures internes. La comparaison porte
+sur les résultats utilisateur et les états vérifiables ; une capacité qui ne
+peut pas être réalisée sur le Pico 2 W reste indisponible et clairement
+signalée.
+
 Pour le lot firmware 1.7.0, la persistance des clés Bluetooth est celle du SDK
 Pico déjà initialisée par `cyw43_arch_init()` ; aucune seconde instance de
 stockage ne doit être créée. La séparation entre cette banque et les secteurs

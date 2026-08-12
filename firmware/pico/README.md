@@ -22,6 +22,8 @@ The firmware currently provides:
   acceptance of a previously paired controller after the pairing window closes;
 - reconnect rotation across remembered controllers, SSP reconnection for known
   addresses and a bounded HID handshake timeout that releases stuck links;
+- DualSense Edge USB identity support, tolerant local Bluetooth inquiry hints and
+  stale-HID cleanup before a new pairing or reconnect attempt;
 - legacy DualSense PIN pairing with `0000` only during the explicit local
   pairing window or for an already known controller address;
 - tolerant host-side normalization for MiraLink feature reports with or
@@ -38,10 +40,10 @@ The output commands are bridge-only and still require physical validation.
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-The current source version is `1.7.0`. The source was rebuilt locally with
+The current source version is `1.8.0`. The source was rebuilt locally with
 Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1` and `picotool` `2.3.0`; the
-resulting local 1.7.0 manual-test candidate is in
-`firmware/releases/1.7.0/`. It has not been flashed or published. The
+resulting local 1.8.0 manual-test candidate is in
+`firmware/releases/1.8.0/`. It has not been flashed or published. The
 previously built delivery artifact in `firmware/releases/0.2.0/` is retained
 as historical evidence. No physical Pico 2 W or controller was connected
 during this validation.
@@ -54,6 +56,6 @@ picotool uf2 convert miralink_pico_firmware.elf miralink_pico_firmware.uf2 --fam
 ```
 
 The files in
-`firmware/releases/1.7.0/` are a manually testable local candidate with a
+`firmware/releases/1.8.0/` are a manually testable local candidate with a
 SHA-256 manifest; the files in `firmware/releases/0.2.0/` are historical
 artifacts. MiraLink never flashes the board automatically.

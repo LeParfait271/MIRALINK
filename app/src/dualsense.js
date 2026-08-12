@@ -2,6 +2,7 @@ import { ProtocolError } from './protocol.js';
 
 export const DUALSENSE_VENDOR_ID = 0x054c;
 export const DUALSENSE_PRODUCT_ID = 0x0ce6;
+export const DUALSENSE_EDGE_PRODUCT_ID = 0x0df2;
 export const DUALSENSE_USB_REPORT_ID = 0x01;
 
 const MIN_INPUT_PAYLOAD_BYTES = 10;
@@ -44,11 +45,14 @@ function dpadState(value) {
 export function isDualSenseDevice(device) {
   return Boolean(device)
     && Number(device.vendorId) === DUALSENSE_VENDOR_ID
-    && Number(device.productId) === DUALSENSE_PRODUCT_ID;
+    && [DUALSENSE_PRODUCT_ID, DUALSENSE_EDGE_PRODUCT_ID].includes(Number(device.productId));
 }
 
 export function dualSenseWebHidFilters() {
-  return [{ vendorId: DUALSENSE_VENDOR_ID, productId: DUALSENSE_PRODUCT_ID }];
+  return [
+    { vendorId: DUALSENSE_VENDOR_ID, productId: DUALSENSE_PRODUCT_ID },
+    { vendorId: DUALSENSE_VENDOR_ID, productId: DUALSENSE_EDGE_PRODUCT_ID }
+  ];
 }
 
 export function parseDualSenseInputReport(input, { reportId = null, timestamp = new Date().toISOString() } = {}) {

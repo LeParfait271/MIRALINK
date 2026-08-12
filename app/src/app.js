@@ -26,7 +26,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.7.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '1.8.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);

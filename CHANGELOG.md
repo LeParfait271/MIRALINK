@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.8.0 - 2026-08-13
+
+- Extended the independent Pico 2 W DualSense path to recognize the DualSense
+  Edge USB identity and Bluetooth inquiry variants.
+- Made Bluetooth inquiry more tolerant of incomplete device metadata while
+  keeping the final HID report validation strict.
+- Fixed stale HID connection cleanup so a failed handshake cannot block the
+  next local pairing or reconnection attempt.
+- Increased local HID descriptor storage for complete DualSense revisions and
+  kept unsupported audio streaming and adaptive-trigger effects explicitly
+  unavailable instead of advertising them as firmware capabilities.
+- Prepared a versioned 1.8.0 manual-test candidate with build evidence and
+  SHA-256 manifests. No physical hardware test, flash, push or publication is
+  claimed.
+
 ## 1.7.0 - 2026-08-13
 
 - Corrected automatic DualSense reconnection so a failed controller does not

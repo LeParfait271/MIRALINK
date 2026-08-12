@@ -84,6 +84,7 @@ void test_dualsense_usb_report_parser() {
     assert(parsed.state.microphone_connected);
     assert(parsed.state.microphone_muted);
     assert(miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, miralink::dualsense::kDualSenseProductId));
+    assert(miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, miralink::dualsense::kDualSenseEdgeProductId));
     assert(!miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, 0x0001));
 }
 

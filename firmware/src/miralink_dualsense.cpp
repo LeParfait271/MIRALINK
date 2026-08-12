@@ -111,7 +111,8 @@ std::uint32_t output_crc32(const std::uint8_t* report, const std::size_t length)
 } // namespace
 
 bool is_dualsense_usb(const std::uint16_t vendor_id, const std::uint16_t product_id) {
-    return vendor_id == kSonyVendorId && product_id == kDualSenseProductId;
+    return vendor_id == kSonyVendorId
+        && (product_id == kDualSenseProductId || product_id == kDualSenseEdgeProductId);
 }
 
 InputReportResult parse_usb_input_report(const std::vector<std::uint8_t>& report) {

@@ -9,6 +9,7 @@ namespace miralink::dualsense {
 
 constexpr std::uint16_t kSonyVendorId = 0x054c;
 constexpr std::uint16_t kDualSenseProductId = 0x0ce6;
+constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::uint8_t kUsbInputReportId = 0x01;
 constexpr std::size_t kUsbInputReportBytes = 64;
 constexpr std::uint8_t kBluetoothInputReportId = 0x31;

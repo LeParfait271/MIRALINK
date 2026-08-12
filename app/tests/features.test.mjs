@@ -132,6 +132,7 @@ test('DualSense USB reports decode into hardware input samples', () => {
 
 test('DualSense identification is restricted to the Sony model identity', () => {
   assert.equal(isDualSenseDevice({ vendorId: DUALSENSE_VENDOR_ID, productId: DUALSENSE_PRODUCT_ID }), true);
+  assert.equal(isDualSenseDevice({ vendorId: DUALSENSE_VENDOR_ID, productId: 0x0df2 }), true);
   assert.equal(isDualSenseDevice({ vendorId: DUALSENSE_VENDOR_ID, productId: 0x0001, productName: 'Generic controller' }), false);
 });
 
