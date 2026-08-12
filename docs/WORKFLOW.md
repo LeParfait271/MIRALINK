@@ -24,6 +24,8 @@ l’utilisateur.
   `receiveFeatureReport`.
 - Pour chaque déploiement WebHID, vérifier la présence de la politique
   `Permissions-Policy: hid=(self)` et conserver un diagnostic local du contexte.
+- Si Cloudflare Pages publie `app/dist/`, vérifier que le build y copie aussi
+  `_headers`; si Pages publie `app/` directement, vérifier le fichier source.
 - Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
 
 ## Clôture de chaque prompt de travail

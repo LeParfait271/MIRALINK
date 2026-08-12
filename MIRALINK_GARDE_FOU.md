@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -112,3 +112,4 @@ Avant chaque intervention :
 - `2026-08-12` — Les réponses MiraLink transportées par rapport HID de fonctionnalité doivent être lues avec `receiveFeatureReport`; un événement `inputreport` seul ne constitue pas une réponse de commande.
 - `2026-08-12` — L’ancien UF2 reste une référence de comportement lue en analyse ; MiraLink ne réutilise ni son code ni son firmware, et conserve son propre canal HID et son propre protocole.
 - `2026-08-12` — Le déploiement statique doit autoriser explicitement WebHID avec une politique locale `hid=(self)` ; l’application doit journaliser si le blocage vient du contexte sécurisé ou de la politique de permissions.
+- `2026-08-12` — Le build statique doit conserver `_headers` dans `app/dist/` afin que la politique WebHID survive à une publication Cloudflare Pages configurée sur le dossier de sortie.

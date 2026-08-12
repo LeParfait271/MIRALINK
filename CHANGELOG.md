@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0 — 2026-08-12
+
+- Rendu le build statique compatible avec les deux sorties Cloudflare Pages : `app/` et `app/dist/`.
+- Conservation automatique de `_headers` dans `app/dist/` pour ne pas perdre l’autorisation WebHID pendant le build.
+- Aucun firmware, fichier visuel ou test matériel réel n’a été modifié ou déclaré.
+
 ## 0.9.0 — 2026-08-12
 
 - Ajouté l’autorisation de déploiement `Permissions-Policy: hid=(self)` pour Cloudflare Pages.
