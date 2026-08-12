@@ -38,6 +38,33 @@ import {
   summarizeMetricHistory,
   updateConnectionNode
 } from '../src/live-status.js';
+import {
+  applyButtonMapping,
+  commitMappingApplication,
+  createDefaultCommandProfile,
+  createDefaultMapping,
+  createInputCommandProfile,
+  parseInputCommandProfile,
+  previewMappingApplication,
+  serializeInputCommandProfile
+} from '../src/input-mapping.js';
+import {
+  commitEmergencyReset,
+  getSafeEmergencyConfig,
+  prepareEmergencyReset
+} from '../src/emergency-mode.js';
+import {
+  createCompatibilityMatrix,
+  createCompatibilityEntry,
+  parseCompatibilityMatrix,
+  resolveCompatibility,
+  serializeCompatibilityMatrix
+} from '../src/compatibility.js';
+import {
+  createDiagnosticPlan,
+  exportDiagnosticReport,
+  recordDiagnosticResult
+} from '../src/diagnostics.js';
 
 function sample({ leftX = 0, leftY = 0, rightX = 0, rightY = 0, leftTrigger = 0, rightTrigger = 0 } = {}) {
   return { leftStick: { x: leftX, y: leftY }, rightStick: { x: rightX, y: rightY }, leftTrigger, rightTrigger };
@@ -257,4 +284,65 @@ test('connection map exposes the three local hops without sensitive identifiers'
   const disconnected = updateConnectionNode(map, 'controller-1', { state: 'disconnected', error: 'Simulated disconnect.' });
   assert.equal(disconnected.nodes[2].state, 'disconnected');
   assert.equal(disconnected.links[1].state, 'disconnected');
+});
+
+test('input command profiles validate mappings and require confirmation', () => {
+  const profile = createInputCommandProfile({
+    id: 'southpaw',
+    name: 'Southpaw',
+    target: { type: 'controller', id: 'controller-a' },
+    mapping: { ...createDefaultMapping(), cross: 'circle', circle: 'cross' }
+  });
+  const preview = previewMappingApplication(profile, createDefaultMapping(), { type: 'controller', id: 'controller-a' });
+  assert.equal(preview.requiresConfirmation, true);
+  assert.throws(() => commitMappingApplication(preview), /requires confirmation/);
+  const applied = commitMappingApplication(preview, { confirmed: true });
+  assert.equal(applied.persisted, false);
+  assert.equal(applied.mapping.cross, 'circle');
+  assert.deepEqual(parseInputCommandProfile(serializeInputCommandProfile(profile)), profile);
+  assert.equal(createDefaultCommandProfile().mapping.cross, 'cross');
+});
+
+test('button mapping is local, bounded and preserves non-button input fields', () => {
+  const input = { timestamp: 'local', axes: { leftX: 0.2 }, buttons: { cross: true, circle: false } };
+  const output = applyButtonMapping(input, { cross: 'circle', circle: 'cross' });
+  assert.equal(output.timestamp, 'local');
+  assert.deepEqual(output.axes, { leftX: 0.2 });
+  assert.equal(output.buttons.circle, true);
+  assert.equal(output.buttons.cross, false);
+  assert.throws(() => applyButtonMapping(input, { cross: 'unknown' }), /invalid/);
+});
+
+test('emergency mode previews the safe Basic configuration and stays confirmation-gated', () => {
+  const preview = prepareEmergencyReset({ currentConfig: createBuiltInProfiles()[0].config, target: { type: 'bridge', id: 'bridge-a' } });
+  assert.equal(preview.profileId, 'basic');
+  assert.equal(preview.requiresConfirmation, true);
+  assert.equal(preview.after.pollingMode, getSafeEmergencyConfig().pollingMode);
+  assert.throws(() => commitEmergencyReset(preview), /requires confirmation/);
+  const applied = commitEmergencyReset(preview, { confirmed: true });
+  assert.equal(applied.applied, true);
+  assert.equal(applied.persisted, false);
+});
+
+test('compatibility matrix distinguishes recorded support from unknown combinations', () => {
+  const matrix = createCompatibilityMatrix([
+    createCompatibilityEntry({ firmwareVersion: '0.4.0', controllerModel: 'DualSense', adapterVersion: '1.0.0', state: 'partial', notes: 'Haptics pending.' })
+  ]);
+  assert.equal(resolveCompatibility(matrix, { firmwareVersion: '0.4.0', controllerModel: 'DualSense', adapterVersion: '1.0.0' }).state, 'partial');
+  const unknown = resolveCompatibility(matrix, { firmwareVersion: '0.4.0', controllerModel: 'DualSense Edge', adapterVersion: '1.0.0' });
+  assert.equal(unknown.state, 'not-tested');
+  assert.equal(unknown.matched, false);
+  assert.deepEqual(parseCompatibilityMatrix(serializeCompatibilityMatrix(matrix)), matrix);
+  assert.throws(() => createCompatibilityMatrix([...matrix.entries, matrix.entries[0]]), /unique/);
+});
+
+test('guided diagnostics preserve simulation status and redact hardware claims', () => {
+  let report = createDiagnosticPlan({ source: 'simulation', scenario: 'packet-loss' });
+  report = recordDiagnosticResult(report, 'transport', { state: 'passed', evidence: 'Simulated transport answered.', probableCause: '', recommendation: 'Continue with the next step.', source: 'simulation', hardwareTested: true });
+  const exported = exportDiagnosticReport(report);
+  assert.equal(exported.modeLabel, 'MODE SIMULATION');
+  assert.equal(exported.hardwareTested, false);
+  assert.equal(exported.testStatus, 'not-tested');
+  assert.equal(exported.steps[0].hardwareTested, false);
+  assert.equal(exported.redaction, 'identifiers-omitted');
 });

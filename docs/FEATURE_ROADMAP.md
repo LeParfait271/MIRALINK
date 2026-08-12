@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 0.3.0
+- Version produit concernée : 0.4.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -404,6 +404,78 @@ Une page locale indiquant quelles opérations sont autorisées : lecture, écrit
 
 Un format commun pour profils, sessions, diagnostics, historiques et maintenance avec `format`, `formatVersion`, `product`, `createdAt`, `source`, `redaction`, `payload` et checksum. Cela rend les exports comparables sans imposer un service externe.
 
+### 4.6 Remappage des boutons et profils de commandes — priorité haute
+
+**Valeur utilisateur.** Adapter les commandes d'une manette sans toucher au firmware tant que le brouillon n'est pas confirmé.
+
+**Écrans.** Éditeur source → commande, profil lié à un bridge ou à une manette, diff avant application et restauration.
+
+**Données stockées.** Mapping borné des boutons, nom du profil, cible, version du format et dates locales. Aucun numéro de série ni adresse radio.
+
+**Protocole.** Contrat applicatif local pour le premier lot ; une future commande `SET_INPUT_MAPPING_DRAFT` devra être négociée avant toute écriture Pico 2 W.
+
+**Dépendances.** Adapters de rapports de manette et capacité de remappage explicitement supportée.
+
+**Risques.** Commande inverse ou cible incorrecte. Validation stricte, aperçu, confirmation et retour arrière obligatoires.
+
+**Tests.** Mapping inconnu, permutation de boutons, cible différente, export/import et application sans persistance.
+
+**Difficulté.** Moyenne.
+
+### 4.7 Mode urgence — priorité haute
+
+**Valeur utilisateur.** Revenir rapidement à la configuration `Basique` connue comme sûre lorsque le bridge devient instable.
+
+**Écrans.** Accès depuis Overview et Diagnostics, aperçu renforcé, confirmation, relecture et résultat.
+
+**Données stockées.** Brouillon précédent, cible, raison locale, diff et résultat de relecture. Aucun export automatique.
+
+**Protocole.** Réutilise `SET_CONFIG_DRAFT` et `COMMIT_CONFIG` uniquement après capacité négociée ; aucun reset silencieux.
+
+**Dépendances.** Configuration versionnée du Pico 2 W et coffre de brouillons local.
+
+**Risques.** Écraser une configuration utile ou agir sur le mauvais bridge. Confirmation renforcée, cible explicite et abandon si la liaison est instable.
+
+**Tests.** Diff, refus sans confirmation, configuration invalide, cible et échec de persistance.
+
+**Difficulté.** Faible à moyenne.
+
+### 4.8 Tableau de compatibilité firmware/manettes — priorité haute
+
+**Valeur utilisateur.** Montrer ce qui est valide, partiel, indisponible ou non testé sans transformer une absence de preuve en compatibilité.
+
+**Écrans.** Matrice firmware / modèle de manette / version d'adapter, filtres et détail de la preuve locale.
+
+**Données stockées.** Versions, modèle abstrait, état de capacité, notes et date de test. Pas d'identifiant d'appareil.
+
+**Protocole.** Lecture de `GET_INFO` et `GET_CAPABILITIES` lorsqu'ils seront implémentés ; le registre local ne simule aucune réponse firmware.
+
+**Dépendances.** Manifeste de firmware et adapters versionnés.
+
+**Risques.** Afficher une compatibilité trop large. Match exact, état `not-tested` par défaut et notes obligatoires.
+
+**Tests.** Match exact, combinaison inconnue, doublon, import/export et états partiel/indisponible.
+
+**Difficulté.** Faible.
+
+### 4.9 Diagnostics guidés et rapports lisibles — priorité moyenne
+
+**Valeur utilisateur.** Séparer une preuve, une cause probable et une solution, puis conserver un rapport local exploitable.
+
+**Écrans.** Parcours par étapes, quatre résultats (`passed`, `failed`, `unavailable`, `not-tested`), détail et export anonymisé.
+
+**Données stockées.** Étapes, commandes proposées, observations, hypothèses, recommandations et source. Les identifiants sensibles sont exclus.
+
+**Protocole.** `HELLO`, `GET_INFO`, `GET_CONFIG`, `GET_LIVE_STATUS` et `ENTER_RECOVERY` comme commandes candidates, jamais lancées automatiquement par le moteur de rapport.
+
+**Dépendances.** Capacités négociées et résultats de transport réels ou de simulation clairement marqués.
+
+**Risques.** Déclarer un test matériel à partir d'une simulation. `MODE SIMULATION`, `hardwareTested: false` et `testStatus: not-tested` sont conservés à l'export.
+
+**Tests.** Parcours incomplet, échec, indisponibilité, simulation, export masqué et rapport sans identifiant.
+
+**Difficulté.** Moyenne.
+
 ## 5. Roadmap proposée
 
 ### Lot 0 — socle de sécurité et capacités
@@ -413,6 +485,8 @@ Objectif : rendre les états et les limites fiables avant d’ajouter des contr�
 - contrat de capacités et états `supporté/partiel/indisponible/non testé` ;
 - mode lecture seule global ;
 - modèle de cible bridge/manette ;
+- mode urgence avec aperçu et restauration ;
+- matrice de compatibilité firmware/manettes ;
 - format versionné des profils, sessions et exports ;
 - séparation lecture, brouillon, confirmation, écriture, vérification ;
 - accessibilité fondamentale et vue textuelle de la carte des connexions.
@@ -428,6 +502,7 @@ Objectif : offrir un produit utile immédiatement sans matériel.
 - profils Compétitif, Basique et Économie ;
 - règle locale Basique → Économie sous 10 % de batterie, sans remplacement automatique de Compétitif ;
 - diff avant application ;
+- remappage local des boutons et profils de commandes ;
 - profils liés au bridge ou à une manette ;
 - profils individuels et noms personnalisés ;
 - sauvegarde/restauration locale ;
@@ -475,6 +550,8 @@ Objectif : transformer les états du cockpit en parcours de résolution.
 - cause probable séparée de la preuve ;
 - actions de récupération confirmées ;
 - rapport local anonymisé.
+
+**État vérifié.** Le plan d'étapes, les quatre états, la séparation preuve/cause/solution et l'export anonymisé sont implémentés et testés. Le parcours visuel et l'exécution des commandes sur matériel restent à faire.
 
 ### Lot 5 — Studio haptique et gâchettes avancées
 
@@ -576,8 +653,12 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [x] Historique de calibration borné, comparaison et restauration soumise à confirmation.
 - [x] Stockage local de profils versionné avec détection des entrées corrompues.
 - [x] Modèle local du cockpit et de la carte des connexions avec statuts `supporté`, `partiel`, `indisponible` et `non testé`.
-- [x] Métriques bornées, historique mémoire limité et absence d’identifiants sensibles dans la carte des connexions.
-- [x] 31 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
+- [x] Métriques bornées, historique mémoire limité et absence d'identifiants sensibles dans la carte des connexions.
+- [x] Contrat de remappage local des boutons avec diff, cible et confirmation.
+- [x] Mode urgence vers le profil Basique avec aperçu, confirmation et aucune persistance implicite.
+- [x] Matrice locale de compatibilité firmware/manettes avec état `not-tested` par défaut.
+- [x] Plan de diagnostics guidés et rapport local anonymisé sans identifiants sensibles.
+- [x] 36 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
 - [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
 
 ### Prochaines tâches, dans l’ordre
@@ -590,12 +671,13 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [ ] Brancher Controller Lab aux rapports réels des manettes, sans transformer les échantillons synthétiques en test matériel.
 - [ ] Construire la carte ordinateur → Pico 2 W → manette avec transport, reconnexion et erreurs.
 - [ ] Construire le cockpit local avec métriques sourcées, statuts de capacité et graphiques bornés.
-- [ ] Construire l’assistant de diagnostic guidé et ses rapports locaux anonymisés.
+- [ ] Construire l'interface de l'assistant de diagnostic guidé et ses rapports locaux anonymisés.
 - [ ] Ajouter studio haptique, gâchettes avancées, centre firmware sécurisé, historique visuel, maintenance et automatisations restantes.
 - [ ] Après stabilisation des autres conversations : reconstruire `dist/`, effectuer le test navigateur/accessibilité, mettre à jour la version puis préparer un commit local.
 
 ### Limites de cette vérification
 
-- Aucun Pico 2 W ni aucune manette réelle n’était connecté ; aucun résultat matériel n’est revendiqué.
-- Le build de `dist/` n’a pas été lancé pour ne pas écraser le travail visuel parallèle.
-- Aucun commit ni push n’a été effectué.
+- Aucun Pico 2 W ni aucune manette réelle n'était connecté ; aucun résultat matériel n'est revendiqué.
+- Le build de `dist/` n'a pas été lancé pour ne pas écraser le travail visuel parallèle.
+- Les fichiers visuels `app/index.html`, `app/styles.css`, `app/icon.svg` et `app/dist` sont volontairement laissés à l'autre conversation qui travaille sur le visuel.
+- Aucun test matériel n'a été effectué et aucun push n'est autorisé par ce lot.

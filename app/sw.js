@@ -1,7 +1,8 @@
-const CACHE = 'miralink-shell-0.3.0-ui4';
+const CACHE = 'miralink-shell-0.4.0-ui4';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
-  './src/storage.js', './src/i18n.js', './manifest.webmanifest', './icon.svg'
+  './src/storage.js', './src/i18n.js', './src/input-mapping.js', './src/emergency-mode.js',
+  './src/compatibility.js', './src/diagnostics.js', './manifest.webmanifest', './icon.svg'
 ];
 
 self.addEventListener('install', (event) => {

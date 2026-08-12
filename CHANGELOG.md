@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-08-12
+
+- Ajouté le contrat local de remappage des boutons avec profils ciblés, diff, export/import et confirmation.
+- Ajouté le mode urgence vers la configuration Basique, sans persistance implicite.
+- Ajoutée la matrice locale de compatibilité firmware/manettes avec état `not-tested` par défaut.
+- Ajouté le plan de diagnostics guidés et l'export de rapports anonymisés, avec séparation preuve/cause/solution.
+- Ajouté 5 tests de fonctionnalités ; 36 tests logiciels passent au total.
+- La structure visuelle et `dist/` restent volontairement inchangés pendant le travail visuel parallèle.
+
 ## 0.3.0 — 2026-08-12
 
 - Added local simulation scenarios with an explicit `MODE SIMULATION` status and no hardware-test claims.

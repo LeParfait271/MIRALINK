@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit de modification fonctionnelle augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0`.
+- Chaque commit de modification fonctionnelle augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Aucun commit automatique sans validation minimale.
 - Aucun push automatique.
@@ -101,3 +101,4 @@ Avant chaque intervention :
 - `2026-08-12` — Ce fichier doit être lu avant tout travail.
 - `2026-08-12` — Les profils applicatifs sont limités à Compétitif, Basique et Économie. Compétitif privilégie la latence minimale et les performances maximales ; Basique privilégie un fonctionnement fiable ; sous 10 % de batterie, le basculement automatique de Basique vers Économie est autorisé, mais Compétitif ne doit jamais être remplacé automatiquement.
 - `2026-08-12` — Le dépôt de travail et de publication GitHub Desktop est `C:\MIRALINK\MIRALINK` ; le dossier parent `C:\MIRALINK` ne doit pas être utilisé comme dépôt actif.
+- `2026-08-12` — La partie visuelle du site est travaillée dans une autre conversation ; ne pas modifier `app/index.html`, `app/styles.css`, `app/icon.svg` ou `app/dist` sans coordination explicite.
