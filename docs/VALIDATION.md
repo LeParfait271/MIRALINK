@@ -1,9 +1,15 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `0.6.0` source and local firmware candidate; historical firmware artifact `0.2.0`
+Version: `0.7.0` workflow metadata; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
 Developer: `MaruChiwa`
 Scope: local software checks and firmware source inspection
+
+## 0.7.0 process checks
+
+- The guardrail and workflow documents were updated before this commit.
+- This process-only lot does not claim a new firmware build or hardware test.
+- The previously validated 0.6.0 software and firmware results remain the active evidence.
 
 ## 0.6.0 software checks
 

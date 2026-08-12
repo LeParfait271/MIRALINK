@@ -59,9 +59,11 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit de modification fonctionnelle augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0`.
 - Version et date sont modifiées dans le même commit que le changement.
-- Aucun commit automatique sans validation minimale.
+- Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
+- Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
+- Aucun commit vide artificiel pour un prompt purement conversationnel sans modification du dépôt.
 - Aucun push automatique.
 
 ## Méthode obligatoire
@@ -75,9 +77,11 @@ Avant chaque intervention :
 5. Modifier uniquement les fichiers nécessaires.
 6. Tester immédiatement.
 7. Conserver les résultats, erreurs et limites.
-8. Mettre à jour version et date avant le commit.
-9. Vérifier le contenu du commit.
-10. Demander une décision si une ambiguïté change l'architecture, la compatibilité ou la sécurité.
+8. Mettre à jour le workflow et les garde-fous avant le commit si le prompt ajoute une règle, une décision ou une limite.
+9. Mettre à jour version et date avant le commit.
+10. Vérifier que le commit contient toutes les modifications du prompt et aucun fichier hors périmètre.
+11. Créer un seul commit local complet ; ne pas pousser sans autorisation explicite.
+12. Demander une décision si une ambiguïté change l'architecture, la compatibilité ou la sécurité.
 
 ## Contrôles avant livraison
 
@@ -102,3 +106,4 @@ Avant chaque intervention :
 - `2026-08-12` — Les profils applicatifs sont limités à Compétitif, Basique et Économie. Compétitif privilégie la latence minimale et les performances maximales ; Basique privilégie un fonctionnement fiable ; sous 10 % de batterie, le basculement automatique de Basique vers Économie est autorisé, mais Compétitif ne doit jamais être remplacé automatiquement.
 - `2026-08-12` — Le dépôt de travail et de publication GitHub Desktop est `C:\MIRALINK\MIRALINK` ; le dossier parent `C:\MIRALINK` ne doit pas être utilisé comme dépôt actif.
 - `2026-08-12` — La partie visuelle du site est travaillée dans une autre conversation ; ne pas modifier `app/index.html`, `app/styles.css`, `app/icon.svg` ou `app/dist` sans coordination explicite.
+- `2026-08-12` — Le workflow et les garde-fous doivent être relus et mis à jour avant chaque commit ; chaque prompt de travail doit être clôturé par un commit local complet regroupant toutes ses modifications.

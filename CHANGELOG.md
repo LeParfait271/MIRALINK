@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 — 2026-08-12
+
+- Renforcé le workflow obligatoire : lecture et mise à jour des garde-fous avant chaque commit.
+- Imposé un commit local complet à la clôture de chaque prompt de travail, sans commit partiel ni push implicite.
+- Aucun comportement firmware, test matériel ou fichier visuel n’a été modifié dans ce lot.
+
 ## 0.6.0 — 2026-08-12
 
 - Ajouté un parseur indépendant des rapports d’entrée USB filaires DualSense dans le cœur firmware.

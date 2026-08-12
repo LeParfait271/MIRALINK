@@ -5,7 +5,7 @@ MiraLink starts at `0.1.0`.
 For every commit that changes the project, increase the minor version by `0.1` and update the date in `VERSION.json`:
 
 ```text
-0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.6.0
+0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.6.0 → 0.7.0
 ```
 
 The same version must be reflected in:
@@ -18,4 +18,7 @@ The same version must be reflected in:
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-Do not create a commit before the relevant checks pass. Do not push automatically.
+Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
+`docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is
+closed by one complete local commit containing all changes from that prompt;
+never create a partial commit. Do not push automatically.
