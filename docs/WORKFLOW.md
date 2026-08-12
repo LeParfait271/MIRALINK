@@ -63,3 +63,11 @@ Un nouvel artefact UF2 doit provenir du build MiraLink courant, être inspecté
 localement avec son identifiant de famille et être accompagné d'un SHA-256.
 Cette génération ne vaut pas test matériel et ne déclenche jamais un flash
 automatique.
+
+La reconnexion Bluetooth automatique doit utiliser uniquement la base locale de
+clés BTstack, rester bornée, ne jamais exporter les adresses radio et ne jamais
+transformer une adresse connue en preuve de connexion matérielle.
+
+La collection HID gamepad standard et le canal vendor MiraLink doivent rester
+séparés ; un rapport gamepad ne peut être envoyé qu'après validation d'un
+rapport DualSense, et toute déconnexion doit remettre les boutons à zéro.

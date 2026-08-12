@@ -12,6 +12,7 @@ namespace {
 constexpr std::uint8_t kReportCommand = 0x01;
 constexpr std::uint8_t kReportResponse = 0x02;
 constexpr std::uint8_t kReportEvent = 0x03;
+constexpr std::uint8_t kReportGamepad = 0x10;
 constexpr std::uint8_t kInterfaceNumber = 0;
 constexpr std::uint8_t kEndpointIn = 0x81;
 
@@ -41,7 +42,8 @@ constexpr std::uint8_t kReportDescriptor[] = {
     MIRALINK_FEATURE_REPORT(kReportResponse, 0x03)
     MIRALINK_FEATURE_REPORT(kReportEvent, 0x04)
     MIRALINK_INPUT_REPORT(kReportEvent, 0x05)
-    HID_COLLECTION_END
+    HID_COLLECTION_END,
+    TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(kReportGamepad))
 };
 
 #undef MIRALINK_FEATURE_REPORT

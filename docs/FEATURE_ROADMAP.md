@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 1.3.0
+- Version produit concernée : 1.4.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales

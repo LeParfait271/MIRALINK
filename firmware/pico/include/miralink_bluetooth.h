@@ -22,6 +22,7 @@ struct Snapshot {
     bool connection_pending = false;
     bool descriptor_available = false;
     bool input_available = false;
+    bool paired_controller_known = false;
     dualsense::InputState input{};
     std::uint32_t sample_count = 0;
     std::uint32_t rejected_report_count = 0;

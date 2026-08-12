@@ -176,6 +176,11 @@ test('controller state exposes inquiry and pending connection flags', () => {
   assert.equal(decoded.connectionPending, true);
 });
 
+test('controller state exposes local paired-controller knowledge', () => {
+  const payload = Uint8Array.from([1, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.equal(decodeControllerStatePayload(payload).pairedControllerKnown, true);
+});
+
 test('configuration round trip preserves all fields', () => {
   const value = { ...defaultConfig(), hapticsGain: 1.37, speakerVolume: 77, inactiveMinutes: 12, pollingMode: 2, enableWake: true, lockVolume: true, statusGpioPin: 8, statusGpioMode: 1 };
   assert.deepEqual(decodeConfig(encodeConfig(value)), assertValidConfig(value));

@@ -5,6 +5,7 @@
 #include "pico/stdlib.h"
 #include "pico/sync.h"
 
+#include <array>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -21,6 +22,7 @@ constexpr std::uint8_t kDualSenseBluetoothReportId = dualsense::kBluetoothInputR
 constexpr std::uint16_t kSonyVendorId = dualsense::kSonyVendorId;
 constexpr std::uint16_t kDualSenseProductId = dualsense::kDualSenseProductId;
 constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
+constexpr std::size_t kMaxRememberedControllers = 4;
 
 std::uint8_t g_hid_descriptor_storage[kHidDescriptorStorageBytes]{};
 btstack_packet_callback_registration_t g_hci_event_registration{};
@@ -33,6 +35,9 @@ bool g_hci_working = false;
 bool g_pairing_requested = false;
 bool g_inquiry_active = false;
 bool g_connection_pending = false;
+std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
+std::size_t g_paired_address_count = 0;
+std::size_t g_reconnect_index = 0;
 
 struct InquiryCandidate {
     bd_addr_t address{};
@@ -43,6 +48,8 @@ struct InquiryCandidate {
 };
 
 InquiryCandidate g_candidate{};
+
+void try_next_paired_controller();
 
 std::uint64_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
@@ -106,6 +113,44 @@ void set_inquiry_snapshot(const bool active) {
     critical_section_exit(&g_state_lock);
 }
 
+bool paired_address_known(const bd_addr_t address) {
+    for (std::size_t index = 0; index < g_paired_address_count; ++index) {
+        if (bd_addr_cmp(address, g_paired_addresses[index].data()) == 0) return true;
+    }
+    return false;
+}
+
+void remember_paired_address(const bd_addr_t address) {
+    if (address == nullptr || paired_address_known(address)) return;
+    if (g_paired_address_count < g_paired_addresses.size()) {
+        std::memcpy(g_paired_addresses[g_paired_address_count].data(), address, g_paired_addresses[g_paired_address_count].size());
+        ++g_paired_address_count;
+    } else {
+        std::memcpy(g_paired_addresses.back().data(), address, g_paired_addresses.back().size());
+    }
+    critical_section_enter_blocking(&g_state_lock);
+    g_snapshot.paired_controller_known = true;
+    critical_section_exit(&g_state_lock);
+}
+
+void load_paired_addresses() {
+    g_paired_addresses = {};
+    g_paired_address_count = 0;
+    g_reconnect_index = 0;
+
+    btstack_link_key_iterator_t iterator{};
+    if (!gap_link_key_iterator_init(&iterator)) return;
+
+    bd_addr_t address{};
+    link_key_t key{};
+    link_key_type_t type{};
+    while (g_paired_address_count < g_paired_addresses.size()
+        && gap_link_key_iterator_get_next(&iterator, address, key, &type)) {
+        remember_paired_address(address);
+    }
+    gap_link_key_iterator_done(&iterator);
+}
+
 void start_inquiry() {
     if (!g_pairing_requested || !g_hci_working || g_inquiry_active || g_connection_pending || g_hid_cid != 0) return;
     if (gap_inquiry_start(kInquiryDuration) == ERROR_CODE_SUCCESS) set_inquiry_snapshot(true);
@@ -116,22 +161,33 @@ void stop_inquiry() {
     set_inquiry_snapshot(false);
 }
 
-void begin_hid_connection(const bd_addr_t address) {
-    if (!g_pairing_requested || g_connection_pending) return;
+bool begin_hid_connection(const bd_addr_t address) {
+    if ((!g_pairing_requested && !paired_address_known(address)) || g_connection_pending) return false;
     stop_inquiry();
     bd_addr_t mutable_address;
     std::memcpy(mutable_address, address, sizeof(mutable_address));
     const auto status = hid_host_connect(mutable_address, HID_PROTOCOL_MODE_REPORT, &g_hid_cid);
     if (status != ERROR_CODE_SUCCESS) {
         clear_candidate();
-        start_inquiry();
-        return;
+        if (g_pairing_requested) start_inquiry();
+        return false;
     }
     g_connection_pending = true;
     critical_section_enter_blocking(&g_state_lock);
     g_snapshot.connection_pending = true;
     g_snapshot.state = LinkState::Starting;
     critical_section_exit(&g_state_lock);
+    return true;
+}
+
+void try_next_paired_controller() {
+    if (!g_hci_working || g_pairing_requested || g_connection_pending || g_hid_cid != 0) return;
+    while (g_reconnect_index < g_paired_address_count) {
+        bd_addr_t address{};
+        std::memcpy(address, g_paired_addresses[g_reconnect_index].data(), sizeof(address));
+        ++g_reconnect_index;
+        if (begin_hid_connection(address)) return;
+    }
 }
 
 void remember_candidate(const std::uint8_t* packet) {
@@ -159,7 +215,8 @@ void set_connection_closed() {
     g_snapshot.state = pairing_window_active() ? LinkState::PairingWindow : LinkState::Disconnected;
     critical_section_exit(&g_state_lock);
     clear_candidate();
-    start_inquiry();
+    if (pairing_window_active()) start_inquiry();
+    else try_next_paired_controller();
 }
 
 void handle_report(const std::uint8_t* report, const std::uint16_t length) {
@@ -206,6 +263,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_snapshot.connection_pending = false;
                 g_snapshot.state = LinkState::Disconnected;
                 critical_section_exit(&g_state_lock);
+                load_paired_addresses();
+                try_next_paired_controller();
             } else if (btstack_event_state_get_state(packet) == HCI_STATE_OFF) {
                 g_hci_working = false;
                 g_pairing_window_deadline_ms = 0;
@@ -262,7 +321,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             break;
         }
 
-        case GAP_EVENT_INQUIRY_RESULT: {
+                case GAP_EVENT_INQUIRY_RESULT: {
             if (!g_pairing_requested || g_connection_pending) break;
             if (inquiry_result_is_dualsense(packet)) {
                 bd_addr_t address;
@@ -295,13 +354,16 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 case HID_SUBEVENT_INCOMING_CONNECTION: {
                     const auto cid = hid_subevent_incoming_connection_get_hid_cid(packet);
                     if (hid_subevent_incoming_connection_get_status(packet) != ERROR_CODE_SUCCESS) break;
-                    if (pairing_window_active()) {
+                    bd_addr_t address{};
+                    hid_subevent_incoming_connection_get_address(packet, address);
+                    if (pairing_window_active() || paired_address_known(address)) {
                         stop_inquiry();
                         g_hid_cid = cid;
                         g_connection_pending = true;
                         critical_section_enter_blocking(&g_state_lock);
                         g_snapshot.connection_pending = true;
                         critical_section_exit(&g_state_lock);
+                        remember_paired_address(address);
                         hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
                         set_link_state(LinkState::Starting);
                     } else {
@@ -313,6 +375,10 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 case HID_SUBEVENT_CONNECTION_OPENED:
                     if (hid_subevent_connection_opened_get_status(packet) == ERROR_CODE_SUCCESS) {
                         g_hid_cid = hid_subevent_connection_opened_get_hid_cid(packet);
+                        bd_addr_t address{};
+                        hid_subevent_connection_opened_get_bd_addr(packet, address);
+                        remember_paired_address(address);
+                        g_reconnect_index = g_paired_address_count;
                         g_connection_pending = false;
                         critical_section_enter_blocking(&g_state_lock);
                         g_snapshot.connection_pending = false;

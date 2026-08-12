@@ -194,6 +194,7 @@ export function decodeControllerStatePayload(input) {
     pairingWindowOpen: Boolean(flags & (1 << 4)),
     inquiryActive: Boolean(flags & (1 << 5)),
     connectionPending: Boolean(flags & (1 << 6)),
+    pairedControllerKnown: Boolean(flags & (1 << 7)),
     sample
   });
 }

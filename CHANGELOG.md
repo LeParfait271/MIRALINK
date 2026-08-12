@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 - 2026-08-12
+
+- Added local BTstack link-key discovery and bounded automatic reconnection for
+  previously paired DualSense controllers.
+- Allowed incoming HID connections from locally known paired controllers after
+  the pairing window closes, while keeping unknown devices confirmation-gated.
+- Exposed paired-controller knowledge in the controller-state protocol and
+  added the corresponding local protocol test.
+- Physical DualSense pairing remains untested until the 1.4.0 candidate is
+  manually flashed on a Pico 2 W.
+
 ## 1.3.0 — 2026-08-12
 
 - Fixed the TinyUSB buffer size for MiraLink HID reports with a report ID:

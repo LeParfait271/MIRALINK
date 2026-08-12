@@ -20,6 +20,7 @@ namespace {
 constexpr std::uint8_t kReportCommand = 0x01;
 constexpr std::uint8_t kReportResponse = 0x02;
 constexpr std::uint8_t kReportEvent = 0x03;
+constexpr std::uint8_t kReportGamepad = 0x10;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
 constexpr std::uint8_t kLogSchema = 1;
@@ -70,8 +71,12 @@ bool g_last_event_inquiry_active = false;
 bool g_last_event_connection_pending = false;
 bool g_usb_reconnect_pending = false;
 bool g_recovery_pending = false;
+bool g_gamepad_report_pending = false;
+bool g_gamepad_was_available = false;
+std::uint32_t g_last_gamepad_sample_count = 0;
 std::uint64_t g_usb_reconnect_deadline_ms = 0;
 std::uint64_t g_recovery_deadline_ms = 0;
+std::array<std::uint8_t, 11> g_gamepad_report{};
 
 struct LogRecord {
     std::uint32_t timestamp_ms = 0;
@@ -165,6 +170,7 @@ std::vector<std::uint8_t> controller_state_payload(const miralink::bluetooth::Sn
     if (snapshot.pairing_window_open) payload[1] |= 1u << 4;
     if (snapshot.inquiry_active) payload[1] |= 1u << 5;
     if (snapshot.connection_pending) payload[1] |= 1u << 6;
+    if (snapshot.paired_controller_known) payload[1] |= 1u << 7;
     if (snapshot.input_available) {
         payload[2] = snapshot.input.report_id;
         payload[3] = snapshot.input.left_x;
@@ -228,6 +234,72 @@ void publish_controller_event() {
     g_last_event_connection_pending = snapshot.connection_pending;
 }
 
+std::uint8_t signed_axis(const std::uint8_t value) {
+    const auto centered = std::clamp(static_cast<int>(value) - 128, -127, 127);
+    return static_cast<std::uint8_t>(static_cast<std::int8_t>(centered));
+}
+
+void clear_gamepad_report() {
+    g_gamepad_report.fill(0);
+    // TinyUSB's gamepad template uses 8 as the neutral hat value.
+    g_gamepad_report[6] = 8;
+}
+
+void set_gamepad_button(std::uint32_t& buttons, const std::uint8_t value, const std::uint8_t bit, const std::uint8_t mask) {
+    if (value & mask) buttons |= 1u << bit;
+}
+
+void build_gamepad_report(const miralink::dualsense::InputState& input) {
+    g_gamepad_report[0] = signed_axis(input.left_x);
+    g_gamepad_report[1] = signed_axis(input.left_y);
+    g_gamepad_report[2] = signed_axis(input.right_x);
+    g_gamepad_report[3] = signed_axis(input.right_y);
+    g_gamepad_report[4] = input.left_trigger;
+    g_gamepad_report[5] = input.right_trigger;
+    const auto dpad = static_cast<std::uint8_t>(input.dpad_face & 0x0f);
+    g_gamepad_report[6] = static_cast<std::uint8_t>(dpad < 8 ? dpad + 1 : 8);
+
+    std::uint32_t buttons = 0;
+    set_gamepad_button(buttons, input.dpad_face, 0, 1u << 4); // square
+    set_gamepad_button(buttons, input.dpad_face, 1, 1u << 5); // cross
+    set_gamepad_button(buttons, input.dpad_face, 2, 1u << 6); // circle
+    set_gamepad_button(buttons, input.dpad_face, 3, 1u << 7); // triangle
+    set_gamepad_button(buttons, input.shoulder, 4, 1u << 0); // L1
+    set_gamepad_button(buttons, input.shoulder, 5, 1u << 1); // R1
+    set_gamepad_button(buttons, input.shoulder, 6, 1u << 2); // L2 digital
+    set_gamepad_button(buttons, input.shoulder, 7, 1u << 3); // R2 digital
+    set_gamepad_button(buttons, input.shoulder, 8, 1u << 6); // L3
+    set_gamepad_button(buttons, input.shoulder, 9, 1u << 7); // R3
+    set_gamepad_button(buttons, input.system, 10, 1u << 4); // create
+    set_gamepad_button(buttons, input.system, 11, 1u << 5); // options
+    set_gamepad_button(buttons, input.system, 12, 1u << 0); // PS
+    set_gamepad_button(buttons, input.system, 13, 1u << 1); // touchpad
+    set_gamepad_button(buttons, input.system, 14, 1u << 2); // mute
+    g_gamepad_report[7] = static_cast<std::uint8_t>(buttons & 0xffu);
+    g_gamepad_report[8] = static_cast<std::uint8_t>((buttons >> 8u) & 0xffu);
+    g_gamepad_report[9] = static_cast<std::uint8_t>((buttons >> 16u) & 0xffu);
+    g_gamepad_report[10] = static_cast<std::uint8_t>((buttons >> 24u) & 0xffu);
+}
+
+void publish_gamepad_report() {
+    const auto snapshot = miralink::bluetooth::snapshot();
+    if (snapshot.input_available && snapshot.sample_count != g_last_gamepad_sample_count) {
+        build_gamepad_report(snapshot.input);
+        g_last_gamepad_sample_count = snapshot.sample_count;
+        g_gamepad_was_available = true;
+        g_gamepad_report_pending = true;
+    } else if (!snapshot.input_available && g_gamepad_was_available) {
+        clear_gamepad_report();
+        g_gamepad_was_available = false;
+        g_gamepad_report_pending = true;
+    }
+    if (g_gamepad_report_pending && tud_mounted() && tud_hid_ready()) {
+        if (tud_hid_report(kReportGamepad, g_gamepad_report.data(), static_cast<std::uint16_t>(g_gamepad_report.size()))) {
+            g_gamepad_report_pending = false;
+        }
+    }
+}
+
 void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
     const std::vector<std::uint8_t> bytes(buffer, buffer + length);
     const auto decoded = miralink::decode_frame(bytes);
@@ -245,7 +317,9 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
                     | miralink::kFeatureBluetoothPairing
                     | miralink::kFeatureUsbReconnect
                     | miralink::kFeatureRecovery
-                    | miralink::kFeatureLocalLogs)});
+                    | miralink::kFeatureLocalLogs
+                    | miralink::kFeatureBluetoothReconnect
+                    | miralink::kFeatureUsbGamepad)});
             return;
         case miralink::Command::GetInfo:
             set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 0, 1, 0});
@@ -345,6 +419,7 @@ int main() {
     board_init();
     g_config_was_loaded = g_config_store.load();
     append_log(g_config_was_loaded ? "configuration loaded" : "safe defaults active");
+    clear_gamepad_report();
 
     if (cyw43_arch_init() == PICO_OK) {
         miralink::bluetooth::init();
@@ -359,6 +434,7 @@ int main() {
     while (true) {
         tud_task();
         miralink::bluetooth::poll();
+        publish_gamepad_report();
         publish_controller_event();
         service_deferred_actions();
     }

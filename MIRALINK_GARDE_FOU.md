@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -122,3 +122,5 @@ automatique.
 - `2026-08-12` — Un rapport HID MiraLink de 64 octets de données avec un identifiant non nul occupe 65 octets sur le contrôle USB ; le tampon TinyUSB doit être dimensionné pour l’identifiant inclus, et un refus `SET_FEATURE` doit être diagnostiqué sur le matériel réel avant toute conclusion WebHID.
 - `2026-08-12` — La version 1.2.0 contient le correctif de tampon HID, mais le nouvel UF2 doit être flashé manuellement puis vérifié sur le Pico connecté avant de déclarer la correction matérielle réussie.
 - `2026-08-12` — Le correctif USB est livré dans le candidat 1.3.0 ; le polling local et l’ouverture confirmée de la fenêtre d’appairage ne valent pas une connexion DualSense tant que les compteurs du Pico réellement flashé ne progressent pas.
+- `2026-08-12` — La reconnexion automatique MiraLink ne parcourt que les adresses présentes dans la base locale de clés BTstack ; une manette inconnue reste soumise à la fenêtre d’appairage confirmée, et aucun identifiant radio n’est exporté par défaut.
+- `2026-08-12` — Le bridge USB peut exposer une collection HID gamepad standard distincte du canal vendor MiraLink ; seuls les rapports DualSense validés peuvent l’alimenter, et une déconnexion doit produire un rapport neutre sans être déclarée testée avant validation physique.

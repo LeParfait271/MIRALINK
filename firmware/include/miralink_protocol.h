@@ -18,6 +18,8 @@ constexpr std::uint8_t kFeatureBluetoothPairing = 1u << 2;
 constexpr std::uint8_t kFeatureUsbReconnect = 1u << 3;
 constexpr std::uint8_t kFeatureRecovery = 1u << 4;
 constexpr std::uint8_t kFeatureLocalLogs = 1u << 5;
+constexpr std::uint8_t kFeatureBluetoothReconnect = 1u << 6;
+constexpr std::uint8_t kFeatureUsbGamepad = 1u << 7;
 
 enum class Command : std::uint8_t {
     Hello = 0x01,
