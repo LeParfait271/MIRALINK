@@ -1,4 +1,5 @@
 import {
+  HID_REPORT_BYTES,
   ProtocolError,
   RESPONSE_FLAGS,
   REPORT_IDS,
@@ -38,6 +39,21 @@ function responseError(response) {
   return new ProtocolError(message, 'device_error');
 }
 
+function normalizeFeatureReport(input, reportId) {
+  if (input instanceof Uint8Array) {
+    return input.length === HID_REPORT_BYTES + 1 && input[0] === reportId
+      ? input.subarray(1)
+      : input;
+  }
+  if (input instanceof ArrayBuffer) {
+    return normalizeFeatureReport(new Uint8Array(input), reportId);
+  }
+  if (ArrayBuffer.isView(input)) {
+    return normalizeFeatureReport(new Uint8Array(input.buffer, input.byteOffset, input.byteLength), reportId);
+  }
+  return input;
+}
+
 /**
  * Exchange one typed MiraLink command over HID feature reports.
  * WebHID does not emit `inputreport` for a feature-report response; the
@@ -62,7 +78,7 @@ export async function transactFeatureReport(device, {
   while (Date.now() < deadline) {
     try {
       const data = await device.receiveFeatureReport(REPORT_IDS.response);
-      const response = decodeFrame(data);
+      const response = decodeFrame(normalizeFeatureReport(data, REPORT_IDS.response));
       if (response.sequence !== sequence) {
         lastError = new ProtocolError('Feature response sequence does not match the request', 'sequence_mismatch');
       } else if (response.flags & RESPONSE_FLAGS.error) {

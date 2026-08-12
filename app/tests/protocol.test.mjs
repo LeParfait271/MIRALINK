@@ -81,6 +81,19 @@ test('HID bridge commands read delayed feature responses explicitly', async () =
   assert.deepEqual([...response.payload], [1, 1, 1, 0]);
 });
 
+test('HID bridge accepts a native report-id-prefixed feature response', async () => {
+  const frame = encodeFrame({ sequence: 9, command: COMMANDS.hello, flags: 1, payload: Uint8Array.from([1, 1, 1, 0]) });
+  const device = {
+    async sendFeatureReport() {},
+    async receiveFeatureReport(reportId) {
+      return Uint8Array.from([reportId, ...frame]);
+    }
+  };
+  const response = await transactFeatureReport(device, { sequence: 9, command: COMMANDS.hello, timeoutMs: 50 });
+  assert.equal(response.sequence, 9);
+  assert.deepEqual([...response.payload], [1, 1, 1, 0]);
+});
+
 test('HID bridge command errors remain typed', async () => {
   const device = {
     opened: true,

@@ -25,7 +25,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.1.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '1.3.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -197,9 +197,16 @@ function requireHid() {
 
 function nextSequence() { state.sequence = (state.sequence + 1) & 0xffff; return state.sequence; }
 
-async function transact(entry, command, payload = new Uint8Array(), timeoutMs = 1400) {
-  if (!entry.device.opened) await entry.device.open();
-  return transactFeatureReport(entry.device, { sequence: nextSequence(), command, payload, timeoutMs });
+function transact(entry, command, payload = new Uint8Array(), timeoutMs = 1400) {
+  // Feature reports are request/response traffic. Keep one exchange in flight
+  // per device so the supervision poll cannot consume another command's reply.
+  const previous = entry.transactionTail || Promise.resolve();
+  const run = previous.then(async () => {
+    if (!entry.device.opened) await entry.device.open();
+    return transactFeatureReport(entry.device, { sequence: nextSequence(), command, payload, timeoutMs });
+  });
+  entry.transactionTail = run.catch(() => undefined);
+  return run;
 }
 
 async function identify(entry) {
@@ -227,6 +234,7 @@ async function identify(entry) {
     entry.transport = 'usb';
     entry.state = 'ready';
     addLog('info', `${entry.label} identified as MiraLink bridge.`);
+    startBridgePolling(entry);
   } catch (error) {
     entry.kind = 'unknown'; entry.kindLabel = 'Unsupported HID device'; entry.state = 'error'; entry.error = error.message;
     addLog('error', `${entry.label} is not a MiraLink bridge or supported DualSense: ${error.message}`);
@@ -251,11 +259,44 @@ function handleBridgeEvent(entry, event) {
   }
 }
 
+function startBridgePolling(entry) {
+  if (entry.kind !== 'bridge' || entry.pollTimer) return;
+  let inFlight = false;
+  const poll = async () => {
+    if (inFlight || !state.devices.has(entry.id) || entry.state !== 'ready') return;
+    inFlight = true;
+    try {
+      const response = await transact(entry, COMMANDS.getControllerState, new Uint8Array(), 350);
+      const controllerState = decodeControllerStatePayload(response.payload);
+      entry.controllerState = controllerState;
+      if (controllerState.sample) {
+        entry.sampleCount = (entry.sampleCount || 0) + 1;
+        entry.lastSample = controllerState.sample;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample: controllerState.sample } }));
+      } else if (!controllerState.inputAvailable) {
+        entry.lastSample = null;
+      }
+    } catch (error) {
+      if (state.devices.has(entry.id) && error?.code !== 'timeout') addLog('error', `controller polling failed: ${error.message}`);
+    } finally {
+      inFlight = false;
+    }
+  };
+  entry.pollTimer = window.setInterval(poll, 40);
+  poll();
+}
+
+function stopBridgePolling(entry) {
+  if (!entry?.pollTimer) return;
+  window.clearInterval(entry.pollTimer);
+  entry.pollTimer = null;
+}
+
 async function registerDevice(device) {
   const existing = [...state.devices.values()].find((entry) => entry.device === device);
   if (existing) { state.activeDeviceId = existing.id; renderDevices(); return; }
   const id = `device-${Date.now()}-${state.devices.size + 1}`;
-  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null, adapter: null, sampleCount: 0, controllerState: null, lastSample: null };
+  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null, adapter: null, sampleCount: 0, controllerState: null, lastSample: null, pollTimer: null, transactionTail: Promise.resolve() };
   entry.eventHandler = (event) => handleBridgeEvent(entry, event);
   device.addEventListener('inputreport', entry.eventHandler);
   state.devices.set(id, entry); state.activeDeviceId = id; renderDevices(); setGlobalStatus('Connecting', 'busy');
@@ -268,7 +309,11 @@ async function connectDevice() {
   try {
     setGlobalStatus('Waiting for device', 'busy');
     const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: HID_USAGE_PAGE }, ...dualSenseWebHidFilters()] });
-    for (const device of devices) await registerDevice(device);
+    for (const device of devices) {
+      await registerDevice(device);
+      const entry = [...state.devices.values()].find((item) => item.device === device);
+      if (entry?.kind === 'bridge') await openPairingWindow(entry);
+    }
     if (!devices.length) setGlobalStatus('Ready', 'idle');
   } catch (error) { setGlobalStatus('Error', 'error'); addLog('error', `Device request cancelled or failed: ${error.message}`); }
 }
@@ -281,6 +326,7 @@ async function refreshDevices() {
 async function disconnectEntry(id) {
   const entry = state.devices.get(id);
   if (!entry) return;
+  stopBridgePolling(entry);
   try { entry.adapter?.stop(); } catch (error) { addLog('error', `Controller adapter stop failed: ${error.message}`); }
   entry.device.removeEventListener('inputreport', entry.eventHandler);
   try { if (entry.device.opened) await entry.device.close(); } catch (error) { addLog('error', `Close failed: ${error.message}`); }
@@ -365,8 +411,8 @@ async function runDiagnostics() {
   }
 }
 
-async function openPairingWindow() {
-  const entry = activeEntry();
+async function openPairingWindow(targetEntry = activeEntry()) {
+  const entry = targetEntry;
   if (!entry || entry.kind !== 'bridge') {
     addLog('error', 'Connect a MiraLink bridge before opening its Bluetooth pairing window.');
     return;

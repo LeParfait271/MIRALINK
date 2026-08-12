@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0 — 2026-08-12
+
+- Fixed the TinyUSB buffer size for MiraLink HID reports with a report ID:
+  `SET_FEATURE` now accepts the identifier plus 64 data bytes.
+- Added local normalization for WebHID responses with or without the report
+  ID, bounded controller-state polling, and a confirmed pairing-window start
+  after a bridge is connected.
+- Added the Pico 2 W candidate in `firmware/releases/1.3.0/` with RP2350
+  inspection and SHA-256 manifests.
+- Flashing the candidate and connecting a DualSense remain manual physical
+  hardware checks.
+
 ## 1.1.0 — 2026-08-12
 
 - Ajouté la recherche locale de DualSense pendant la fenêtre d’appairage du Pico 2 W, avec filtrage d’identité, demande de nom et reconnexion après fermeture.

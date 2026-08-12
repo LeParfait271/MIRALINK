@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -119,3 +119,6 @@ automatique.
 - `2026-08-12` — Le déploiement statique doit autoriser explicitement WebHID avec une politique locale `hid=(self)` ; l’application doit journaliser si le blocage vient du contexte sécurisé ou de la politique de permissions.
 - `2026-08-12` — Le build statique doit conserver `_headers` dans `app/dist/` afin que la politique WebHID survive à une publication Cloudflare Pages configurée sur le dossier de sortie.
 - `2026-08-12` — L’ancien UF2 peut être inspecté en lecture seule comme référence comportementale et de couverture fonctionnelle ; aucun code, binaire, protocole propriétaire ou structure interne ne doit être réutilisé dans MiraLink.
+- `2026-08-12` — Un rapport HID MiraLink de 64 octets de données avec un identifiant non nul occupe 65 octets sur le contrôle USB ; le tampon TinyUSB doit être dimensionné pour l’identifiant inclus, et un refus `SET_FEATURE` doit être diagnostiqué sur le matériel réel avant toute conclusion WebHID.
+- `2026-08-12` — La version 1.2.0 contient le correctif de tampon HID, mais le nouvel UF2 doit être flashé manuellement puis vérifié sur le Pico connecté avant de déclarer la correction matérielle réussie.
+- `2026-08-12` — Le correctif USB est livré dans le candidat 1.3.0 ; le polling local et l’ouverture confirmée de la fenêtre d’appairage ne valent pas une connexion DualSense tant que les compteurs du Pico réellement flashé ne progressent pas.

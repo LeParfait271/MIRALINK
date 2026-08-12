@@ -11,5 +11,8 @@
 #define CFG_TUD_ENABLED 1
 #define CFG_TUD_HID 1
 #define CFG_TUD_ENDPOINT0_SIZE 64
-#define CFG_TUD_HID_EP_BUFSIZE 64
+// Feature and input reports carry 64 data bytes plus one non-zero report ID.
+// TinyUSB uses this value for the control-transfer buffer as well as the
+// endpoint staging buffer, so 64 would make SET_REPORT(65 bytes) stall.
+#define CFG_TUD_HID_EP_BUFSIZE 65
 #define CFG_TUD_MAX_SPEED OPT_MODE_FULL_SPEED

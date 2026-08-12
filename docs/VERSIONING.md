@@ -18,6 +18,9 @@ The same version must be reflected in:
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
+The current committed product version is `1.3.0`; the same value must be
+reflected in the next local delivery manifest and firmware candidate.
+
 Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
 `docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is
 closed by one complete local commit containing all changes from that prompt;

@@ -22,6 +22,10 @@ l’utilisateur.
 - Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
   fonctionnalité et tester la lecture explicite des réponses avec
   `receiveFeatureReport`.
+- Pour un rapport HID à identifiant non nul, compter l’octet d’identifiant dans
+  le tampon de contrôle USB ; vérifier directement le `SET_FEATURE` et le
+  `GET_FEATURE` sur Windows lorsque WebHID signale seulement un périphérique
+  non pris en charge.
 - Pour chaque déploiement WebHID, vérifier la présence de la politique
   `Permissions-Policy: hid=(self)` et conserver un diagnostic local du contexte.
 - Si Cloudflare Pages publie `app/dist/`, vérifier que le build y copie aussi
@@ -30,6 +34,9 @@ l’utilisateur.
   pour les capacités attendues ; ne jamais en extraire ni réutiliser du code,
   du binaire ou une structure interne.
 - Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
+- Après une correction USB, conserver séparément la preuve du build, du
+  descripteur, du paquet UF2 et du test de l’échange sur la carte réellement
+  flashée ; un build réussi ne valide pas le binaire déjà installé.
 
 ## Clôture de chaque prompt de travail
 
