@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit de modification fonctionnelle augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0`.
+- Chaque commit de modification fonctionnelle augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Aucun commit automatique sans validation minimale.
 - Aucun push automatique.

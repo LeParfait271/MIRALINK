@@ -65,6 +65,23 @@ import {
   exportDiagnosticReport,
   recordDiagnosticResult
 } from '../src/diagnostics.js';
+import {
+  assertActionAllowed,
+  checkAction,
+  createActionGuard,
+  parseActionGuard,
+  serializeActionGuard,
+  updateActionGuard
+} from '../src/action-guard.js';
+import {
+  appendSessionEvent,
+  appendSessionSample,
+  createLocalSession,
+  exportLocalSession,
+  stopLocalSession,
+  summarizeSession
+} from '../src/session-recorder.js';
+import { benchmarkConnection, detectLocalAnomalies } from '../src/health-analysis.js';
 
 function sample({ leftX = 0, leftY = 0, rightX = 0, rightY = 0, leftTrigger = 0, rightTrigger = 0 } = {}) {
   return { leftStick: { x: leftX, y: leftY }, rightStick: { x: rightX, y: rightY }, leftTrigger, rightTrigger };
@@ -345,4 +362,82 @@ test('guided diagnostics preserve simulation status and redact hardware claims',
   assert.equal(exported.testStatus, 'not-tested');
   assert.equal(exported.steps[0].hardwareTested, false);
   assert.equal(exported.redaction, 'identifiers-omitted');
+});
+
+test('action guard blocks locked and read-only writes while keeping reads available', () => {
+  const locked = createActionGuard({ locked: true });
+  assert.equal(checkAction(locked, 'read').allowed, true);
+  assert.equal(checkAction(locked, 'write-config').reason, 'locked');
+  const readOnly = createActionGuard({ readOnly: true });
+  assert.equal(checkAction(readOnly, 'export-local').allowed, true);
+  assert.equal(checkAction(readOnly, 'reset-config').reason, 'read_only');
+  assert.throws(() => assertActionAllowed(readOnly, 'write-config'), /read_only/);
+});
+
+test('action guard requires confirmation and round-trips locally', () => {
+  const guard = updateActionGuard(createActionGuard(), { locked: false, readOnly: false });
+  assert.equal(checkAction(guard, 'flash-firmware').requiresConfirmation, true);
+  assert.equal(checkAction(guard, 'flash-firmware').allowed, false);
+  assert.equal(checkAction(guard, 'flash-firmware', { confirmed: true, capabilityState: 'supported' }).allowed, true);
+  assert.deepEqual(parseActionGuard(serializeActionGuard(guard)), guard);
+});
+
+test('local session recording is bounded and stops cleanly', () => {
+  let session = createLocalSession({ id: 'session-a', source: 'local', maxSamples: 2, startedAt: '2026-08-12T00:00:00.000Z' });
+  session = appendSessionSample(session, sample({ leftX: 0.1 }), { at: '2026-08-12T00:00:01.000Z' });
+  session = appendSessionSample(session, sample({ leftX: 0.2 }), { at: '2026-08-12T00:00:02.000Z' });
+  session = appendSessionSample(session, sample({ leftX: 0.3 }), { at: '2026-08-12T00:00:03.000Z' });
+  session = appendSessionEvent(session, { type: 'disconnect', message: 'serial=ABC123 address=aa:bb:cc:dd:ee:ff' });
+  const stopped = stopLocalSession(session, { endedAt: '2026-08-12T00:00:04.000Z' });
+  const summary = summarizeSession(stopped);
+  assert.equal(summary.sampleCount, 2);
+  assert.equal(summary.eventCount, 1);
+  assert.equal(summary.durationMs, 4000);
+  assert.equal(stopped.active, false);
+});
+
+test('session export is confirmation-gated and keeps simulation explicitly untested', () => {
+  let session = createLocalSession({ id: 'session-sim', source: 'simulation', scenario: 'packet-loss' });
+  session = appendSessionSample(session, sample());
+  assert.throws(() => exportLocalSession(session, { includeSamples: true }), /requires confirmation/);
+  const exported = exportLocalSession(session, { includeSamples: true, confirmed: true });
+  assert.equal(exported.modeLabel, 'MODE SIMULATION');
+  assert.equal(exported.hardwareTested, false);
+  assert.equal(exported.testStatus, 'not-tested');
+  assert.equal(exported.samples.length, 1);
+  assert.equal(exported.events.length, 0);
+});
+
+test('connection benchmark produces a transparent local score with normalized missing weights', () => {
+  const result = benchmarkConnection({ usbLatencyMs: [1, 2, 3], packetLossPercent: [0, 1], source: 'simulation' });
+  assert.equal(result.modeLabel, 'MODE SIMULATION');
+  assert.equal(result.hardwareTested, false);
+  assert.equal(result.testStatus, 'not-tested');
+  assert.ok(result.score >= 0 && result.score <= 100);
+  assert.equal(result.components.some((component) => component.name === 'radioLatencyMs'), false);
+  assert.match(result.scoreMethod, /weights are normalized/);
+});
+
+test('connection benchmark rejects invented or unsafe measurements', () => {
+  assert.throws(() => benchmarkConnection({ radioLatencyMs: [-1] }), /out-of-range/);
+  assert.throws(() => benchmarkConnection({ packetLossPercent: [101] }), /out-of-range/);
+  assert.equal(benchmarkConnection({ source: 'local' }).status, 'unavailable');
+});
+
+test('local anomaly detection reports battery drops and Controller Lab drift', () => {
+  const analysis = analyzeControllerInputs([sample({ leftX: 0.2 }), sample({ leftX: 0.2 })]);
+  const result = detectLocalAnomalies({ batterySamples: [80, 75, 8], controllerAnalysis: analysis, source: 'simulation' });
+  assert.equal(result.modeLabel, 'MODE SIMULATION');
+  assert.equal(result.hardwareTested, false);
+  assert.equal(result.status, 'attention');
+  assert.ok(result.alerts.some((alert) => alert.kind === 'battery-low'));
+  assert.ok(result.alerts.some((alert) => alert.kind === 'battery-abnormal-drop'));
+  assert.ok(result.alerts.some((alert) => alert.kind === 'stick-drift'));
+});
+
+test('local anomaly detection remains unavailable without evidence', () => {
+  const result = detectLocalAnomalies({ source: 'hardware', hardwareTested: true });
+  assert.equal(result.status, 'unavailable');
+  assert.equal(result.testStatus, 'not-tested');
+  assert.equal(result.alerts.length, 0);
 });

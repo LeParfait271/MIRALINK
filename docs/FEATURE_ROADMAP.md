@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 0.4.0
+- Version produit concernée : 0.5.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -476,6 +476,78 @@ Un format commun pour profils, sessions, diagnostics, historiques et maintenance
 
 **Difficulté.** Moyenne.
 
+### 4.10 Garde d'actions local — priorité haute
+
+**Valeur utilisateur.** Empêcher une écriture ou un test à risque pendant un audit, un dépannage ou une utilisation partagée.
+
+**Écrans.** Indicateur lecture seule/verrouillé, centre des permissions et demande de confirmation pour chaque action sensible.
+
+**Données stockées.** Deux préférences locales, date de changement et résultat d'autorisation. Aucun état matériel n'est transmis.
+
+**Protocole.** Aucun au premier niveau ; le garde s'applique avant les commandes de configuration, test, récupération ou firmware.
+
+**Dépendances.** Toutes les actions futures doivent passer par ce contrat.
+
+**Risques.** Blocage involontaire ou contournement par un nouvel écran. Liste d'actions fermée, refus par défaut et tests de chaque état.
+
+**Tests.** Lecture, export, écriture, verrouillage, lecture seule, capacité indisponible et confirmation.
+
+**Difficulté.** Faible.
+
+### 4.11 Enregistrement local de sessions — priorité moyenne
+
+**Valeur utilisateur.** Garder les dernières secondes d'entrées pour comprendre une dérive, une latence ou une déconnexion sans capture permanente.
+
+**Écrans.** Démarrer/arrêter, durée et taille, événements, résumé, comparaison et export avec choix explicite des échantillons.
+
+**Données stockées.** Échantillons en mémoire, événements bornés, source, scénario et statut de test. La persistance est désactivée par défaut.
+
+**Protocole.** `START_LOCAL_SESSION`, `STOP_LOCAL_SESSION` et `GET_SESSION_PAGE` devront être négociées avant utilisation matérielle.
+
+**Dépendances.** Rapports d'entrée validés, rétention bornée et export local.
+
+**Risques.** Rétention excessive ou fuite d'identifiants dans un événement. Limites strictes, confirmation d'export et redaction des messages.
+
+**Tests.** Limite d'échantillons, arrêt, déconnexion, export sans confirmation, simulation et suppression d'identifiants.
+
+**Difficulté.** Moyenne.
+
+### 4.12 Benchmark de latence et score de connexion — priorité moyenne
+
+**Valeur utilisateur.** Résumer des mesures locales sans fabriquer une latence radio quand elle n'est pas disponible.
+
+**Écrans.** Mesure, détail par transport, score, méthode de calcul et état de preuve.
+
+**Données stockées.** Séries bornées et résumé local optionnel ; aucune synchronisation.
+
+**Protocole.** `GET_LIVE_STATUS` ou mesures de transport réelles après négociation de capacité.
+
+**Dépendances.** Sources USB/radio locales et horodatage fiable.
+
+**Risques.** Score trompeur si une composante manque. Composantes absentes exclues et poids normalisés avec méthode affichée.
+
+**Tests.** Mesures manquantes, valeurs hors limites, simulation, score et source matérielle explicite.
+
+**Difficulté.** Faible à moyenne.
+
+### 4.13 Détection locale de dérive et de batterie anormale — priorité moyenne
+
+**Valeur utilisateur.** Signaler une tendance observable tout en séparant une alerte d'un diagnostic confirmé.
+
+**Écrans.** Alerte, seuils, preuve utilisée, historique court et lien vers Controller Lab/Diagnostics.
+
+**Données stockées.** Échantillons bornés, seuils, alertes et source. Aucun identifiant matériel.
+
+**Protocole.** Réutilise les rapports d'entrée et de batterie réellement exposés ; aucune valeur n'est inventée à partir d'une simple connexion.
+
+**Dépendances.** Analyse Controller Lab et métriques de capacité.
+
+**Risques.** Faux positif ou confusion simulation/matériel. Seuils visibles, preuve listée et statut `not-tested` hors preuve matérielle.
+
+**Tests.** Dérive, batterie faible, chute rapide, aucune donnée, valeurs hors limites et simulation.
+
+**Difficulté.** Moyenne.
+
 ## 5. Roadmap proposée
 
 ### Lot 0 — socle de sécurité et capacités
@@ -490,6 +562,7 @@ Objectif : rendre les états et les limites fiables avant d’ajouter des contr�
 - format versionné des profils, sessions et exports ;
 - séparation lecture, brouillon, confirmation, écriture, vérification ;
 - accessibilité fondamentale et vue textuelle de la carte des connexions.
+- garde d'actions local, lecture seule et verrouillage ;
 
 **Sortie.** Aucun bouton ne propose une écriture si la capacité n’est pas négociée ; les actions dangereuses sont confirmées ; les tests logiciels passent.
 
@@ -536,6 +609,8 @@ Objectif : rendre l’état opérationnel lisible en direct.
 - métriques locales et graphiques courts ;
 - distinction mesure réelle, indisponible et simulée ;
 - tampon mémoire borné.
+
+**État vérifié.** Le benchmark local, son score explicable et la détection bornée des anomalies sont implémentés et testés. Les mesures réelles et l'affichage restent à intégrer.
 
 **Sortie.** Pas de flux externe, pas de rétention permanente par défaut, pas de métrique inventée.
 
@@ -658,7 +733,11 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [x] Mode urgence vers le profil Basique avec aperçu, confirmation et aucune persistance implicite.
 - [x] Matrice locale de compatibilité firmware/manettes avec état `not-tested` par défaut.
 - [x] Plan de diagnostics guidés et rapport local anonymisé sans identifiants sensibles.
-- [x] 36 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
+- [x] Garde d'actions local avec lecture seule, verrouillage et confirmations.
+- [x] Enregistrement temporaire de sessions avec rétention bornée et export contrôlé.
+- [x] Benchmark local de latence avec score explicable et gestion des composantes absentes.
+- [x] Détection locale de dérive et de batterie anormale avec statut de preuve.
+- [x] 44 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
 - [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
 
 ### Prochaines tâches, dans l’ordre

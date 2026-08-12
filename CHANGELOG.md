@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-08-12
+
+- Ajouté le garde d’actions local pour le mode lecture seule, le verrouillage et les confirmations.
+- Ajouté l’enregistrement temporaire de sessions avec rétention bornée et export contrôlé/anonymisé.
+- Ajouté le benchmark local USB/radio/pertes avec score explicable et exclusion des mesures absentes.
+- Ajoutée la détection locale de dérive et de batterie anormale, sans transformer une simulation en test matériel.
+- Ajoutés 8 tests de fonctionnalités ; 44 tests logiciels passent au total.
+- Aucun fichier visuel, firmware, build `dist/` ou test matériel n’a été modifié ou exécuté.
+
 ## 0.4.0 — 2026-08-12
 
 - Ajouté le contrat local de remappage des boutons avec profils ciblés, diff, export/import et confirmation.
