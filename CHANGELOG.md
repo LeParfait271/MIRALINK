@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-08-12
+
+- Added local simulation scenarios with an explicit `MODE SIMULATION` status and no hardware-test claims.
+- Added the Competitive, Basic and Economy profile contracts with confirmation-gated previews.
+- Added the Basic → Economy battery policy below 10 %, while protecting Competitive from automatic replacement.
+- Added local profile storage, Controller Lab analysis and bounded calibration history.
+- Added capability-aware live status metrics and a redacted computer → Pico 2 W → controller connection map model.
+- Added 31 application and protocol tests covering the new local feature contracts.
+- Documented the verified implementation state and the remaining UI integration roadmap.
+
 ## 0.2.0 — 2026-08-12
 
 - Published a versioned Pico 2 W firmware delivery artifact with checksum and local release notes.

@@ -6,7 +6,7 @@
 
 - Produit : **MiraLink**
 - Développeur affiché : **MaruChiwa**
-- Dossier unique : `C:\MIRALINK`
+- Dossier unique : `C:\MIRALINK\MIRALINK`
 - Version initiale : `0.1.0`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
@@ -99,3 +99,5 @@ Avant chaque intervention :
 - `2026-08-12` — Développeur : MaruChiwa.
 - `2026-08-12` — Version augmentée de 0.1 à chaque commit.
 - `2026-08-12` — Ce fichier doit être lu avant tout travail.
+- `2026-08-12` — Les profils applicatifs sont limités à Compétitif, Basique et Économie. Compétitif privilégie la latence minimale et les performances maximales ; Basique privilégie un fonctionnement fiable ; sous 10 % de batterie, le basculement automatique de Basique vers Économie est autorisé, mais Compétitif ne doit jamais être remplacé automatiquement.
+- `2026-08-12` — Le dépôt de travail et de publication GitHub Desktop est `C:\MIRALINK\MIRALINK` ; le dossier parent `C:\MIRALINK` ne doit pas être utilisé comme dépôt actif.

@@ -6,8 +6,8 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
-- État du document : proposition à valider avant implémentation
-- Version produit concernée : 0.1.0
+- État du document : roadmap active, socle local partiellement implémenté
+- Version produit concernée : 0.3.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -132,7 +132,7 @@ Le classement peut changer après les premiers essais avec un Pico 2 W et une Du
 
 **Valeur utilisateur.** Change rapidement un ensemble cohérent de réglages sans perdre le contrôle de ce qui sera écrit.
 
-**Profils initiaux.** `Compétitif`, `Immersion`, `Silencieux`, `Économie`, puis profils personnalisés.
+**Profils initiaux.** `Compétitif`, `Basique` et `Économie`. Compétitif privilégie la latence minimale et les performances maximales ; Basique privilégie la fiabilité ; sous 10 % de batterie, Basique peut proposer le passage vers Économie, tandis que Compétitif reste protégé.
 
 **Écrans.** Galerie de profils ; détail et éditeur ; aperçu des changements ; choix de cible `bridge` ou manette individuelle ; confirmation ; résultat et restauration.
 
@@ -140,7 +140,7 @@ Le classement peut changer après les premiers essais avec un Pico 2 W et une Du
 
 **Protocole.** `GET_PROFILE_LIST`, `GET_PROFILE`, `SET_PROFILE_DRAFT`, `APPLY_PROFILE`, éventuellement `COMMIT_CONFIG` existant pour le bridge.
 
-**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels.
+**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels. Le moteur de profils local est en place ; son intégration à l’interface reste à faire.
 
 **Risques.** Écrasement d’un réglage ou application à la mauvaise manette. La cible, le diff et la confirmation sont obligatoires ; les profils non compatibles sont refusés.
 
@@ -425,7 +425,8 @@ Objectif : offrir un produit utile immédiatement sans matériel.
 
 - faux Pico 2 W et fausses manettes ;
 - scénarios demandés ;
-- profils Compétitif, Immersion, Silencieux, Économie et personnalisés ;
+- profils Compétitif, Basique et Économie ;
+- règle locale Basique → Économie sous 10 % de batterie, sans remplacement automatique de Compétitif ;
 - diff avant application ;
 - profils liés au bridge ou à une manette ;
 - profils individuels et noms personnalisés ;
@@ -433,6 +434,8 @@ Objectif : offrir un produit utile immédiatement sans matériel.
 - bandeau `MODE SIMULATION` persistant.
 
 **Sortie.** Tous les parcours de découverte, comparaison, confirmation, annulation et restauration fonctionnent sans WebHID et ne produisent aucune déclaration de test matériel.
+
+**État vérifié.** Les contrats locaux de simulation, profils, aperçu, confirmation, basculement batterie et stockage versionné sont testés. Le sélecteur de simulation, le bandeau permanent et les écrans de profils restent à intégrer dans l’application.
 
 ### Lot 2 — Controller Lab
 
@@ -447,6 +450,8 @@ Objectif : valider les données d’entrée avant d’afficher des mesures avanc
 
 **Dépendance de sortie.** Aucun réglage n’est marqué supporté sans rapport réel décodé et capacité négociée.
 
+**État vérifié.** Le moteur d’analyse local et l’historique de calibration sont testés avec des échantillons synthétiques. L’adapter WebHID, l’affichage et les tests avec matériel réel restent à faire ; aucun test matériel n’est déclaré.
+
 ### Lot 3 — Cockpit et carte de connexions
 
 Objectif : rendre l’état opérationnel lisible en direct.
@@ -458,6 +463,8 @@ Objectif : rendre l’état opérationnel lisible en direct.
 - tampon mémoire borné.
 
 **Sortie.** Pas de flux externe, pas de rétention permanente par défaut, pas de métrique inventée.
+
+**État vérifié.** Le modèle local de métriques bornées, statuts de capacité, historique mémoire limité et carte ordinateur → Pico 2 W → manette est en place et testé. Le cockpit visuel, les sources WebHID/radio réelles et les graphiques restent à intégrer.
 
 ### Lot 4 — Diagnostics guidés
 
@@ -552,3 +559,43 @@ Ces demandes complètent les lots précédents. Elles restent soumises au même 
 - **Long terme :** système d’extensions, avec un contrat d’adapter stable et des tests d’isolation obligatoires.
 
 Le mode urgence doit rester disponible depuis Overview et Diagnostics, mais il ne doit jamais contourner le mode verrouillage, la confirmation ou la relecture après écriture.
+
+## 9. Liste de suivi vérifiée — 2026-08-12
+
+Cette liste sépare les éléments réellement contrôlés dans le dépôt des intégrations encore nécessaires. Les cases cochées ne signifient pas qu’un matériel réel a été testé.
+
+### Terminé dans le socle local
+
+- [x] Contrat de trois profils intégrés : Compétitif, Basique, Économie.
+- [x] Profil Compétitif protégé contre le basculement automatique sur batterie faible.
+- [x] Basculement Basique → Économie uniquement sous 10 %, avec confirmation d’écriture conservée.
+- [x] Aperçu différentiel, ciblage bridge/manette et refus d’une mauvaise cible.
+- [x] Scénarios de simulation : connexion, erreur, déconnexion, batterie faible, pertes de paquets et configuration invalide.
+- [x] Marqueur permanent de simulation dans les données (`MODE SIMULATION`, `hardwareTested: false`, `not-tested`).
+- [x] Analyse Controller Lab : dérive, zone morte configurée, amplitude, circularité, asymétrie et gâchettes.
+- [x] Historique de calibration borné, comparaison et restauration soumise à confirmation.
+- [x] Stockage local de profils versionné avec détection des entrées corrompues.
+- [x] Modèle local du cockpit et de la carte des connexions avec statuts `supporté`, `partiel`, `indisponible` et `non testé`.
+- [x] Métriques bornées, historique mémoire limité et absence d’identifiants sensibles dans la carte des connexions.
+- [x] 31 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
+- [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
+
+### Prochaines tâches, dans l’ordre
+
+- [ ] Brancher les moteurs simulation/profils au parcours visible de l’application.
+- [ ] Ajouter le sélecteur de scénario, le bandeau `MODE SIMULATION` et les états accessibles dans l’interface.
+- [ ] Ajouter la galerie des trois profils, l’aperçu des changements, la confirmation et le résultat d’application.
+- [ ] Connecter la batterie réelle lorsqu’une capacité fiable est négociée ; sinon afficher `indisponible` ou `non testé`.
+- [ ] Ajouter la règle d’automatisation locale Basique → Économie avec préférence désactivable et journal lisible.
+- [ ] Brancher Controller Lab aux rapports réels des manettes, sans transformer les échantillons synthétiques en test matériel.
+- [ ] Construire la carte ordinateur → Pico 2 W → manette avec transport, reconnexion et erreurs.
+- [ ] Construire le cockpit local avec métriques sourcées, statuts de capacité et graphiques bornés.
+- [ ] Construire l’assistant de diagnostic guidé et ses rapports locaux anonymisés.
+- [ ] Ajouter studio haptique, gâchettes avancées, centre firmware sécurisé, historique visuel, maintenance et automatisations restantes.
+- [ ] Après stabilisation des autres conversations : reconstruire `dist/`, effectuer le test navigateur/accessibilité, mettre à jour la version puis préparer un commit local.
+
+### Limites de cette vérification
+
+- Aucun Pico 2 W ni aucune manette réelle n’était connecté ; aucun résultat matériel n’est revendiqué.
+- Le build de `dist/` n’a pas été lancé pour ne pas écraser le travail visuel parallèle.
+- Aucun commit ni push n’a été effectué.
