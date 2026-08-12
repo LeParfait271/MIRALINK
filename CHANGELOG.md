@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-08-12
+
+- Corrigé l’échange WebHID du bridge : les réponses de commandes sont maintenant lues comme rapports HID de fonctionnalité avec `receiveFeatureReport(2)`.
+- Ajouté une attente bornée et une vérification de séquence pour éviter qu’un Pico connecté soit classé à tort comme périphérique HID non supporté.
+- Complété le cache hors ligne avec les modules DualSense et transport HID.
+- Ajouté un test de régression local ; aucun firmware, fichier visuel ou test matériel n’a été modifié.
+
 ## 0.7.0 — 2026-08-12
 
 - Renforcé le workflow obligatoire : lecture et mise à jour des garde-fous avant chaque commit.

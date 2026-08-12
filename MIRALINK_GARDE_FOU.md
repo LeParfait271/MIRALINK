@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -92,6 +92,7 @@ Avant chaque intervention :
 - tests de configurations invalides et paquets courts ;
 - build firmware reproductible ;
 - UF2 identifié et vérifié ;
+- échanges HID de fonctionnalité vérifiés par lecture explicite du rapport de réponse, avec distinction claire des événements d’entrée ;
 - version/date cohérentes partout ;
 - documentation d'installation et de récupération ;
 - limites des tests matériels indiquées.
@@ -107,3 +108,4 @@ Avant chaque intervention :
 - `2026-08-12` — Le dépôt de travail et de publication GitHub Desktop est `C:\MIRALINK\MIRALINK` ; le dossier parent `C:\MIRALINK` ne doit pas être utilisé comme dépôt actif.
 - `2026-08-12` — La partie visuelle du site est travaillée dans une autre conversation ; ne pas modifier `app/index.html`, `app/styles.css`, `app/icon.svg` ou `app/dist` sans coordination explicite.
 - `2026-08-12` — Le workflow et les garde-fous doivent être relus et mis à jour avant chaque commit ; chaque prompt de travail doit être clôturé par un commit local complet regroupant toutes ses modifications.
+- `2026-08-12` — Les réponses MiraLink transportées par rapport HID de fonctionnalité doivent être lues avec `receiveFeatureReport`; un événement `inputreport` seul ne constitue pas une réponse de commande.

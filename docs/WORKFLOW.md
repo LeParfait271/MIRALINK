@@ -19,6 +19,9 @@ l’utilisateur.
 - Ne jamais transformer une simulation ou un build en test matériel déclaré.
 - Garder les configurations comparables, restaurables et locales.
 - Signaler toute capacité non supportée par le matériel.
+- Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
+  fonctionnalité et tester la lecture explicite des réponses avec
+  `receiveFeatureReport`.
 - Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
 
 ## Clôture de chaque prompt de travail

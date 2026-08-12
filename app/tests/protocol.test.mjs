@@ -13,6 +13,7 @@ import {
   encodeConfig,
   encodeFrame
 } from '../src/protocol.js';
+import { transactFeatureReport } from '../src/hid-transport.js';
 
 test('frame round trip preserves sequence, command and payload', () => {
   const frame = encodeFrame({ sequence: 42, command: COMMANDS.hello, payload: Uint8Array.from([1, 2, 3]) });
@@ -38,6 +39,47 @@ test('frame padding rejects non-zero bytes', () => {
   const frame = encodeFrame({ sequence: 1, command: COMMANDS.getInfo });
   frame[63] = 1;
   assert.throws(() => decodeFrame(frame), /padding/i);
+});
+
+test('HID bridge commands read delayed feature responses explicitly', async () => {
+  const device = {
+    opened: true,
+    reads: 0,
+    sent: null,
+    response: null,
+    async sendFeatureReport(reportId, data) {
+      this.sent = { reportId, data: Uint8Array.from(data) };
+      this.response = encodeFrame({ sequence: 7, command: COMMANDS.hello, flags: 1, payload: Uint8Array.from([1, 1, 1, 0]) });
+    },
+    async receiveFeatureReport(reportId) {
+      assert.equal(reportId, 2);
+      this.reads += 1;
+      if (this.reads === 1) throw new Error('feature response not ready');
+      return this.response;
+    }
+  };
+
+  const response = await transactFeatureReport(device, { sequence: 7, command: COMMANDS.hello, timeoutMs: 100, pollIntervalMs: 1 });
+  assert.equal(device.sent.reportId, 1);
+  assert.equal(device.sent.data.length, 64);
+  assert.equal(device.reads, 2);
+  assert.equal(response.sequence, 7);
+  assert.deepEqual([...response.payload], [1, 1, 1, 0]);
+});
+
+test('HID bridge command errors remain typed', async () => {
+  const device = {
+    opened: true,
+    async sendFeatureReport() {},
+    async receiveFeatureReport() {
+      return encodeFrame({ sequence: 8, command: COMMANDS.hello, flags: 3, payload: new TextEncoder().encode('Bluetooth is not ready') });
+    }
+  };
+
+  await assert.rejects(
+    transactFeatureReport(device, { sequence: 8, command: COMMANDS.hello, timeoutMs: 50 }),
+    (error) => error instanceof ProtocolError && error.code === 'device_error' && /Bluetooth/.test(error.message)
+  );
 });
 
 test('HELLO payload is decoded as structured binary data', () => {

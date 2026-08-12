@@ -10,14 +10,13 @@ import {
   decodeFrame,
   decodeHelloPayload,
   defaultConfig,
-  encodeConfig,
-  encodeFrame,
-  RESPONSE_FLAGS
+  encodeConfig
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
 import { applyTranslations, setupLanguage, translate } from './i18n.js';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
+import { transactFeatureReport } from './hid-transport.js';
 
 const state = {
   devices: new Map(),
@@ -26,7 +25,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.7.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '0.8.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -184,28 +183,7 @@ function nextSequence() { state.sequence = (state.sequence + 1) & 0xffff; return
 
 async function transact(entry, command, payload = new Uint8Array(), timeoutMs = 1400) {
   if (!entry.device.opened) await entry.device.open();
-  const sequence = nextSequence();
-  const frame = encodeFrame({ sequence, command, payload });
-  return new Promise(async (resolve, reject) => {
-    let timer;
-    const cleanup = () => { clearTimeout(timer); entry.device.removeEventListener('inputreport', onReport); };
-    const onReport = (event) => {
-      if (event.device !== entry.device) return;
-      if (event.reportId !== undefined && event.reportId !== REPORT_IDS.response) return;
-      try {
-        const response = decodeFrame(event.data);
-        if (response.sequence !== sequence) return;
-        if (response.flags & RESPONSE_FLAGS.error) {
-          const message = new TextDecoder().decode(response.payload).replace(/[\0\s]+$/g, '') || 'Device rejected the command.';
-          cleanup(); reject(new ProtocolError(message, 'device_error')); return;
-        }
-        cleanup(); resolve(response);
-      } catch (error) { cleanup(); reject(error); }
-    };
-    timer = setTimeout(() => { cleanup(); reject(new ProtocolError('Device did not answer in time', 'timeout')); }, timeoutMs);
-    entry.device.addEventListener('inputreport', onReport);
-    try { await entry.device.sendFeatureReport(REPORT_IDS.command, frame); } catch (error) { cleanup(); reject(error); }
-  });
+  return transactFeatureReport(entry.device, { sequence: nextSequence(), command, payload, timeoutMs });
 }
 
 async function identify(entry) {

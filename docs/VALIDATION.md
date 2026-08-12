@@ -1,9 +1,20 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `0.7.0` workflow metadata; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
+Version: `0.8.0` application transport fix; validated source and local firmware candidate `0.6.0`; historical firmware artifact `0.2.0`
 Developer: `MaruChiwa`
 Scope: local software checks and firmware source inspection
+
+## 0.8.0 software checks
+
+- WebHID feature-report command exchange now reads the response explicitly with
+  `receiveFeatureReport(2)` instead of waiting for an `inputreport` event.
+- The offline shell precaches both `dualsense.js` and `hid-transport.js`, so the
+  controller and bridge paths remain available after the first local load.
+- A regression fixture verifies delayed feature responses, sequence matching and
+  typed device errors locally.
+- No firmware binary, visual file, `app/dist/` artifact or hardware result was
+  changed in this fix.
 
 ## 0.7.0 process checks
 
