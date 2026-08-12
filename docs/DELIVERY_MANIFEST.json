@@ -1,0 +1,16 @@
+{
+  "product": "MiraLink",
+  "version": "0.1.0",
+  "developer": "MaruChiwa",
+  "lastUpdated": "2026-08-12",
+  "delivery": "local-only",
+  "application": "app/dist",
+  "validatedFirmware": {
+    "directory": "firmware/pico/build-check3",
+    "uf2": "firmware/pico/build-check3/miralink_pico_firmware.uf2",
+    "elf": "firmware/pico/build-check3/miralink_pico_firmware.elf",
+    "board": "pico2_w",
+    "target": "RP2350 ARM Secure"
+  },
+  "hardwareAction": "none"
+}

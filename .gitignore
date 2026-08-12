@@ -1,0 +1,11 @@
+app/dist/
+firmware/pico/build/
+firmware/pico/build-check/
+firmware/pico/build-check2/
+firmware/pico/build-check3/
+tools/downloads/
+tools/cmake/
+tools/ninja/
+tools/arm-gnu/
+tools/picotool/
+tools/pico-sdk/
