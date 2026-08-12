@@ -83,7 +83,10 @@ et sa commande d'arrêt neutre reste locale. La file BTstack est bornée et
 vidée lors d'une déconnexion ; un build réussi ou un test synthétique ne vaut
 pas une preuve de retour haptique sur une manette réelle.
 
-La version 1.5.0 ne conserve aucun chemin d’effet de gâchette adaptative non
+La version 1.6.0 ne conserve aucun chemin d’effet de gâchette adaptative non
 exposé ou non validé. Toute nouvelle sortie doit d’abord avoir une commande
 typée, une capacité négociée, des limites documentées et un test matériel
 distinct avant de pouvoir être annoncée comme supportée.
+
+Le chemin d’appairage Bluetooth classique peut répondre `0000` uniquement dans
+la fenêtre locale explicitement ouverte ou pour une adresse déjà mémorisée.

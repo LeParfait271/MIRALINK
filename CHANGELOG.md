@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 - 2026-08-12
+
+- Accepted the legacy DualSense Bluetooth PIN `0000` only during the explicit
+  local pairing window or for a controller address already known to BTstack.
+- Normalized MiraLink HID feature commands when a host provides the report ID
+  in the callback buffer, while retaining strict report-size validation.
+- Kept the pairing and HID changes local, confirmation-gated and unvalidated
+  on physical hardware until the new candidate is manually flashed.
+
 ## 1.5.0 - 2026-08-12
 
 - Corrected the DualSense USB/Bluetooth input offsets for buttons, motion,

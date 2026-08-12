@@ -353,7 +353,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
         case HCI_EVENT_PIN_CODE_REQUEST: {
             bd_addr_t address;
             hci_event_pin_code_request_get_bd_addr(packet, address);
-            gap_pin_code_negative(address);
+            // Some DualSense revisions still fall back to legacy PIN pairing.
+            // Only accept the fixed controller PIN during the explicit local
+            // pairing window or for an address already stored by BTstack.
+            if (pairing_window_active() || paired_address_known(address)) {
+                gap_pin_code_response(address, "0000");
+            } else {
+                gap_pin_code_negative(address);
+            }
             break;
         }
 

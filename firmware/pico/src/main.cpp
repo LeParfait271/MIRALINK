@@ -497,11 +497,24 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
     (void)instance;
     if (report_type != HID_REPORT_TYPE_FEATURE || report_id != kReportCommand) return;
-    if (bufsize != miralink::kHidReportBytes) {
+    if (buffer == nullptr) {
+        set_error(0, miralink::Command::Hello, "empty HID report");
+        return;
+    }
+    const auto* frame = buffer;
+    auto frame_length = bufsize;
+    // TinyUSB normally removes a duplicated report ID before invoking this
+    // callback. A few host stacks deliver the ID in the callback buffer, so
+    // accept that equivalent 65-byte form as well.
+    if (frame_length == miralink::kHidReportBytes + 1 && frame[0] == report_id) {
+        ++frame;
+        --frame_length;
+    }
+    if (frame_length != miralink::kHidReportBytes) {
         set_error(0, miralink::Command::Hello, "invalid HID report length");
         return;
     }
-    process_frame(buffer, bufsize);
+    process_frame(frame, frame_length);
 }
 
 }
