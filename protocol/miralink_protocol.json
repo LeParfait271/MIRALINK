@@ -22,7 +22,41 @@
     "RECONNECT_USB": 7,
     "GET_DIAGNOSTICS": 8,
     "GET_LOG_PAGE": 9,
-    "ENTER_RECOVERY": 10
+    "ENTER_RECOVERY": 10,
+    "GET_CONTROLLER_STATE": 11,
+    "OPEN_PAIRING_WINDOW": 12
+  },
+  "diagnostics": {
+    "payloadBytes": 3,
+    "schemaOffset": 0,
+    "configLoadedOffset": 1,
+    "usbMountedOffset": 2
+  },
+  "controllerState": {
+    "payloadBytes": 16,
+    "schema": 1,
+    "flags": {
+      "connected": 0,
+      "descriptorAvailable": 1,
+      "inputAvailable": 2,
+      "bluetoothAvailable": 3,
+      "pairingWindowOpen": 4
+    },
+    "transport": "pico-2-w-bluetooth-to-usb-hid-event"
+  },
+  "controllerAdapters": {
+    "dualsense": {
+      "model": "DualSense",
+      "vendorId": "0x054c",
+      "productId": "0x0ce6",
+      "wiredInputReportId": "0x01",
+      "wiredInputReportBytes": 64,
+      "transport": ["computer-direct-webhid", "pico-2-w-bluetooth-host"],
+      "status": "partial",
+      "bluetoothInputReportId": "0x31",
+      "bluetoothInputReportBytes": 78,
+      "bluetoothCrc": "crc32-seed-0xa1-little-endian"
+    }
   },
   "config": {
     "schema": 1,

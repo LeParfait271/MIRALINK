@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0 — 2026-08-12
+
+- Ajouté un parseur indépendant des rapports d’entrée USB filaires DualSense dans le cœur firmware.
+- Ajouté la détection et l’adaptateur WebHID local DualSense pour les rapports réels côté ordinateur.
+- Ajoutée la publication locale des échantillons Controller Lab via un événement dédié, sans stockage permanent ni sortie réseau.
+- Ajouté un hôte Bluetooth Classic HID Pico 2 W pour les rapports d’entrée DualSense `0x31`, avec vérification CRC.
+- Ajouté la commande `OPEN_PAIRING_WINDOW`, fermée au démarrage et activable localement pendant cinq minutes après confirmation.
+- Séparé les secteurs flash de configuration MiraLink et la banque locale de clés BTstack.
+- Recompilé le firmware source 0.6.0 avec le SDK Pico officiel et validé les tests C++ du parseur/protocole.
+- Ajouté le candidat UF2 local `firmware/releases/0.6.0/` avec SHA-256 ; aucun flash ni push n’a été effectué.
+- Corrigé l’identification : un HID inconnu n’est plus présenté comme une manette MiraLink.
+- Corrigé le décodage binaire de HELLO et des diagnostics ; les capacités radio et audio restent explicitement indisponibles.
+- Aucun fichier visuel ni `app/dist/` n’a été modifié ; aucun flash ni test matériel réel n’a été effectué ou déclaré.
+
 ## 0.5.0 — 2026-08-12
 
 - Ajouté le garde d’actions local pour le mode lecture seule, le verrouillage et les confirmations.

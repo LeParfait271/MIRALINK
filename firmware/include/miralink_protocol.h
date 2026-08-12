@@ -23,7 +23,9 @@ enum class Command : std::uint8_t {
     ReconnectUsb = 0x07,
     GetDiagnostics = 0x08,
     GetLogPage = 0x09,
-    EnterRecovery = 0x0a
+    EnterRecovery = 0x0a,
+    GetControllerState = 0x0b,
+    OpenPairingWindow = 0x0c
 };
 
 struct Frame {

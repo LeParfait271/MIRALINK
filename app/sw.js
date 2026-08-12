@@ -1,4 +1,4 @@
-const CACHE = 'miralink-shell-0.5.0-ui4';
+const CACHE = 'miralink-shell-0.6.0-ui5';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/input-mapping.js', './src/emergency-mode.js',

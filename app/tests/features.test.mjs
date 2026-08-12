@@ -82,6 +82,13 @@ import {
   summarizeSession
 } from '../src/session-recorder.js';
 import { benchmarkConnection, detectLocalAnomalies } from '../src/health-analysis.js';
+import {
+  DUALSENSE_PRODUCT_ID,
+  DUALSENSE_USB_REPORT_ID,
+  DUALSENSE_VENDOR_ID,
+  isDualSenseDevice,
+  parseDualSenseInputReport
+} from '../src/dualsense.js';
 
 function sample({ leftX = 0, leftY = 0, rightX = 0, rightY = 0, leftTrigger = 0, rightTrigger = 0 } = {}) {
   return { leftStick: { x: leftX, y: leftY }, rightStick: { x: rightX, y: rightY }, leftTrigger, rightTrigger };
@@ -95,6 +102,37 @@ function memoryStorage() {
     removeItem: (key) => data.delete(key)
   };
 }
+
+test('DualSense USB reports decode into hardware input samples', () => {
+  const report = new Uint8Array(64);
+  report[0] = DUALSENSE_USB_REPORT_ID;
+  report[1] = 128;
+  report[2] = 255;
+  report[3] = 0;
+  report[4] = 64;
+  report[5] = 64;
+  report[6] = 255;
+  report[7] = 0x30;
+  report[8] = 0x03;
+  report[9] = 0x01;
+  const parsed = parseDualSenseInputReport(report, { timestamp: '2026-08-12T00:00:00.000Z' });
+  assert.equal(parsed.source, 'hardware');
+  assert.equal(parsed.hardwareTested, true);
+  assert.equal(parsed.buttons.cross, true);
+  assert.equal(parsed.buttons.square, true);
+  assert.equal(parsed.buttons.l1, true);
+  assert.equal(parsed.buttons.r1, true);
+  assert.equal(parsed.buttons.ps, true);
+  assert.equal(parsed.leftTrigger, 64 / 255);
+  assert.equal(parsed.rightStick.x, -1);
+  const payloadOnly = report.subarray(1);
+  assert.equal(parseDualSenseInputReport(payloadOnly, { reportId: DUALSENSE_USB_REPORT_ID }).buttons.cross, true);
+});
+
+test('DualSense identification is restricted to the Sony model identity', () => {
+  assert.equal(isDualSenseDevice({ vendorId: DUALSENSE_VENDOR_ID, productId: DUALSENSE_PRODUCT_ID }), true);
+  assert.equal(isDualSenseDevice({ vendorId: DUALSENSE_VENDOR_ID, productId: 0x0001, productName: 'Generic controller' }), false);
+});
 
 test('built-in profiles are limited to competitive, basic and economy', () => {
   const profiles = createBuiltInProfiles();

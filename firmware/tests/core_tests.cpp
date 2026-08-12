@@ -1,5 +1,6 @@
 #include "miralink_config.h"
 #include "miralink_config_store.h"
+#include "miralink_dualsense.h"
 #include "miralink_protocol.h"
 
 #include <cassert>
@@ -52,7 +53,57 @@ void test_store_requires_validated_commit() {
     ConfigStore restored(flash); assert(restored.load()); assert(restored.active().audio_buffer_length == 64);
 }
 
+void test_dualsense_usb_report_parser() {
+    std::vector<std::uint8_t> report(miralink::dualsense::kUsbInputReportBytes, 0);
+    report[0] = miralink::dualsense::kUsbInputReportId;
+    report[1] = 128;
+    report[2] = 255;
+    report[3] = 0;
+    report[4] = 64;
+    report[5] = 64;
+    report[6] = 255;
+    report[7] = 0x30;
+    report[8] = 0x03;
+    report[9] = 0x01;
+    const auto parsed = miralink::dualsense::parse_usb_input_report(report);
+    assert(parsed);
+    (void)parsed;
+    assert(parsed.state.left_x == 128);
+    assert(parsed.state.right_x == 0);
+    assert(parsed.state.left_trigger == 64);
+    assert(parsed.state.dpad_face == 0x30);
+    assert(miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, miralink::dualsense::kDualSenseProductId));
+    assert(!miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, 0x0001));
+}
+
+void test_dualsense_bluetooth_report_parser() {
+    std::vector<std::uint8_t> report(miralink::dualsense::kBluetoothInputReportBytes, 0);
+    report[0] = miralink::dualsense::kBluetoothInputReportId;
+    report[2] = 128;
+    report[3] = 255;
+    report[4] = 0;
+    report[5] = 64;
+    report[6] = 64;
+    report[7] = 255;
+    report[8] = 0x30;
+    report[9] = 0x03;
+    report[10] = 0x01;
+    const auto crc = miralink::dualsense::bluetooth_input_crc32(report);
+    report[74] = static_cast<std::uint8_t>(crc & 0xff);
+    report[75] = static_cast<std::uint8_t>((crc >> 8u) & 0xff);
+    report[76] = static_cast<std::uint8_t>((crc >> 16u) & 0xff);
+    report[77] = static_cast<std::uint8_t>((crc >> 24u) & 0xff);
+    const auto parsed = miralink::dualsense::parse_bluetooth_input_report(report);
+    assert(parsed);
+    (void)parsed;
+    assert(parsed.state.left_x == 128);
+    assert(parsed.state.right_x == 0);
+    assert(parsed.state.dpad_face == 0x30);
+    report[12] ^= 1;
+    assert(miralink::dualsense::parse_bluetooth_input_report(report).error == miralink::dualsense::InputReportError::InvalidCrc);
+}
+
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser();
     std::cout << "MiraLink core tests passed\n";
 }

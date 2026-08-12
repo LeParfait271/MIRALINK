@@ -24,6 +24,15 @@ constexpr std::uint8_t kEndpointIn = 0x81;
     HID_REPORT_COUNT(64), \
     HID_FEATURE(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
 
+#define MIRALINK_INPUT_REPORT(_id, _usage) \
+    HID_REPORT_ID(_id) \
+    HID_USAGE(_usage), \
+    HID_LOGICAL_MIN(0x00), \
+    HID_LOGICAL_MAX_N(0xff, 2), \
+    HID_REPORT_SIZE(8), \
+    HID_REPORT_COUNT(64), \
+    HID_INPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
+
 constexpr std::uint8_t kReportDescriptor[] = {
     HID_USAGE_PAGE_N(HID_USAGE_PAGE_VENDOR, 2),
     HID_USAGE(0x01),
@@ -31,10 +40,12 @@ constexpr std::uint8_t kReportDescriptor[] = {
     MIRALINK_FEATURE_REPORT(kReportCommand, 0x02)
     MIRALINK_FEATURE_REPORT(kReportResponse, 0x03)
     MIRALINK_FEATURE_REPORT(kReportEvent, 0x04)
+    MIRALINK_INPUT_REPORT(kReportEvent, 0x05)
     HID_COLLECTION_END
 };
 
 #undef MIRALINK_FEATURE_REPORT
+#undef MIRALINK_INPUT_REPORT
 } // namespace
 
 extern "C" {

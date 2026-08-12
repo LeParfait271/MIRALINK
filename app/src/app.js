@@ -5,14 +5,19 @@ import {
   ProtocolError,
   assertValidConfig,
   decodeConfig,
+  decodeControllerStatePayload,
+  decodeDiagnosticsPayload,
   decodeFrame,
+  decodeHelloPayload,
   defaultConfig,
   encodeConfig,
-  encodeFrame
+  encodeFrame,
+  RESPONSE_FLAGS
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
 import { applyTranslations, setupLanguage, translate } from './i18n.js';
 import { parseUf2 } from './uf2.js';
+import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 
 const state = {
   devices: new Map(),
@@ -21,7 +26,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.5.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
+  version: { version: '0.6.0', developer: 'MaruChiwa', lastUpdated: '2026-08-12' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -186,9 +191,14 @@ async function transact(entry, command, payload = new Uint8Array(), timeoutMs = 
     const cleanup = () => { clearTimeout(timer); entry.device.removeEventListener('inputreport', onReport); };
     const onReport = (event) => {
       if (event.device !== entry.device) return;
+      if (event.reportId !== undefined && event.reportId !== REPORT_IDS.response) return;
       try {
         const response = decodeFrame(event.data);
         if (response.sequence !== sequence) return;
+        if (response.flags & RESPONSE_FLAGS.error) {
+          const message = new TextDecoder().decode(response.payload).replace(/[\0\s]+$/g, '') || 'Device rejected the command.';
+          cleanup(); reject(new ProtocolError(message, 'device_error')); return;
+        }
         cleanup(); resolve(response);
       } catch (error) { cleanup(); reject(error); }
     };
@@ -199,14 +209,51 @@ async function transact(entry, command, payload = new Uint8Array(), timeoutMs = 
 }
 
 async function identify(entry) {
+  if (isDualSenseDevice(entry.device)) {
+    entry.kind = 'controller';
+    entry.kindLabel = 'DualSense controller';
+    entry.transport = 'usb';
+    entry.adapter = createDualSenseAdapter(entry.device, {
+      onSample: (sample) => {
+        entry.sampleCount = (entry.sampleCount || 0) + 1;
+        entry.lastSample = sample;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample } }));
+      },
+      onError: (error) => addLog('error', `${entry.label} input report rejected: ${error.message}`)
+    });
+    entry.adapter.start();
+    entry.state = 'ready';
+    addLog('info', `${entry.label} identified as a DualSense controller. Wired input is available; haptics and adaptive triggers are not implemented.`);
+    return;
+  }
   try {
     const response = await transact(entry, COMMANDS.hello);
-    entry.kind = 'bridge'; entry.kindLabel = 'MiraLink bridge'; entry.firmwareVersion = new TextDecoder().decode(response.payload).replace(/[\0\s]+$/g, '') || 'unknown';
+    const hello = decodeHelloPayload(response.payload);
+    entry.kind = 'bridge'; entry.kindLabel = 'MiraLink bridge'; entry.firmwareVersion = `protocol ${hello.protocolVersion}`; entry.hello = hello;
+    entry.transport = 'usb';
     entry.state = 'ready';
     addLog('info', `${entry.label} identified as MiraLink bridge.`);
-  } catch {
-    entry.kind = 'controller'; entry.kindLabel = 'Controller adapter'; entry.state = 'ready';
-    addLog('info', `${entry.label} is available to the controller workspace.`);
+  } catch (error) {
+    entry.kind = 'unknown'; entry.kindLabel = 'Unsupported HID device'; entry.state = 'error'; entry.error = error.message;
+    addLog('error', `${entry.label} is not a MiraLink bridge or supported DualSense: ${error.message}`);
+  }
+}
+
+function handleBridgeEvent(entry, event) {
+  if (event.device !== entry.device || event.reportId !== REPORT_IDS.event) return;
+  try {
+    const frame = decodeFrame(event.data);
+    if (frame.command !== COMMANDS.getControllerState) return;
+    const state = decodeControllerStatePayload(frame.payload);
+    entry.controllerState = state;
+    if (state.sample) {
+      entry.sampleCount = (entry.sampleCount || 0) + 1;
+      entry.lastSample = state.sample;
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample: state.sample } }));
+    }
+    if (!state.inputAvailable) entry.lastSample = null;
+  } catch (error) {
+    addLog('error', `${entry.label} controller event rejected: ${error.message}`);
   }
 }
 
@@ -214,7 +261,9 @@ async function registerDevice(device) {
   const existing = [...state.devices.values()].find((entry) => entry.device === device);
   if (existing) { state.activeDeviceId = existing.id; renderDevices(); return; }
   const id = `device-${Date.now()}-${state.devices.size + 1}`;
-  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null };
+  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null, adapter: null, sampleCount: 0, controllerState: null, lastSample: null };
+  entry.eventHandler = (event) => handleBridgeEvent(entry, event);
+  device.addEventListener('inputreport', entry.eventHandler);
   state.devices.set(id, entry); state.activeDeviceId = id; renderDevices(); setGlobalStatus('Connecting', 'busy');
   try { if (!device.opened) await device.open(); await identify(entry); } catch (error) { entry.state = 'error'; addLog('error', `Device connection failed: ${error.message}`); }
   renderDevices(); updateUiForActiveDevice(); setGlobalStatus(entry.state === 'ready' ? 'Ready' : 'Error', entry.state === 'ready' ? 'idle' : 'error');
@@ -224,7 +273,7 @@ async function connectDevice() {
   if (!hasHid()) { $('#hid-warning').hidden = false; addLog('error', 'WebHID is unavailable in this browser.'); return; }
   try {
     setGlobalStatus('Waiting for device', 'busy');
-    const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: HID_USAGE_PAGE }] });
+    const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: HID_USAGE_PAGE }, ...dualSenseWebHidFilters()] });
     for (const device of devices) await registerDevice(device);
     if (!devices.length) setGlobalStatus('Ready', 'idle');
   } catch (error) { setGlobalStatus('Error', 'error'); addLog('error', `Device request cancelled or failed: ${error.message}`); }
@@ -238,6 +287,8 @@ async function refreshDevices() {
 async function disconnectEntry(id) {
   const entry = state.devices.get(id);
   if (!entry) return;
+  try { entry.adapter?.stop(); } catch (error) { addLog('error', `Controller adapter stop failed: ${error.message}`); }
+  entry.device.removeEventListener('inputreport', entry.eventHandler);
   try { if (entry.device.opened) await entry.device.close(); } catch (error) { addLog('error', `Close failed: ${error.message}`); }
   state.devices.delete(id); if (state.activeDeviceId === id) state.activeDeviceId = state.devices.keys().next().value || null;
   state.draft = null; state.savedConfig = null; renderDevices(); updateUiForActiveDevice(); addLog('info', `${entry.label} disconnected.`);
@@ -295,7 +346,44 @@ async function runDiagnostics() {
   const entry = activeEntry();
   for (const node of $$('[data-diagnostic]')) node.textContent = entry ? '…' : 'No device';
   if (!entry) { $('#diagnostic-summary').textContent = 'Connect a device before running diagnostics.'; return; }
-  try { const response = await transact(entry, COMMANDS.getDiagnostics); const text = new TextDecoder().decode(response.payload) || 'Device answered.'; for (const node of $$('[data-diagnostic]')) node.textContent = 'PASS'; $('#diagnostic-summary').textContent = text; addLog('info', 'Diagnostics completed.'); } catch (error) { for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable'; $('#diagnostic-summary').textContent = `Diagnostics could not complete: ${error.message}`; addLog('error', `Diagnostics failed: ${error.message}`); }
+  if (entry.kind !== 'bridge') {
+    for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';
+    $('#diagnostic-summary').textContent = 'Direct controller input is available, but MiraLink bridge diagnostics require a connected Pico 2 W.';
+    addLog('info', 'Diagnostics unavailable for a direct controller connection.');
+    return;
+  }
+  try {
+    const response = await transact(entry, COMMANDS.getDiagnostics);
+    const diagnostics = decodeDiagnosticsPayload(response.payload);
+    $('[data-diagnostic="usb"]').textContent = diagnostics.usbMounted ? 'PASS' : 'FAIL';
+    $('[data-diagnostic="radio"]').textContent = 'Unavailable';
+    $('[data-diagnostic="audio"]').textContent = 'Unavailable';
+    $('[data-diagnostic="storage"]').textContent = diagnostics.configLoaded ? 'PASS' : 'Not tested';
+    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; radio and audio are not implemented in this firmware.`;
+    addLog('info', 'Diagnostics completed with capability limits reported.');
+  } catch (error) {
+    for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';
+    $('#diagnostic-summary').textContent = `Diagnostics could not complete: ${error.message}`;
+    addLog('error', `Diagnostics failed: ${error.message}`);
+  }
+}
+
+async function openPairingWindow() {
+  const entry = activeEntry();
+  if (!entry || entry.kind !== 'bridge') {
+    addLog('error', 'Connect a MiraLink bridge before opening its Bluetooth pairing window.');
+    return;
+  }
+  if (!await askConfirmation('Open the Pico 2 W Bluetooth pairing window for five minutes?')) return;
+  try {
+    setGlobalStatus('Pairing window', 'busy');
+    await transact(entry, COMMANDS.openPairingWindow);
+    addLog('info', 'Bluetooth pairing window opened locally for five minutes.');
+    setGlobalStatus('Ready', 'idle');
+  } catch (error) {
+    setGlobalStatus('Error', 'error');
+    addLog('error', `Bluetooth pairing window failed: ${error.message}`);
+  }
 }
 
 function init() {
@@ -304,6 +392,7 @@ function init() {
   $$('.tab-button').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.tab)));
   $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
   wireDraftControls();
+  window.addEventListener('miralink:open-pairing-window', openPairingWindow);
   if (!hasHid()) $('#hid-warning').hidden = false;
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));

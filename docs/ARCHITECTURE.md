@@ -23,7 +23,7 @@ The application is a local static web application with no runtime dependency on 
 The firmware owns:
 
 - Pico 2 W hardware initialization;
-- controller radio transport;
+- controller radio transport when a validated Pico-side transport is present;
 - USB HID exposure;
 - MiraLink command transport;
 - configuration validation and flash persistence;
@@ -48,6 +48,18 @@ Each controller family has an adapter with:
 - error mapping;
 - test fixtures.
 
+The first DualSense tranche adds a standalone wired USB report parser to the
+firmware core and a local WebHID input adapter in the application. The Pico 2 W
+firmware also contains a Classic HID host path for the DualSense Bluetooth
+input report (`0x31`, CRC checked) and relays validated samples back over a
+typed USB event report. Bluetooth discoverability is closed at boot and can
+only be opened through the confirmation-gated local pairing command.
+
+This is still an input-only tranche: battery, audio, haptics and adaptive
+triggers remain unavailable unless a real capability is negotiated and tested.
+The direct WebHID path and the Pico bridge path are kept distinct so a direct
+controller connection cannot be presented as a Pico hardware test.
+
 One adapter failure must not corrupt the state of another device.
 
 ## 3. State model
@@ -64,6 +76,9 @@ The UI must expose the state and the reason for an error. A device cannot receiv
 - The firmware reserves two independent flash sectors for configuration records.
   Each record carries a schema, generation and CRC; a new record is written to
   the inactive sector, read back and validated before it becomes active.
+- BTstack's local Bluetooth link-key bank is kept in a separate SDK-managed
+  flash area; the MiraLink configuration sectors are deliberately offset to
+  avoid overlap.
 - The application stores only local preferences, draft changes and user-created backups.
 - Backup files contain a schema version, device type, export date and checksum.
 - Serial numbers and addresses are masked by default.

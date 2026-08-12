@@ -6,6 +6,7 @@ export const MAX_PAYLOAD = HID_REPORT_BYTES - FRAME_OVERHEAD_BYTES - 3;
 export const HID_USAGE_PAGE = 0xff00;
 
 export const REPORT_IDS = Object.freeze({ command: 0x01, response: 0x02, event: 0x03 });
+export const RESPONSE_FLAGS = Object.freeze({ response: 1 << 0, error: 1 << 1 });
 export const COMMANDS = Object.freeze({
   hello: 0x01,
   getInfo: 0x02,
@@ -16,7 +17,9 @@ export const COMMANDS = Object.freeze({
   reconnectUsb: 0x07,
   getDiagnostics: 0x08,
   getLogPage: 0x09,
-  enterRecovery: 0x0a
+  enterRecovery: 0x0a,
+  getControllerState: 0x0b,
+  openPairingWindow: 0x0c
 });
 
 export const CONFIG_SCHEMA = 1;
@@ -98,6 +101,68 @@ export function decodeFrame(input) {
     sequence: view.getUint16(4, true),
     command: frame[6],
     payload: frame.slice(9, 9 + payloadLength)
+  });
+}
+
+export function decodeHelloPayload(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length !== 4) throw new ProtocolError('HELLO payload is invalid', 'invalid_hello_payload');
+  return Object.freeze({ protocolVersion: bytes[0], configSchema: bytes[1], transportVersion: bytes[2], featureFlags: bytes[3] });
+}
+
+export function decodeDiagnosticsPayload(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length !== 3) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
+  return Object.freeze({ schema: bytes[0], configLoaded: Boolean(bytes[1]), usbMounted: Boolean(bytes[2]) });
+}
+
+export function decodeControllerStatePayload(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length !== 16 || bytes[0] !== 1) throw new ProtocolError('Controller state payload is invalid', 'invalid_controller_state_payload');
+  const flags = bytes[1];
+  const inputAvailable = Boolean(flags & (1 << 2));
+  const dpadFace = bytes[9];
+  const dpadStates = [
+    { up: true, right: false, down: false, left: false },
+    { up: true, right: true, down: false, left: false },
+    { up: false, right: true, down: false, left: false },
+    { up: false, right: true, down: true, left: false },
+    { up: false, right: false, down: true, left: false },
+    { up: false, right: false, down: true, left: true },
+    { up: false, right: false, down: false, left: true },
+    { up: true, right: false, down: false, left: true },
+    { up: false, right: false, down: false, left: false }
+  ];
+  const axis = (value) => (value / 127.5) - 1;
+  const pressed = (value, bit) => Boolean(value & (1 << bit));
+  const sample = inputAvailable ? Object.freeze({
+    timestamp: new Date().toISOString(),
+    source: 'hardware',
+    hardwareTested: true,
+    testStatus: 'available',
+    transport: flags & (1 << 3) ? 'bluetooth' : 'unknown',
+    reportId: bytes[2],
+    leftStick: Object.freeze({ x: axis(bytes[3]), y: axis(bytes[4]) }),
+    rightStick: Object.freeze({ x: axis(bytes[5]), y: axis(bytes[6]) }),
+    leftTrigger: bytes[7] / 255,
+    rightTrigger: bytes[8] / 255,
+    buttons: Object.freeze({
+      dpad: Object.freeze(dpadStates[dpadFace & 0x0f] || dpadStates[8]),
+      square: pressed(dpadFace, 4), cross: pressed(dpadFace, 5), circle: pressed(dpadFace, 6), triangle: pressed(dpadFace, 7),
+      l1: pressed(bytes[10], 0), r1: pressed(bytes[10], 1), l2: pressed(bytes[10], 2), r2: pressed(bytes[10], 3),
+      create: pressed(bytes[10], 4), options: pressed(bytes[10], 5), l3: pressed(bytes[10], 6), r3: pressed(bytes[10], 7),
+      ps: pressed(bytes[11], 0), touchpad: pressed(bytes[11], 1), mute: pressed(bytes[11], 2)
+    }),
+    capabilities: Object.freeze({ input: 'supported', battery: 'unavailable', haptics: 'not-implemented', adaptiveTriggers: 'not-implemented', calibration: 'local-analysis-only' })
+  }) : null;
+  return Object.freeze({
+    schema: bytes[0],
+    connected: Boolean(flags & (1 << 0)),
+    descriptorAvailable: Boolean(flags & (1 << 1)),
+    inputAvailable,
+    bluetoothAvailable: Boolean(flags & (1 << 3)),
+    pairingWindowOpen: Boolean(flags & (1 << 4)),
+    sample
   });
 }
 

@@ -4,7 +4,10 @@ import {
   COMMANDS,
   ProtocolError,
   assertValidConfig,
+  decodeControllerStatePayload,
   decodeConfig,
+  decodeDiagnosticsPayload,
+  decodeHelloPayload,
   decodeFrame,
   defaultConfig,
   encodeConfig,
@@ -35,6 +38,37 @@ test('frame padding rejects non-zero bytes', () => {
   const frame = encodeFrame({ sequence: 1, command: COMMANDS.getInfo });
   frame[63] = 1;
   assert.throws(() => decodeFrame(frame), /padding/i);
+});
+
+test('HELLO payload is decoded as structured binary data', () => {
+  assert.deepEqual(decodeHelloPayload(Uint8Array.from([1, 1, 1, 0])), {
+    protocolVersion: 1,
+    configSchema: 1,
+    transportVersion: 1,
+    featureFlags: 0
+  });
+});
+
+test('diagnostics payload keeps unavailable capabilities out of binary status', () => {
+  assert.deepEqual(decodeDiagnosticsPayload(Uint8Array.from([1, 1, 1])), { schema: 1, configLoaded: true, usbMounted: true });
+  assert.throws(() => decodeDiagnosticsPayload(Uint8Array.from([1])), /diagnostics/i);
+});
+
+test('controller state payload exposes Bluetooth input without inventing unsupported capabilities', () => {
+  const payload = Uint8Array.from([1, 0x0f, 0x31, 128, 255, 0, 64, 32, 224, 0x30, 0x03, 0x01, 0, 0, 0, 0]);
+  const decoded = decodeControllerStatePayload(payload);
+  assert.equal(decoded.connected, true);
+  assert.equal(decoded.bluetoothAvailable, true);
+  assert.equal(decoded.pairingWindowOpen, false);
+  assert.equal(decoded.sample.transport, 'bluetooth');
+  assert.equal(decoded.sample.buttons.cross, true);
+  assert.equal(decoded.sample.buttons.square, true);
+  assert.equal(decoded.sample.capabilities.haptics, 'not-implemented');
+});
+
+test('controller state exposes an explicitly opened pairing window', () => {
+  const payload = Uint8Array.from([1, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.equal(decodeControllerStatePayload(payload).pairingWindowOpen, true);
 });
 
 test('configuration round trip preserves all fields', () => {

@@ -43,6 +43,54 @@ or the command is not supported.
 - `GET_DIAGNOSTICS` — return structured health data.
 - `GET_LOG_PAGE` — return bounded local diagnostic records.
 - `ENTER_RECOVERY` — enter a documented recovery state after confirmation.
+- `GET_CONTROLLER_STATE` — return the latest validated Pico-side controller state.
+- `OPEN_PAIRING_WINDOW` — open the Pico Bluetooth pairing window after an explicit local confirmation.
+
+### 3.1 Current diagnostics payload
+
+`GET_DIAGNOSTICS` currently returns exactly three bytes, not text:
+
+| Offset | Meaning |
+|---:|---|
+| 0 | Diagnostics schema (`1`) |
+| 1 | Configuration loaded from a valid flash record (`0` or `1`) |
+| 2 | MiraLink USB device mounted (`0` or `1`) |
+
+Radio and audio are not represented as successful merely because the Pico
+answered; the application reports them as unavailable until a real source is
+implemented.
+
+### 3.2 Pico controller state payload
+
+`GET_CONTROLLER_STATE` and event report `0x03` use a 16-byte payload:
+
+| Offset | Meaning |
+|---:|---|
+| 0 | State schema (`1`) |
+| 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4` |
+| 2 | Controller report ID |
+| 3..6 | Left X/Y and right X/Y, raw bytes `0..255` |
+| 7..8 | Left and right trigger, raw bytes `0..255` |
+| 9 | D-pad and face-button byte |
+| 10 | Shoulder, stick and option-button byte |
+| 11 | System, touchpad and mute-button byte |
+| 12..15 | Reserved and zero-filled |
+
+The event is persistent only in the current USB transfer; the firmware does
+not record controller input in flash.
+
+`OPEN_PAIRING_WINDOW` is confirmation-gated by the application and lasts five
+minutes. It does not flash firmware or write configuration. Incoming HID
+connections outside that window are declined.
+
+### 3.3 DualSense adapter boundary
+
+The application can identify a standard wired DualSense locally through Sony
+VID `0x054c` and product ID `0x0ce6`, then decode its USB input report ID
+`0x01` into local Controller Lab samples. This is a direct computer-to-controller
+adapter for software verification; it is not the Pico bridge path. The Pico
+host accepts the Bluetooth input report ID `0x31` only after length and CRC
+validation. No battery, haptics or adaptive-trigger output is claimed.
 
 ## 4. Configuration record
 

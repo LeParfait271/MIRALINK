@@ -1,29 +1,65 @@
 # MiraLink validation log
 
 Date: `2026-08-12`
-Version: `0.2.0`
+Version: `0.6.0` source and local firmware candidate; historical firmware artifact `0.2.0`
 Developer: `MaruChiwa`
-Scope: local software and firmware build only
+Scope: local software checks and firmware source inspection
+
+## 0.6.0 software checks
+
+- JavaScript tests: `50` passed.
+- JavaScript syntax checks: application, protocol and DualSense adapter passed.
+- DualSense parser fixture: wired report identity, sticks, triggers and button
+  bits passed locally.
+- Application and firmware source changes were kept outside the visual files
+  and `app/dist/`.
+
+## 0.6.0 boundaries
+
+- The Pico 2 W firmware source was rebuilt locally with Pico SDK `2.3.0` and
+  Arm GNU Toolchain `15.2.1`; the build produced ELF/BIN/HEX outputs.
+- A local 0.6.0 UF2 was packaged with the official `picotool` 2.3.0; it was
+  not flashed or published.
+- No Pico 2 W or DualSense was connected, so no hardware result is claimed.
+- The direct WebHID adapter and Pico-side Bluetooth HID host have software
+  fixtures, but neither path has been validated with a real device in this
+  session.
 
 ## Passed
 
 - JavaScript protocol tests: 6 passed.
 - JavaScript UF2 tests: 4 passed.
 - JavaScript syntax checks: `app.js`, `protocol.js`, `storage.js`, `i18n.js` passed.
-- Local application build: `MiraLink 0.2.0 built`.
+- Historical local application build: `MiraLink 0.2.0 built`.
 - Local browser check: 7 tabs visible, Bridge controls present, Firmware panel
   present, backup file input present, no console errors.
 - Pico 2 W configure/build: ARM GCC 15.2.1, SDK 2.3.0, board `pico2_w`,
-  RP2350 ARM Secure target; build completed.
-- `picotool` inspection: firmware name `MiraLink Pico 2 W`, version `0.2.0`,
+  RP2350 ARM Secure target; build completed with the Classic HID host and
+  confirmation-gated pairing command.
+- Firmware source outputs were produced in the ignored `firmware/pico/build-btstack2/`
+  directory. The C++ core test executable was built with LLVM-MinGW and passed
+  `ctest` (1/1).
+- The packaged candidate is `firmware/releases/0.6.0/miralink_pico_firmware.uf2`,
+  852480 bytes, with SHA-256
+  `BA7A89F0F759BEB1A53E806178FBF885F15843AEDA41B5BF6D5BC910F78C83A5`.
+- SHA-256 of the local source outputs: ELF
+  `2C948F0088CCD54AA19117A6F843D98C4812245EFAF379C2938043C581B3C9E4`, BIN
+  `D85DF3D369788ADD02FC6AE87C313344A965AA6F39E86EE54B41AD6D0BF3B9B7`, HEX
+  `68600F4D97CA34D494D99C8A22A0F58E466F93786F6D93537D44BE849895E8E0`.
+- Historical `picotool` inspection: firmware name `MiraLink Pico 2 W`, version `0.2.0`,
   target `RP2350`, board `pico2_w`, SDK `2.3.0`.
 - MiraLink UF2 parser: `338` program blocks, `173568` bytes, accepted.
 - ARM toolchain archive: MD5 verified before extraction.
 
 ## Generated artifacts
 
-The verified `firmware/releases/0.2.0/` directory contains the copied release
-artifacts from the local Pico build:
+The local 0.6.0 manual-test candidate contains:
+
+- `firmware/releases/0.6.0/miralink_pico_firmware.uf2` — `852480` bytes;
+- `firmware/releases/0.6.0/SHA256SUMS.txt` — checksum manifest.
+
+The historical `firmware/releases/0.2.0/` directory contains the copied release
+artifacts from the earlier local Pico build:
 
 - `miralink_pico_firmware.elf` — `994620` bytes;
 - `miralink_pico_firmware.bin` — `86412` bytes;
@@ -37,8 +73,7 @@ artifacts from the local Pico build:
 - No UF2 was flashed.
 - No production USB VID/PID has been assigned; the current identity is
   development-only.
-- Bluetooth, audio, controller adapters, recovery UX and full hardware
-  diagnostics are not yet validated.
-- The C++ host test executable was not run because no native Windows C++
-  compiler is installed; the same core sources were compiled as part of the
-  real ARM firmware build.
+- Audio, recovery UX and full hardware diagnostics are not yet validated.
+- Bluetooth host behavior, pairing, input reports and flash persistence still
+  require a real Pico 2 W and DualSense test; the software build alone is not a
+  hardware claim.

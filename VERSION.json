@@ -1,6 +1,6 @@
 {
   "product": "MiraLink",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-12",
   "versionRule": "Increase the minor version by 0.1 for every commit that changes the project."

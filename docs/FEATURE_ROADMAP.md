@@ -7,7 +7,7 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
 - État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 0.5.0
+- Version produit concernée : 0.6.0
 - Date : 2026-08-12
 
 ## 1. Décisions transversales
@@ -48,7 +48,7 @@ Une lecture peut être automatique. Une écriture persistante ne l’est jamais 
 
 Les actions qui peuvent couper une liaison, modifier le firmware, réinitialiser une configuration ou déclencher une vibration nécessitent une confirmation distincte.
 
-### 1.4 Contrat de protocole proposé
+### 1.4 Contrat de protocole proposé et tranche 0.6.0
 
 Les commandes suivantes sont des propositions et ne doivent pas être ajoutées au firmware avant validation du modèle de données :
 
@@ -66,6 +66,13 @@ Les commandes suivantes sont des propositions et ne doivent pas être ajoutées 
 | Historique | `GET_CONFIG_HISTORY_PAGE`, `RESTORE_CONFIG_REVISION` | Historique local ou révision persistée, après confirmation |
 
 Chaque commande doit être bornée en taille, associée à une capacité, protégée par séquence/CRC, rejetée si non supportée et testée contre les paquets malformés. Les commandes de configuration restent distinctes des commandes de test.
+
+La tranche 0.6.0 implémente déjà `GET_CONTROLLER_STATE` et `OPEN_PAIRING_WINDOW`.
+Le Pico 2 W héberge le transport Bluetooth Classic HID DualSense en entrée,
+publie des événements de contrôleur sur USB et garde la découvrabilité fermée
+au démarrage. L’ouverture de la fenêtre d’appairage reste une action locale
+confirmée ; le branchement au bouton visible est laissé à la conversation qui
+travaille sur le visuel.
 
 ### 1.5 Limites Pico 2 W
 
@@ -737,7 +744,12 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [x] Enregistrement temporaire de sessions avec rétention bornée et export contrôlé.
 - [x] Benchmark local de latence avec score explicable et gestion des composantes absentes.
 - [x] Détection locale de dérive et de batterie anormale avec statut de preuve.
-- [x] 44 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
+- [x] 50 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
+- [x] Parseur indépendant des rapports USB filaires DualSense et adaptateur WebHID local ; les capacités non implémentées restent signalées.
+- [x] Parseur Bluetooth DualSense `0x31` avec CRC, hôte Bluetooth Classic HID Pico 2 W et relais d’événements USB compilés.
+- [x] Appairage fermé au démarrage, commande locale de fenêtre de cinq minutes et séparation des secteurs flash MiraLink/BTstack.
+- [x] Rebuild ARM du firmware 0.6.0 et test C++ natif du cœur protocole/parseurs validés.
+- [x] Candidat UF2 0.6.0 empaqueté localement avec picotool 2.3.0 et SHA-256 ; flash manuel et test matériel restent à faire.
 - [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
 
 ### Prochaines tâches, dans l’ordre
@@ -748,6 +760,8 @@ Cette liste sépare les éléments réellement contrôlés dans le dépôt des i
 - [ ] Connecter la batterie réelle lorsqu’une capacité fiable est négociée ; sinon afficher `indisponible` ou `non testé`.
 - [ ] Ajouter la règle d’automatisation locale Basique → Économie avec préférence désactivable et journal lisible.
 - [ ] Brancher Controller Lab aux rapports réels des manettes, sans transformer les échantillons synthétiques en test matériel.
+- [ ] Brancher l’événement d’échantillon DualSense au parcours visible du Controller Lab, sans modifier le statut matériel.
+- [ ] Brancher le bouton visible de fenêtre d’appairage à l’événement `miralink:open-pairing-window`, avec confirmation déjà imposée par le cœur applicatif.
 - [ ] Construire la carte ordinateur → Pico 2 W → manette avec transport, reconnexion et erreurs.
 - [ ] Construire le cockpit local avec métriques sourcées, statuts de capacité et graphiques bornés.
 - [ ] Construire l'interface de l'assistant de diagnostic guidé et ses rapports locaux anonymisés.

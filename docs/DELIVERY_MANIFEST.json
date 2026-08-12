@@ -1,16 +1,40 @@
 {
   "product": "MiraLink",
-  "version": "0.2.0",
+  "version": "0.6.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-12",
-  "delivery": "local-only",
-  "application": "app/dist",
+  "delivery": "local-source-only",
+  "application": "app/src",
   "validatedFirmware": {
+    "sourceStatus": "historical-artifact",
+    "version": "0.2.0",
     "directory": "firmware/releases/0.2.0",
     "uf2": "firmware/releases/0.2.0/miralink_pico_firmware.uf2",
     "elf": "firmware/releases/0.2.0/miralink_pico_firmware.elf",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure"
+  },
+  "sourceBuild": {
+    "sourceStatus": "compiled-locally-no-uf2",
+    "version": "0.6.0",
+    "directory": "firmware/pico/build-btstack2",
+    "board": "pico2_w",
+    "target": "RP2350 ARM Secure",
+    "sdk": "2.3.0",
+    "armToolchain": "15.2.1",
+    "outputs": ["miralink_pico_firmware.elf", "miralink_pico_firmware.bin", "miralink_pico_firmware.hex"],
+    "hardwareTest": "not-tested"
+  },
+  "releaseArtifact": {
+    "sourceStatus": "local-manual-test-candidate",
+    "version": "0.6.0",
+    "directory": "firmware/releases/0.6.0",
+    "uf2": "firmware/releases/0.6.0/miralink_pico_firmware.uf2",
+    "sha256": "BA7A89F0F759BEB1A53E806178FBF885F15843AEDA41B5BF6D5BC910F78C83A5",
+    "board": "pico2_w",
+    "target": "RP2350 ARM Secure",
+    "hardwareTest": "not-tested",
+    "flashAction": "manual-only"
   },
   "hardwareAction": "none"
 }
