@@ -52,6 +52,11 @@ or the command is not supported.
 - `SET_CONTROLLER_OUTPUT` — forward one validated, fixed-size DualSense USB output body through the MiraLink Bluetooth adapter.
 - `GET_AUDIO_STATUS` — return local USB audio and Bluetooth audio-link counters.
 
+For a first association, the web interface is optional: after firmware startup,
+the Pico opens the local Bluetooth window automatically when its BTstack key
+database is empty. `OPEN_PAIRING_WINDOW` remains available as a manual way to
+reopen the five-minute window later.
+
 ### 3.1 Current diagnostics payload
 
 `GET_DIAGNOSTICS` returns 48 structured bytes for schema `4`. The application
@@ -85,7 +90,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.34 exposes a HID-only USB
+claim that a controller is connected. Firmware 0.35 exposes a HID-only USB
 configuration so the control bridge can be discovered reliably by WebHID. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
 descriptor until physical Pico 2 W validation is complete; USB audio counters
@@ -126,8 +131,11 @@ validated DualSense input report has been received.
 The event is persistent only in the current USB transfer; the firmware does
 not record controller input in flash.
 
-`OPEN_PAIRING_WINDOW` is confirmation-gated by the application and lasts five
-minutes. It does not flash firmware or write configuration. Incoming HID
+`OPEN_PAIRING_WINDOW` is confirmation-gated by the application when invoked
+manually and lasts five minutes. A fresh Pico with no remembered BTstack key
+opens the same local window automatically after the radio reaches
+`HCI_STATE_WORKING`; no web page command is required for the first association.
+The command does not flash firmware or write configuration. Incoming HID
 connections outside that window are declined.
 
 ### 3.3 Local diagnostics and recovery commands

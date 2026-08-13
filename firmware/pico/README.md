@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.34
+## Firmware 0.35
 
 The firmware exposes one HID-only USB configuration:
 
@@ -27,7 +27,9 @@ as a working USB capability.
   verification; safe defaults if both records are invalid.
 - Local Classic HID pairing for DualSense and DualSense Edge, bounded
   reconnection through the local BTstack key database, and bounded handshake
-  recovery.
+  recovery. When no BTstack controller key exists at Bluetooth startup, the
+  Pico automatically opens a five-minute local pairing window and starts
+  discovery; the web interface is not required for first association.
 - Validated input forwarding with battery, headset/mic state, motion and touch
   data after a complete Bluetooth report.
 - Bounded rumble, lightbar, player LED, microphone-mute and fixed 47-byte
@@ -69,7 +71,7 @@ manual hardware tests, never automatic actions.
 
 ## Local manual-test candidate
 
-`firmware/releases/0.34/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/0.35/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.

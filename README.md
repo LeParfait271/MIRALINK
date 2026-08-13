@@ -9,9 +9,9 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.34`
-- Current firmware version: `0.34` (HID-only bridge and standard gamepad path; USB audio remains source-only until its composite descriptor is validated on hardware)
-- Last update: `2026-08-13`
+- Current site version: `0.35`
+- Current firmware version: `0.35` (fresh Pico boards open local DualSense pairing automatically; HID-only bridge and standard gamepad path; USB audio remains source-only until its composite descriptor is validated on hardware)
+- Last update: `2026-08-14`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: local only
 

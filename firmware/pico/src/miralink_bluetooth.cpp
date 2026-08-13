@@ -13,6 +13,8 @@
 #include <cstring>
 
 namespace miralink::bluetooth {
+bool open_pairing_window();
+
 namespace {
 
 // Keep enough room for the complete SDP HID descriptor of DualSense
@@ -506,7 +508,15 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_snapshot.state = LinkState::Disconnected;
                 critical_section_exit(&g_state_lock);
                 load_paired_addresses();
-                schedule_reconnect(kReconnectDelayMs);
+                if (g_paired_address_count == 0) {
+                    // A fresh Pico must be usable without a WebHID command:
+                    // expose the radio and start discovery as soon as the
+                    // controller host is ready.  Remembered controllers keep
+                    // the direct, key-based reconnect path below.
+                    open_pairing_window();
+                } else {
+                    schedule_reconnect(kReconnectDelayMs);
+                }
             } else if (btstack_event_state_get_state(packet) == HCI_STATE_OFF) {
                 g_hci_working = false;
                 g_pairing_window_deadline_ms = 0;

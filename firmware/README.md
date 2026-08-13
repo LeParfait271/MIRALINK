@@ -6,7 +6,8 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Firmware 0.34 adds the remaining safe runtime wiring for persisted settings and
+Firmware 0.35 adds automatic first-pair Bluetooth startup to the remaining safe
+runtime wiring for persisted settings and
 restores a HID-only USB configuration for reliable WebHID discovery:
 speaker/headset volume, bounded speaker gain, trigger-effect reduction,
 optional unique USB serial exposure, conservative local inactivity suspension

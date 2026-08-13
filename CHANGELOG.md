@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.35 - 2026-08-14
+
+- Opened the local Bluetooth pairing window automatically when a Pico 2 W has
+  no remembered BTstack controller key, so first association starts after the
+  firmware is flashed and does not depend on the web interface.
+- Kept direct key-based reconnection for controllers already remembered by the
+  Pico and kept the standard USB HID gamepad collection for Windows.
+- Corrected the firmware version returned by `GET_INFO` and the USB device
+  revision to `0.35`.
+- Added a fresh local manual-test candidate; no Pico, DualSense or Windows
+  hardware test is claimed by the build.
+
 ## 0.34 - 2026-08-13
 
 - Restored the HID-only Pico USB configuration after the unvalidated UAC2

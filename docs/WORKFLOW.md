@@ -55,13 +55,19 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.34`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.34.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.34`.
-La source CMake peut employer `0.34.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.34`.
+La version publique actuelle du site est `0.35`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.35.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.35`.
+La source CMake peut employer `0.35.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.35`.
 
-Le correctif de connexion `0.34` expose uniquement le canal HID MiraLink et la
+Le correctif de connexion `0.35` ouvre automatiquement pendant cinq minutes la
+fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore
+aucune manette. Le premier appairage peut donc se faire après flash en mettant
+la DualSense en mode association, sans connecter le Pico au site. Une manette
+déjà mémorisée conserve la reconnexion directe par clé BTstack.
+
+Le correctif de connexion `0.35` expose uniquement le canal HID MiraLink et la
 collection gamepad standard. Le composite UAC2 reste désactivé jusqu'à une
 validation séparée sur Pico 2 W réel ; un build ou un UF2 ne vaut pas preuve
 d'énumération Windows ou d'échange WebHID.
@@ -193,7 +199,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.34 applique les réglages persistants qui peuvent être
+Le build firmware 0.35 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et

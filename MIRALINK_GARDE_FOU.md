@@ -8,8 +8,8 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier unique : `C:\MIRALINK\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.34`
-- Version firmware alignée au site : `0.34`
+- Version publique actuelle du site : `0.35`
+- Version firmware alignée au site : `0.35`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
 
@@ -62,8 +62,8 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.33` → `0.34`. La version technique du paquet npm utilise `0.34.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.34`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.34.0`, mais le firmware affiché et livré reste `0.34`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.34` → `0.35`. La version technique du paquet npm utilise `0.35.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.35`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.35.0`, mais le firmware affiché et livré reste `0.35`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -160,3 +160,4 @@ automatique.
 - `2026-08-13` — Le build statique doit pouvoir cloner un dépôt Git propre : `app/assets` est un dossier local optionnel mais reste présent dans Git avec un marqueur neutre lorsqu'il ne contient aucun asset. Un échec de copie d'asset ne doit pas empêcher Cloudflare Pages de produire `app/dist`.
 - `2026-08-13` — Le candidat firmware `0.34` revient à une configuration USB HID-only pour rétablir le chemin bridge/WebHID après l'échec non validé du composite UAC2 ; l'audio reste source-only jusqu'à une validation Pico 2 W réelle.
 - `2026-08-14` — Le dossier OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est définitivement hors périmètre ; toutes les interventions MiraLink doivent rester dans `C:\MIRALINK\MIRALINK`.
+- `2026-08-14` — Pour une première association, un Pico sans clé BTstack mémorisée ouvre automatiquement sa fenêtre Bluetooth locale et son inquiry au démarrage ; le site WebHID n'est pas requis, et la preuve de fonctionnement reste matérielle.
