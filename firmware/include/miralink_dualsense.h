@@ -12,10 +12,15 @@ constexpr std::uint16_t kDualSenseProductId = 0x0ce6;
 constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::uint8_t kUsbInputReportId = 0x01;
 constexpr std::size_t kUsbInputReportBytes = 64;
+constexpr std::uint8_t kUsbOutputReportId = 0x02;
+constexpr std::size_t kUsbOutputReportBytes = 48;
+constexpr std::size_t kUsbOutputPayloadBytes = kUsbOutputReportBytes - 1;
 constexpr std::uint8_t kBluetoothInputReportId = 0x31;
 constexpr std::size_t kBluetoothInputReportBytes = 78;
 constexpr std::uint8_t kBluetoothOutputReportId = 0x31;
 constexpr std::size_t kBluetoothOutputReportBytes = 78;
+constexpr std::uint8_t kBluetoothAudioReportId = 0x36;
+constexpr std::size_t kBluetoothAudioReportBytes = 398;
 
 enum class BatteryState : std::uint8_t {
     Unknown = 0,
@@ -95,6 +100,12 @@ struct OutputRequest {
     std::uint8_t player_leds_mask = 0;
     bool microphone_mute = false;
     bool microphone_muted = false;
+    // A controller output received from a host game is normalized to the
+    // bounded USB DualSense body before it is wrapped in the Bluetooth
+    // transport header. MiraLink commands use the same fixed-size typed
+    // payload; no arbitrary HID buffer is accepted.
+    bool usb_output = false;
+    std::array<std::uint8_t, kUsbOutputPayloadBytes> usb_output_payload{};
 };
 
 std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_report(const OutputRequest& request, std::uint8_t sequence);

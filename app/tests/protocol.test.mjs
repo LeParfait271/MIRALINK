@@ -7,6 +7,7 @@ import {
   decodeControllerCapabilities,
   decodeControllerStatePayload,
   decodeConfig,
+  decodeAudioStatusPayload,
   decodeDiagnosticsPayload,
   decodeHelloPayload,
   decodeFrame,
@@ -15,6 +16,7 @@ import {
   encodeHapticRequest,
   encodeLightbarRequest,
   encodeMicrophoneMuteRequest,
+  encodeControllerOutputRequest,
   encodeFrame
 } from '../src/protocol.js';
 import { inspectWebHidAvailability, transactFeatureReport } from '../src/hid-transport.js';
@@ -149,8 +151,18 @@ test('diagnostics payload keeps unavailable capabilities out of binary status', 
     descriptorAvailable: true,
     inputAvailable: true,
     sampleCount: 5,
-    rejectedReportCount: 2
+    rejectedReportCount: 2,
+    audioUsbStreaming: false,
+    audioBluetoothStreaming: false,
+    audioUsbPacketCount: 0,
+    audioDroppedFrameCount: 0
   });
+  const extended = new Uint8Array(28);
+  extended.set([3, 1, 1, 1, 0, 0, 1, 1, 1, 1, 5, 0, 0, 0, 2, 0, 0, 0, 1, 1], 0);
+  new DataView(extended.buffer).setUint32(20, 12, true);
+  new DataView(extended.buffer).setUint32(24, 3, true);
+  assert.equal(decodeDiagnosticsPayload(extended).audioUsbPacketCount, 12);
+  assert.equal(decodeDiagnosticsPayload(extended).audioBluetoothStreaming, true);
   assert.throws(() => decodeDiagnosticsPayload(Uint8Array.from([1])), /diagnostics/i);
 });
 
@@ -182,13 +194,15 @@ test('extended controller state decodes battery, sensors, touch and supported ou
   assert.equal(decoded.sample.extended.sensorTimestamp, 1234);
   assert.equal(decoded.sample.extended.touchPoints[0].x, 100);
   assert.equal(decoded.sample.capabilities.haptics, 'supported');
-  assert.equal(decoded.sample.capabilities.adaptiveTriggers, 'not-implemented');
+  assert.equal(decoded.sample.capabilities.adaptiveTriggers, 'supported-through-output-route');
 });
 
 test('controller output payloads are versioned and bounded', () => {
   assert.deepEqual([...encodeHapticRequest({ leftMotor: 1, rightMotor: 2, durationMs: 3000 })], [1, 1, 2, 0xb8, 0x0b]);
   assert.deepEqual([...encodeLightbarRequest({ red: 1, green: 2, blue: 3, playerLeds: 0x1f })], [1, 1, 2, 3, 0x1f]);
   assert.deepEqual([...encodeMicrophoneMuteRequest(true)], [1, 1]);
+  assert.equal(encodeControllerOutputRequest(new Uint8Array(47)).length, 48);
+  assert.throws(() => encodeControllerOutputRequest(new Uint8Array(46)), /47 bytes/);
   assert.throws(() => encodeHapticRequest({ durationMs: 3001 }), /between 1 and 3000/);
   assert.throws(() => encodeLightbarRequest({ playerLeds: 0x20 }), /between 0 and 31/);
 });
@@ -200,6 +214,22 @@ test('controller capabilities payload keeps transport and feature bits explicit'
   assert.equal(decoded.model, 'DualSense');
   assert.equal(decoded.capabilities, 0x7f);
   assert.equal(decoded.maxHapticDurationMs, 3000);
+});
+
+test('audio status payload keeps local stream counters typed', () => {
+  const payload = new Uint8Array(16);
+  payload.set([1, 1, 1, 1], 0);
+  const view = new DataView(payload.buffer);
+  view.setUint32(4, 8, true); view.setUint32(8, 2, true); view.setUint32(12, 5, true);
+  assert.deepEqual(decodeAudioStatusPayload(payload), {
+    schema: 1,
+    usbStreaming: true,
+    bluetoothStreaming: true,
+    bluetoothLinkAvailable: true,
+    usbPacketCount: 8,
+    droppedFrameCount: 2,
+    bluetoothPacketCount: 5
+  });
 });
 
 test('controller state exposes an explicitly opened pairing window', () => {

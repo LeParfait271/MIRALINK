@@ -1,5 +1,6 @@
 #include "miralink_config_store.h"
 #include "miralink_bluetooth.h"
+#include "miralink_audio.h"
 #include "miralink_protocol.h"
 
 #include <algorithm>
@@ -25,7 +26,7 @@ constexpr std::uint8_t kReportGamepad = 0x10;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
 constexpr std::uint8_t kLogSchema = 1;
-constexpr std::uint8_t kDiagnosticsSchema = 2;
+constexpr std::uint8_t kDiagnosticsSchema = 3;
 constexpr std::size_t kLogMessageBytes = 40;
 constexpr std::size_t kLogCapacity = 12;
 constexpr std::array<std::uint8_t, 4> kRecoveryToken = {'R', 'C', 'V', '1'};
@@ -231,7 +232,9 @@ std::vector<std::uint8_t> controller_capabilities_payload(const miralink::blueto
     constexpr std::uint16_t kLightbar = 1u << 2;
     constexpr std::uint16_t kMotion = 1u << 3;
     constexpr std::uint16_t kTouchpad = 1u << 4;
+    constexpr std::uint16_t kAudioStatus = 1u << 5;
     constexpr std::uint16_t kMicrophoneMute = 1u << 6;
+    constexpr std::uint16_t kAdaptiveTriggers = 1u << 7;
     std::vector<std::uint8_t> payload(8, 0);
     payload[0] = 1;
     payload[1] = snapshot.input_available ? 1 : 0;
@@ -239,7 +242,8 @@ std::vector<std::uint8_t> controller_capabilities_payload(const miralink::blueto
     payload[3] = snapshot.input_available ? 1 : 0;
     std::uint16_t capabilities = 0;
     if (snapshot.input_available && snapshot.input.battery_valid) capabilities |= kBattery;
-    if (snapshot.input_available) capabilities |= kHaptics | kLightbar | kMotion | kTouchpad | kMicrophoneMute;
+    if (snapshot.input_available) capabilities |= kHaptics | kLightbar | kMotion | kTouchpad | kMicrophoneMute | kAdaptiveTriggers;
+    if (snapshot.audio_link_available) capabilities |= kAudioStatus;
     write_u16_at(payload, 4, capabilities);
     write_u16_at(payload, 6, 3000);
     return payload;
@@ -247,6 +251,7 @@ std::vector<std::uint8_t> controller_capabilities_payload(const miralink::blueto
 
 std::vector<std::uint8_t> diagnostics_payload() {
     const auto snapshot = miralink::bluetooth::snapshot();
+    const auto audio = miralink::audio::snapshot();
     std::vector<std::uint8_t> payload = {
         kDiagnosticsSchema,
         static_cast<std::uint8_t>(g_config_was_loaded ? 1 : 0),
@@ -261,6 +266,25 @@ std::vector<std::uint8_t> diagnostics_payload() {
     };
     write_u32(payload, snapshot.sample_count);
     write_u32(payload, snapshot.rejected_report_count);
+    payload.push_back(static_cast<std::uint8_t>(audio.usb_streaming ? 1 : 0));
+    payload.push_back(static_cast<std::uint8_t>(snapshot.audio_streaming ? 1 : 0));
+    write_u32(payload, audio.usb_packet_count);
+    write_u32(payload, audio.dropped_frame_count);
+    return payload;
+}
+
+std::vector<std::uint8_t> audio_status_payload() {
+    const auto audio = miralink::audio::snapshot();
+    const auto bluetooth = miralink::bluetooth::snapshot();
+    std::vector<std::uint8_t> payload = {
+        1,
+        static_cast<std::uint8_t>(audio.usb_streaming ? 1 : 0),
+        static_cast<std::uint8_t>(bluetooth.audio_streaming ? 1 : 0),
+        static_cast<std::uint8_t>(bluetooth.audio_link_available ? 1 : 0)
+    };
+    write_u32(payload, audio.usb_packet_count);
+    write_u32(payload, audio.dropped_frame_count);
+    write_u32(payload, bluetooth.audio_packet_count);
     return payload;
 }
 
@@ -454,6 +478,26 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
             }
             set_response(sequence, decoded.frame.command, 0, {});
             return;
+        case miralink::Command::SetControllerOutput:
+            if (decoded.frame.payload.size() != miralink::dualsense::kUsbOutputPayloadBytes + 1
+                || decoded.frame.payload[0] != 1) {
+                set_error(sequence, decoded.frame.command, "controller output payload is invalid");
+                return;
+            }
+            if (!miralink::bluetooth::send_controller_output(decoded.frame.payload.data() + 1,
+                miralink::dualsense::kUsbOutputPayloadBytes)) {
+                set_error(sequence, decoded.frame.command, "controller output unavailable or busy");
+                return;
+            }
+            set_response(sequence, decoded.frame.command, 0, {});
+            return;
+        case miralink::Command::GetAudioStatus:
+            if (!decoded.frame.payload.empty()) {
+                set_error(sequence, decoded.frame.command, "audio status payload is invalid");
+                return;
+            }
+            set_response(sequence, decoded.frame.command, 0, audio_status_payload());
+            return;
         case miralink::Command::OpenPairingWindow:
             if (!miralink::bluetooth::open_pairing_window()) {
                 set_error(sequence, decoded.frame.command, "Bluetooth is not ready");
@@ -503,6 +547,19 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
     (void)instance;
+    if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == miralink::dualsense::kUsbOutputReportId) {
+        if (buffer == nullptr) return;
+        const auto* payload = buffer;
+        auto length = static_cast<std::size_t>(bufsize);
+        if (length == miralink::dualsense::kUsbOutputReportBytes && payload[0] == report_id) {
+            ++payload;
+            --length;
+        }
+        if (length == miralink::dualsense::kUsbOutputPayloadBytes) {
+            (void)miralink::bluetooth::send_controller_output(payload, length);
+        }
+        return;
+    }
     if (report_type != HID_REPORT_TYPE_FEATURE || report_id != kReportCommand) return;
     if (buffer == nullptr) {
         set_error(0, miralink::Command::Hello, "empty HID report");
@@ -528,6 +585,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 
 int main() {
     board_init();
+    miralink::audio::init();
     g_config_was_loaded = g_config_store.load();
     append_log(g_config_was_loaded ? "configuration loaded" : "safe defaults active");
     clear_gamepad_report();
@@ -544,9 +602,23 @@ int main() {
 
     while (true) {
         tud_task();
+        miralink::audio::poll();
         miralink::bluetooth::poll();
         publish_gamepad_report();
         publish_controller_event();
         service_deferred_actions();
     }
+}
+
+extern "C" bool tud_audio_rx_done_post_read_cb(uint8_t rhport, uint16_t n_bytes_received,
+    uint8_t func_id, uint8_t ep_out, uint8_t cur_alt_setting) {
+    (void)rhport;
+    (void)func_id;
+    (void)ep_out;
+    (void)cur_alt_setting;
+    std::array<std::uint8_t, CFG_TUD_AUDIO_FUNC_1_EP_OUT_SZ_MAX> buffer{};
+    const auto length = std::min<std::size_t>(n_bytes_received, buffer.size());
+    const auto read = tud_audio_read(buffer.data(), static_cast<std::uint16_t>(length));
+    miralink::audio::push_usb_pcm(buffer.data(), read);
+    return true;
 }

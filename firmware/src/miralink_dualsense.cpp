@@ -1,6 +1,7 @@
 #include "miralink_dualsense.h"
 
 #include <array>
+#include <algorithm>
 
 namespace miralink::dualsense {
 
@@ -201,6 +202,13 @@ std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_rep
     report[1] = static_cast<std::uint8_t>((sequence & 0x0fu) << 4u);
     report[2] = 0x10;
     auto* common = report.data() + kBluetoothOutputCommonOffset;
+
+    if (request.usb_output) {
+        // The Bluetooth report keeps the same controller output body after
+        // its three-byte Bluetooth header. Copy only the fixed USB body and
+        // leave the Bluetooth sequence and CRC under MiraLink's control.
+        std::copy(request.usb_output_payload.begin(), request.usb_output_payload.end(), common);
+    }
 
     if (request.haptics) {
         common[0] |= static_cast<std::uint8_t>(kOutputCompatibleVibration | kOutputHapticsSelect);

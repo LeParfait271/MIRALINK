@@ -29,9 +29,12 @@ constexpr std::uint16_t kHapticMaxDurationMs = 3000;
 constexpr std::uint32_t kReconnectDelayMs = 250;
 constexpr std::uint32_t kReconnectRetryDelayMs = 2000;
 constexpr std::uint32_t kConnectionHandshakeTimeoutMs = 10000;
+constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 
 struct OutputPacket {
-    std::array<std::uint8_t, dualsense::kBluetoothOutputReportBytes> bytes{};
+    std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> bytes{};
+    std::uint8_t report_id = 0;
+    std::size_t length = 0;
     bool occupied = false;
 };
 
@@ -58,6 +61,8 @@ int g_output_queued = -1;
 std::uint8_t g_output_sequence = 0;
 bool g_haptic_stop_pending = false;
 std::uint64_t g_haptic_stop_deadline_ms = 0;
+std::uint64_t g_audio_last_packet_ms = 0;
+std::array<std::uint8_t, 63> g_controller_state{};
 
 struct InquiryCandidate {
     bd_addr_t address{};
@@ -69,6 +74,8 @@ struct InquiryCandidate {
 
 InquiryCandidate g_candidate{};
 
+void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_t* packet, std::uint16_t size);
+std::uint64_t now_ms();
 void try_next_paired_controller();
 void try_send_output();
 
@@ -248,6 +255,13 @@ void clear_output_queue() {
     g_output_queued = -1;
     g_haptic_stop_pending = false;
     g_haptic_stop_deadline_ms = 0;
+    g_audio_last_packet_ms = 0;
+    g_controller_state.fill(0);
+    critical_section_enter_blocking(&g_state_lock);
+    g_snapshot.audio_link_available = false;
+    g_snapshot.audio_streaming = false;
+    g_snapshot.audio_packet_count = 0;
+    critical_section_exit(&g_state_lock);
 }
 
 bool output_link_ready() {
@@ -271,9 +285,19 @@ bool queue_output(const dualsense::OutputRequest& request) {
     if (!output_link_ready() || g_output_queued >= 0) return false;
     const auto slot = output_free_slot();
     if (slot < 0) return false;
-    g_output_packets[slot].bytes = dualsense::build_bluetooth_output_report(request, g_output_sequence++ & 0x0fu);
+    g_output_packets[slot].bytes.fill(0);
+    const auto report = dualsense::build_bluetooth_output_report(request, g_output_sequence++ & 0x0fu);
+    std::copy(report.begin(), report.end(), g_output_packets[slot].bytes.begin());
+    g_output_packets[slot].report_id = dualsense::kBluetoothOutputReportId;
+    g_output_packets[slot].length = report.size();
     g_output_packets[slot].occupied = true;
     g_output_queued = slot;
+    if (request.usb_output) {
+        std::copy(request.usb_output_payload.begin(), request.usb_output_payload.end(), g_controller_state.begin());
+    }
+    if (request.haptics || request.lightbar || request.player_leds || request.microphone_mute) {
+        std::copy(report.begin() + 3, report.begin() + 3 + g_controller_state.size(), g_controller_state.begin());
+    }
     try_send_output();
     return true;
 }
@@ -282,9 +306,9 @@ void try_send_output() {
     if (g_output_queued < 0 || !output_link_ready()) return;
 
     const auto slot = g_output_queued;
-    const auto status = hid_host_send_report(g_hid_cid, dualsense::kBluetoothOutputReportId,
+    const auto status = hid_host_send_report(g_hid_cid, g_output_packets[slot].report_id,
         g_output_packets[slot].bytes.data() + 1,
-        static_cast<std::uint16_t>(g_output_packets[slot].bytes.size() - 1));
+        static_cast<std::uint16_t>(g_output_packets[slot].length - 1));
     if (status != ERROR_CODE_SUCCESS) return;
 
     if (g_output_in_flight >= 0) {
@@ -292,6 +316,14 @@ void try_send_output() {
     }
     g_output_in_flight = slot;
     g_output_queued = -1;
+    if (g_output_packets[slot].report_id == dualsense::kBluetoothAudioReportId) {
+        critical_section_enter_blocking(&g_state_lock);
+        g_snapshot.audio_link_available = true;
+        g_snapshot.audio_streaming = true;
+        ++g_snapshot.audio_packet_count;
+        g_audio_last_packet_ms = now_ms();
+        critical_section_exit(&g_state_lock);
+    }
 }
 
 void set_connection_closed() {
@@ -325,6 +357,7 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
         g_snapshot.input_available = true;
         g_snapshot.sample_count += 1;
         g_snapshot.state = LinkState::Connected;
+        g_snapshot.audio_link_available = true;
         g_connection_deadline_ms = 0;
     } else {
         g_snapshot.rejected_report_count += 1;
@@ -651,6 +684,33 @@ bool set_microphone_mute(const bool muted) {
     return queue_output(request);
 }
 
+bool send_controller_output(const std::uint8_t* payload, const std::size_t length) {
+    if (payload == nullptr || length != dualsense::kUsbOutputPayloadBytes) return false;
+    dualsense::OutputRequest request{};
+    request.usb_output = true;
+    std::copy(payload, payload + length, request.usb_output_payload.begin());
+    return queue_output(request);
+}
+
+bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t length) {
+    if (report == nullptr || length != dualsense::kBluetoothAudioReportBytes
+        || report[0] != dualsense::kBluetoothAudioReportId
+        || !output_link_ready() || g_output_queued >= 0) return false;
+    const auto slot = output_free_slot();
+    if (slot < 0) return false;
+    g_output_packets[slot].bytes.fill(0);
+    std::copy(report, report + length, g_output_packets[slot].bytes.begin());
+    // The audio packet carries the most recent complete controller state so a
+    // host output report cannot be undone by a later audio frame.
+    std::copy(g_controller_state.begin(), g_controller_state.end(), g_output_packets[slot].bytes.begin() + 13);
+    g_output_packets[slot].report_id = dualsense::kBluetoothAudioReportId;
+    g_output_packets[slot].length = length;
+    g_output_packets[slot].occupied = true;
+    g_output_queued = slot;
+    try_send_output();
+    return g_output_queued != slot;
+}
+
 void poll() {
     if (!g_initialized) return;
     if (g_pairing_window_deadline_ms != 0 && !pairing_window_active()) {
@@ -695,8 +755,13 @@ void poll() {
 
 Snapshot snapshot() {
     critical_section_enter_blocking(&g_state_lock);
-    const Snapshot value = g_snapshot;
+    Snapshot value = g_snapshot;
+    const auto last_audio_packet_ms = g_audio_last_packet_ms;
     critical_section_exit(&g_state_lock);
+    if (value.audio_streaming && (last_audio_packet_ms == 0
+        || now_ms() - last_audio_packet_ms > kAudioStreamingTimeoutMs)) {
+        value.audio_streaming = false;
+    }
     return value;
 }
 

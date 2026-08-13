@@ -49,16 +49,18 @@ or the command is not supported.
 - `SEND_HAPTIC` — request one bounded, temporary DualSense compatible-rumble pulse; the firmware automatically schedules a neutral stop.
 - `SET_LIGHTBAR` — set the DualSense RGB lightbar and player indicator mask through a bounded local request.
 - `SET_MICROPHONE_MUTE` — request the DualSense microphone mute LED/power state.
+- `SET_CONTROLLER_OUTPUT` — forward one validated, fixed-size DualSense USB output body through the MiraLink Bluetooth adapter.
+- `GET_AUDIO_STATUS` — return local USB audio and Bluetooth audio-link counters.
 
 ### 3.1 Current diagnostics payload
 
-`GET_DIAGNOSTICS` returns 18 structured bytes for schema `2`. The application
+`GET_DIAGNOSTICS` returns 28 structured bytes for schema `3`. The application
 keeps accepting the historical three-byte schema `1` so an older local build
 does not become unreadable:
 
 | Offset | Size | Meaning |
 |---:|---:|---|
-| 0 | 1 | Diagnostics schema (`2`) |
+| 0 | 1 | Diagnostics schema (`3`) |
 | 1 | 1 | Configuration loaded from a valid flash record (`0` or `1`) |
 | 2 | 1 | MiraLink USB device mounted (`0` or `1`) |
 | 3 | 1 | Pico Bluetooth host initialized (`0` or `1`) |
@@ -70,10 +72,22 @@ does not become unreadable:
 | 9 | 1 | At least one validated input report received (`0` or `1`) |
 | 10 | 4 | Validated input sample count, little-endian |
 | 14 | 4 | Rejected input report count, little-endian |
+| 18 | 1 | USB UAC2 stream active (`0` or `1`) |
+| 19 | 1 | Bluetooth audio stream active (`0` or `1`) |
+| 20 | 4 | USB audio packet count, little-endian |
+| 24 | 4 | Dropped audio-frame count, little-endian |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Audio streaming and adaptive-trigger
-effects remain explicitly unavailable. Battery status, compatible rumble,
+claim that a controller is connected. The UAC2 input is four-channel, 48 kHz,
+16-bit PCM and is retained only in a bounded RAM ring. MiraLink builds a fixed
+398-byte DualSense audio HID report (`0x36`): the first two channels are
+encoded as bounded Opus stereo speaker data and the latter two become bounded
+3 kHz haptic samples. No standard A2DP/SBC route is used. The audio link is
+reported as available only after a valid DualSense HID input report makes the
+output route ready, and as streaming only after an audio report is accepted by
+BTstack. This does not prove that a particular DualSense accepts or renders
+the audio. Adaptive-trigger effects are reachable through the bounded output
+route below but require real hardware validation. Battery status, compatible rumble,
 lightbar, motion, touch and microphone state are reported only after a
 validated DualSense input report has been received.
 
@@ -127,8 +141,10 @@ background event.
 `GET_CONTROLLER_CAPABILITIES` returns eight bytes: schema, connected flag,
 transport (`1` for Bluetooth), model (`1` for DualSense), a little-endian
 capability mask and the maximum haptic duration. The capability mask currently
-includes battery, compatible rumble, lightbar, motion, touchpad, audio-status
-and microphone-mute state. Adaptive triggers are deliberately not advertised.
+includes battery, compatible rumble, lightbar, motion, touchpad, audio-status,
+microphone-mute state and the bounded adaptive-trigger output route. A bit in
+this mask describes an available route; it is not a claim that a physical
+controller has accepted or rendered the effect.
 
 `SEND_HAPTIC` accepts `[schema=1, left motor, right motor, duration-ms-le16]`
 with a duration from 1 to 3000 ms. `SET_LIGHTBAR` accepts
@@ -137,6 +153,19 @@ with a duration from 1 to 3000 ms. `SET_LIGHTBAR` accepts
 frames and remain unavailable unless the Pico has a ready validated controller
 link. The Bluetooth output packet is held in a bounded local queue and its
 compatible-rumble pulse is stopped automatically.
+
+`SET_CONTROLLER_OUTPUT` accepts exactly `[schema=1, 47-byte USB output body]`.
+The firmware validates the fixed size, copies it into a local queue, preserves
+MiraLink ownership of the Bluetooth report id/sequence/CRC and sends the
+result only when a validated controller link is ready. A HID output report id
+`0x02` carrying the same fixed 47-byte body is accepted on the Pico's host
+interface for compatibility with a local game path. No variable-length or
+arbitrary HID payload is accepted.
+
+`GET_AUDIO_STATUS` accepts no payload and returns 16 bytes:
+`[schema=1, usb-streaming, bluetooth-streaming, bluetooth-link-available,
+usb-packets-u32, dropped-frames-u32, bluetooth-packets-u32]`. Counters are
+volatile and reset on restart.
 
 ### 3.5 DualSense adapter boundary
 

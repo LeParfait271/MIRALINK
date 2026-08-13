@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.9.0 - 2026-08-13
+
+- Added a local UAC2 audio input for four-channel, 48 kHz, 16-bit PCM. Audio
+  samples stay in a bounded RAM ring and are never persisted or sent to a
+  network service.
+- Added a bounded DualSense audio HID report path (`0x36`, 398 bytes): the
+  local four-channel USB PCM input is converted to Opus stereo speaker data
+  plus 3 kHz haptic channels. The link is reported only after a valid HID
+  controller route exists and streaming only after reports are accepted by
+  BTstack; no standard A2DP/SBC route is advertised.
+- Added a fixed-size DualSense output route for haptic/trigger-compatible game
+  output: 47 validated USB body bytes are wrapped with a MiraLink-owned
+  Bluetooth header, sequence and CRC.
+- Added `SET_CONTROLLER_OUTPUT`, `GET_AUDIO_STATUS` and diagnostics schema 3;
+  the application now displays local audio status instead of hard-coding it as
+  unavailable.
+- Rebuilt the local Pico 2 W candidate with the corrected 48 kHz endpoint,
+  locally vendored Opus 1.5.2 and fresh ELF/BIN/HEX/UF2 artifacts.
+  budget. Software checks pass; no physical flash, controller test, push or
+  public release is claimed.
+
 ## 1.8.0 - 2026-08-13
 
 - Extended the independent Pico 2 W DualSense path to recognize the DualSense

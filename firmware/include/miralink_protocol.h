@@ -37,7 +37,9 @@ enum class Command : std::uint8_t {
     GetControllerCapabilities = 0x0d,
     SendHaptic = 0x0e,
     SetLightbar = 0x0f,
-    SetMicrophoneMute = 0x10
+    SetMicrophoneMute = 0x10,
+    SetControllerOutput = 0x11,
+    GetAudioStatus = 0x12
 };
 
 struct Frame {

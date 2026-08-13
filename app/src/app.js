@@ -7,6 +7,7 @@ import {
   decodeConfig,
   decodeControllerCapabilities,
   decodeControllerStatePayload,
+  decodeAudioStatusPayload,
   decodeDiagnosticsPayload,
   decodeFrame,
   decodeHelloPayload,
@@ -26,7 +27,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.8.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '1.9.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -403,14 +404,24 @@ async function runDiagnostics() {
   try {
     const response = await transact(entry, COMMANDS.getDiagnostics);
     const diagnostics = decodeDiagnosticsPayload(response.payload);
+    let audio = null;
+    try {
+      const audioResponse = await transact(entry, COMMANDS.getAudioStatus, new Uint8Array(), 350);
+      audio = decodeAudioStatusPayload(audioResponse.payload);
+    } catch (error) {
+      addLog('info', `Audio status is not exposed by this bridge firmware: ${error.message}`);
+    }
     $('[data-diagnostic="usb"]').textContent = diagnostics.usbMounted ? 'PASS' : 'FAIL';
     $('[data-diagnostic="radio"]').textContent = diagnostics.bluetoothAvailable ? 'PASS' : 'Unavailable';
-    $('[data-diagnostic="audio"]').textContent = 'Unavailable';
+    const audioStreaming = Boolean(diagnostics.audioUsbStreaming || diagnostics.audioBluetoothStreaming || audio?.usbStreaming || audio?.bluetoothStreaming);
+    const audioLinked = Boolean(audio?.bluetoothLinkAvailable || diagnostics.audioBluetoothStreaming);
+    $('[data-diagnostic="audio"]').textContent = audioStreaming ? 'PASS' : audioLinked ? 'Ready' : 'Not tested';
     $('[data-diagnostic="storage"]').textContent = diagnostics.configLoaded ? 'PASS' : 'Not tested';
     const radioState = diagnostics.bluetoothAvailable
       ? diagnostics.controllerConnected ? 'connected' : diagnostics.pairingWindowOpen ? 'pairing window open' : 'ready'
       : 'unavailable';
-    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio remains unavailable in this firmware.`;
+    const audioState = audioStreaming ? 'streaming' : audioLinked ? 'link ready, no stream' : 'no active local stream';
+    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio ${audioState}.`;
     addLog('info', 'Diagnostics completed with capability limits reported.');
   } catch (error) {
     for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';

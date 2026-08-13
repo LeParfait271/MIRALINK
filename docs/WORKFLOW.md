@@ -77,11 +77,14 @@ l'octet de séquence précède les trois groupes de boutons et ne peut pas être
 traité comme un bouton. Les données de batterie, mouvement, tactile et audio
 de statut ne sont exposées qu'après validation d'un rapport complet.
 
-Les sorties vers une manette doivent utiliser des commandes MiraLink bornées,
-jamais un rapport HID brut. Une vibration est temporaire, plafonnée à 3000 ms,
-et sa commande d'arrêt neutre reste locale. La file BTstack est bornée et
-vidée lors d'une déconnexion ; un build réussi ou un test synthétique ne vaut
-pas une preuve de retour haptique sur une manette réelle.
+Les sorties vers une manette doivent utiliser des commandes MiraLink bornées.
+Le seul chemin de compatibilité de jeu supplémentaire est un corps de rapport
+de sortie DualSense fixe de 47 octets, vérifié avant d’être enveloppé par
+MiraLink ; aucun tampon HID arbitraire n’est accepté. Une vibration est
+temporaire, plafonnée à 3000 ms, et sa commande d’arrêt neutre reste locale.
+La file BTstack est bornée et vidée lors d’une déconnexion ; un build réussi ou
+un test synthétique ne vaut pas une preuve de retour haptique sur une manette
+réelle.
 
 La version 1.7.0 ne conserve aucun chemin d’effet de gâchette adaptative non
 exposé ou non validé. Toute nouvelle sortie doit d’abord avoir une commande
@@ -94,6 +97,20 @@ son protocole propriétaire ou ses structures internes. La comparaison porte
 sur les résultats utilisateur et les états vérifiables ; une capacité qui ne
 peut pas être réalisée sur le Pico 2 W reste indisponible et clairement
 signalée.
+
+Le lot firmware 1.9.0 ajoute l’entrée UAC2 locale 4 canaux à 48 kHz/16 bits,
+un tampon audio RAM borné et un rapport HID audio DualSense fixe `0x36` de
+398 octets. Les deux premiers canaux sont encodés en Opus stéréo pour la
+sortie haut-parleur et les deux autres sont réduits en canaux haptiques 3 kHz.
+Aucun transport A2DP/SBC n’est utilisé. Le statut exposé à l’application ne
+passe à « liaison disponible » qu’après un rapport HID DualSense valide et
+« flux actif » exige un rapport audio effectivement accepté par BTstack. Cette
+implémentation logicielle ne remplace pas la validation d’une DualSense réelle.
+
+Le chemin de sortie contrôleur 1.9.0 accepte un corps USB DualSense fixe de
+47 octets via `SET_CONTROLLER_OUTPUT` ou le rapport HID de sortie id `0x02`.
+MiraLink recalcule l’en-tête Bluetooth et le CRC ; le chemin ne permet pas
+d’injecter une trame HID arbitraire.
 
 Pour le lot firmware 1.7.0, la persistance des clés Bluetooth est celle du SDK
 Pico déjà initialisée par `cyw43_arch_init()` ; aucune seconde instance de

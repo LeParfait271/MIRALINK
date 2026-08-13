@@ -2,6 +2,7 @@
 
 #include "miralink_dualsense.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace miralink::bluetooth {
@@ -23,6 +24,9 @@ struct Snapshot {
     bool descriptor_available = false;
     bool input_available = false;
     bool paired_controller_known = false;
+    bool audio_link_available = false;
+    bool audio_streaming = false;
+    std::uint32_t audio_packet_count = 0;
     dualsense::InputState input{};
     std::uint32_t sample_count = 0;
     std::uint32_t rejected_report_count = 0;
@@ -33,6 +37,8 @@ bool open_pairing_window();
 bool send_haptic(std::uint8_t left_motor, std::uint8_t right_motor, std::uint16_t duration_ms);
 bool set_lightbar(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t player_leds_mask);
 bool set_microphone_mute(bool muted);
+bool send_controller_output(const std::uint8_t* payload, std::size_t length);
+bool send_audio_haptics_report(const std::uint8_t* report, std::size_t length);
 void poll();
 Snapshot snapshot();
 

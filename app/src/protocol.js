@@ -23,7 +23,9 @@ export const COMMANDS = Object.freeze({
   getControllerCapabilities: 0x0d,
   sendHaptic: 0x0e,
   setLightbar: 0x0f,
-  setMicrophoneMute: 0x10
+  setMicrophoneMute: 0x10,
+  setControllerOutput: 0x11,
+  getAudioStatus: 0x12
 });
 
 export const CONTROLLER_CAPABILITIES = Object.freeze({
@@ -143,9 +145,9 @@ export function decodeDiagnosticsPayload(input) {
       rejectedReportCount: 0
     });
   }
-  if (bytes.length !== 18 || bytes[0] !== 2) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
+  if ((bytes.length !== 18 || bytes[0] !== 2) && (bytes.length !== 28 || bytes[0] !== 3)) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return Object.freeze({
+  const result = {
     schema: bytes[0],
     configLoaded: Boolean(bytes[1]),
     usbMounted: Boolean(bytes[2]),
@@ -157,7 +159,27 @@ export function decodeDiagnosticsPayload(input) {
     descriptorAvailable: Boolean(bytes[8]),
     inputAvailable: Boolean(bytes[9]),
     sampleCount: view.getUint32(10, true),
-    rejectedReportCount: view.getUint32(14, true)
+    rejectedReportCount: view.getUint32(14, true),
+    audioUsbStreaming: bytes.length === 28 ? Boolean(bytes[18]) : false,
+    audioBluetoothStreaming: bytes.length === 28 ? Boolean(bytes[19]) : false,
+    audioUsbPacketCount: bytes.length === 28 ? view.getUint32(20, true) : 0,
+    audioDroppedFrameCount: bytes.length === 28 ? view.getUint32(24, true) : 0
+  };
+  return Object.freeze(result);
+}
+
+export function decodeAudioStatusPayload(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length !== 16 || bytes[0] !== 1) throw new ProtocolError('Audio status payload is invalid', 'invalid_audio_status_payload');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Object.freeze({
+    schema: bytes[0],
+    usbStreaming: Boolean(bytes[1]),
+    bluetoothStreaming: Boolean(bytes[2]),
+    bluetoothLinkAvailable: Boolean(bytes[3]),
+    usbPacketCount: view.getUint32(4, true),
+    droppedFrameCount: view.getUint32(8, true),
+    bluetoothPacketCount: view.getUint32(12, true)
   });
 }
 
@@ -216,7 +238,7 @@ export function decodeControllerStatePayload(input) {
     }),
     batteryPercent: extended?.batteryValid ? extended.batteryPercent : null,
     batteryState: extended?.batteryState || 'unknown',
-    capabilities: Object.freeze({ input: 'supported', battery: extended?.batteryValid ? 'supported' : 'unavailable', haptics: extended ? 'supported' : 'not-implemented', lightbar: extended ? 'supported' : 'not-implemented', adaptiveTriggers: 'not-implemented', calibration: 'local-analysis-only' }),
+    capabilities: Object.freeze({ input: 'supported', battery: extended?.batteryValid ? 'supported' : 'unavailable', haptics: extended ? 'supported' : 'not-implemented', lightbar: extended ? 'supported' : 'not-implemented', adaptiveTriggers: extended ? 'supported-through-output-route' : 'not-implemented', calibration: 'local-analysis-only' }),
     extended
   }) : null;
   return Object.freeze({
@@ -268,6 +290,12 @@ export function encodeLightbarRequest({ red = 0, green = 0, blue = 0, playerLeds
 export function encodeMicrophoneMuteRequest(muted) {
   if (typeof muted !== 'boolean') throw new ProtocolError('muted must be boolean', 'invalid_controller_output');
   return Uint8Array.from([1, muted ? 1 : 0]);
+}
+
+export function encodeControllerOutputRequest(report) {
+  const bytes = bytesOf(report);
+  if (bytes.length !== 47) throw new ProtocolError('Controller output report must contain 47 bytes', 'invalid_controller_output');
+  return Uint8Array.from([1, ...bytes]);
 }
 
 export function defaultConfig() {

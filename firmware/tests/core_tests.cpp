@@ -150,7 +150,27 @@ void test_dualsense_bluetooth_output_builder() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+void test_dualsense_controller_output_mapping() {
+    miralink::dualsense::OutputRequest request{};
+    request.usb_output = true;
+    for (std::size_t index = 0; index < request.usb_output_payload.size(); ++index) {
+        request.usb_output_payload[index] = static_cast<std::uint8_t>(index + 1);
+    }
+    const auto report = miralink::dualsense::build_bluetooth_output_report(request, 9);
+    assert(report[0] == miralink::dualsense::kBluetoothOutputReportId);
+    assert(report[1] == 0x90);
+    assert(report[2] == 0x10);
+    assert(report[3] == 1);
+    assert(report[13] == 11);
+    assert(report[49] == 47);
+    const auto crc = static_cast<std::uint32_t>(report[74])
+        | (static_cast<std::uint32_t>(report[75]) << 8u)
+        | (static_cast<std::uint32_t>(report[76]) << 16u)
+        | (static_cast<std::uint32_t>(report[77]) << 24u);
+    assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
+}
+
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping();
     std::cout << "MiraLink core tests passed\n";
 }
