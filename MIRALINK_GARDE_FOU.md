@@ -8,7 +8,7 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier unique : `C:\MIRALINK\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.30`
+- Version publique actuelle du site : `0.32`
 - Version firmware suivie séparément : `2.4.0`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
@@ -62,7 +62,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.29` → `0.30`. La version technique du paquet npm utilise `0.30.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.30`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.31` → `0.32`. La version technique du paquet npm utilise `0.32.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.32`.
 - La version du firmware est indépendante de celle du site. Le firmware actuellement suivi est `2.4.0` et ne change que lorsqu'un nouveau firmware est réellement construit et documenté.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
@@ -151,7 +151,7 @@ automatique.
 - `2026-08-13` — Les boutons Manettes doivent déclencher une action locale vérifiable : Controller Lab analyse uniquement les échantillons reçus, les snapshots restent sur l'ordinateur et aucune calibration n'est écrite dans le Pico sans une procédure distincte et confirmée. Les vibrations et l'audio restent « non testés » lorsqu'aucune sortie réelle n'a été vérifiée.
 - `2026-08-13` — La version publique du site MiraLink est `0.28`; son paquet technique est `0.28.0`. La version firmware indépendante courante est `2.3.0`.
 - `2026-08-13` — La version publique du site MiraLink est `0.29`; son paquet technique est `0.29.0`. Le pack visuel fourni dans `Images/site-pack-v2` remplace les trois anciens visuels du site ; les scènes desktop, les cartes système, le logo et la texture de pied de page sont intégrés localement.
+- `2026-08-13` — La version publique du site MiraLink est `0.32`; son paquet d'images décoratives, l'en-tête de navigation, les CTA du hero et le sélecteur UF2 sont retirés de l'interface afin de garder uniquement les actions et états utiles au contrôle local.
 - `2026-08-13` — Les artefacts générés par Codex hors du dossier unique `C:\MIRALINK\MIRALINK` doivent être supprimés en fin de tâche après vérification de leur périmètre ; les fichiers existants de l'utilisateur restent protégés.
-- `2026-08-13` — L’alerte WebHID décrit uniquement la liaison navigateur vers le pont Pico 2 W ; elle n’est pas présentée comme une absence de Bluetooth de la manette et n’apparaît qu’au lancement d’une action de connexion ou d’actualisation.
 - `2026-08-13` — Le candidat firmware `2.4.0` réactive un composite UAC2 + HID indépendant : lecture 48 kHz / 4 canaux, capture mono locale de monitorage, horloge et contrôles UAC2 standard. La capture ne doit jamais être présentée comme microphone DualSense, et aucune énumération Windows, sortie audio, vibration ou gâchette ne vaut testée avant validation sur Pico 2 W et manette réels.
 - `2026-08-13` — L'option `enable_wake` ne déclenche un réveil USB standard qu'après une entrée manette validée, si le profil local et l'hôte USB l'autorisent tous deux ; elle reste non validée tant qu'un Pico 2 W réel n'a pas été testé en veille.

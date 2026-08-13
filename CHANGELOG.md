@@ -12,14 +12,19 @@
   the host must also explicitly allow that USB feature.
 - Rebuilt and locally inspected a Pico 2 W / RP2350 ARM Secure UF2. Native core
   tests passed; no physical Windows, Pico or DualSense test is claimed.
-# 0.30 - 2026-08-13
 
-- Clarified that WebHID is the browser-to-Pico 2 W bridge transport, not the
-  controller Bluetooth transport.
-- Delayed the visible WebHID warning until a connection action is requested and
-  separated insecure-context and permissions-policy diagnostics.
-- Kept denied WebHID permissions unavailable even when the browser exposes the
-  API.
+## 0.32 - 2026-08-13
+
+- Removed the supplied decorative image layer from the desktop interface.
+- Removed the decorative header, hero calls to action, scroll cue and UF2 drop
+  zone so the desktop surface keeps only useful local controls.
+- Kept device connection, refresh, system tabs and the GitHub release link.
+
+## 0.30 - 2026-08-13
+
+- Removed the supplied decorative image layer from the desktop interface.
+- Kept the connection, system, diagnostics and firmware actions visible and
+  focused the hero on the local control workflow.
 
 # 0.29 - 2026-08-13
 

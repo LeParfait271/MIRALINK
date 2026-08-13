@@ -2121,44 +2121,91 @@ h1 {
   }
 }
 
-/* 0.29 supplied desktop image pack. */
-.brand-mark {
-  overflow: hidden;
+/* 0.32: action-first surface with no decorative image layer. */
+.topbar-nav,
+.language-chip,
+.hero-actions,
+.hero-scroll-cue,
+.hero-media,
+.page-progress {
+  display: none !important;
 }
 
-.brand-mark img {
-  position: relative;
-  z-index: 2;
-  width: 126%;
-  height: 126%;
-  object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(131, 233, 223, .42));
+.topbar {
+  display: none !important;
+}
+
+.shell {
+  padding-top: 0;
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
+  box-shadow: none;
+}
+
+.brand-mark::before,
+.brand-mark::after {
+  border-color: var(--line-strong);
+  box-shadow: none;
 }
 
 .brand-mark span {
+  display: block;
+  width: .3rem;
+  height: .3rem;
+  background: var(--cyan);
+  box-shadow: none;
+}
+
+.connection-hero {
+  min-height: 650px;
+  background: var(--bg-deep);
+}
+
+.connection-hero::before,
+.connection-hero::after,
+.connection-surface::before,
+.metric-card::after {
   display: none;
 }
 
-.overview-grid .metric-card {
-  background-size: cover;
-  background-position: center;
+.connection-hero .hero-copy {
+  top: 150px;
+  left: clamp(5vw, 9vw, 130px);
+  max-width: 560px;
 }
 
-.overview-grid .metric-card:nth-child(1) {
-  background-image: linear-gradient(135deg, rgba(3, 18, 24, .94), rgba(3, 18, 24, .58)), url("assets/visuals/site-pack-v2/cards/miralink-card-clarity.png");
+.connection-hero .hero-copy h1 {
+  font-size: clamp(4.2rem, 6vw, 7rem);
 }
 
-.overview-grid .metric-card:nth-child(2) {
-  background-image: linear-gradient(135deg, rgba(3, 18, 24, .94), rgba(3, 18, 24, .58)), url("assets/visuals/site-pack-v2/cards/miralink-card-link.png");
+.firmware-panel {
+  grid-template-columns: 1fr 1fr;
 }
 
-.overview-grid .metric-card:nth-child(3) {
-  background-image: linear-gradient(135deg, rgba(3, 18, 24, .94), rgba(3, 18, 24, .58)), url("assets/visuals/site-pack-v2/cards/miralink-card-stability.png");
+.connection-surface {
+  background: var(--surface);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
+.metric-card,
+.firmware-current,
+.file-drop,
 .footer {
-  background-image: linear-gradient(90deg, rgba(3, 13, 17, .96), rgba(3, 13, 17, .66), rgba(3, 13, 17, .96)), url("assets/visuals/site-pack-v2/textures/miralink-footer-texture.png");
-  background-position: center;
-  background-size: cover;
-  box-shadow: 0 -18px 50px rgba(0, 0, 0, .24), inset 0 1px rgba(205, 249, 240, .08);
+  background-image: none !important;
+  box-shadow: none;
+}
+
+.file-drop {
+  clip-path: none;
+}
+
+.drop-icon {
+  font-size: 1.5rem;
+  text-shadow: none;
 }

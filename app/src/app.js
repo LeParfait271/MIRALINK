@@ -16,7 +16,7 @@ import {
   encodeConfig
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, setupLanguage, translate } from './i18n.js?ui=29';
+import { applyTranslations, translate } from './i18n.js?ui=32';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
@@ -29,7 +29,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.29', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '0.32', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -57,8 +57,10 @@ function addLog(level, message) {
 }
 
 function setGlobalStatus(text, stateName = 'idle') {
-  $('#global-status').dataset.state = stateName;
-  $('#global-status-text').textContent = text;
+  const status = $('#global-status');
+  const statusText = $('#global-status-text');
+  if (status) status.dataset.state = stateName;
+  if (statusText) statusText.textContent = text;
 }
 
 function renderLogs() {
@@ -197,7 +199,12 @@ async function loadMetadata() {
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
-  $('#version-chip').textContent = label; $('#footer-version').textContent = label; $('#footer-updated').textContent = state.version.lastUpdated || '2026-08-12';
+  const versionChip = $('#version-chip');
+  const footerVersion = $('#footer-version');
+  const footerUpdated = $('#footer-updated');
+  if (versionChip) versionChip.textContent = label;
+  if (footerVersion) footerVersion.textContent = label;
+  if (footerUpdated) footerUpdated.textContent = state.version.lastUpdated || '2026-08-12';
 }
 
 function webHidStatus() {
@@ -671,10 +678,10 @@ function openCalibrationHistory() {
 }
 
 function init() {
-  setupLanguage($('#language-select'), () => { applyTranslations(); renderDevices(); renderConfig(state.draft || defaultConfig()); });
+  applyTranslations();
   renderLogs();
   $$('.tab-button').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.tab)));
-  $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#open-calibration-button').addEventListener('click', openCalibrationWorkspace); $('#run-quick-test-button').addEventListener('click', runQuickControllerTest); $('#open-history-button').addEventListener('click', openCalibrationHistory); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
+  $('#connect-button')?.addEventListener('click', connectDevice); $('#refresh-devices-button')?.addEventListener('click', refreshDevices); $('#read-config-button')?.addEventListener('click', readConfig); $('#save-config-button')?.addEventListener('click', saveConfig); $('#reset-config-button')?.addEventListener('click', resetDraft); $('#backup-file')?.addEventListener('change', importBackup); $('#export-button')?.addEventListener('click', exportBackup); $('#run-diagnostics-button')?.addEventListener('click', runDiagnostics); $('#open-calibration-button').addEventListener('click', openCalibrationWorkspace); $('#run-quick-test-button').addEventListener('click', runQuickControllerTest); $('#open-history-button').addEventListener('click', openCalibrationHistory); $('#clear-logs-button')?.addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
   wireDraftControls();
   window.addEventListener('miralink:open-pairing-window', openPairingWindow);
   const initialHidStatus = webHidStatus();

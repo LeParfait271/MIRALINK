@@ -7,7 +7,7 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.29 → 0.30
+0.10 → 0.11 → 0.12 → … → 0.31 → 0.32
 ```
 
 The public site version must be reflected in:
@@ -17,8 +17,8 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.30.0`; this is
-packaging metadata for the public site version `0.30`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.32.0`; this is
+packaging metadata for the public site version `0.32`, not a separate product
 release.
 
 Firmware versions are independent. The current firmware source and release
@@ -26,7 +26,7 @@ artifact are `2.4.0` and must not be renamed when only the site changes.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current committed site version is `0.30`. The current firmware version is
+The current committed site version is `0.32`. The current firmware version is
 `2.4.0`, containing the HID + UAC2 headset candidate. USB audio enumeration
 remains a hardware-validation boundary: the source exposes standard 48 kHz
 playback and local-monitor capture, but no real Pico 2 W test is claimed.
