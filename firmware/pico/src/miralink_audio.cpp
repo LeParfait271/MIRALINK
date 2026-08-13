@@ -42,6 +42,8 @@ bool g_config_microphone_disabled = false;
 bool g_volume_locked = false;
 std::uint16_t g_host_playback_gain_q15 = 32767;
 std::uint16_t g_config_playback_gain_q15 = 32767;
+std::uint16_t g_config_capture_gain_q15 = 32767;
+std::uint16_t g_config_speaker_gain_q8_8 = 256;
 std::uint16_t g_haptics_gain_q8_8 = 256;
 std::size_t g_prebuffer_frames = kAudioBlockFrames;
 OpusEncoder* g_opus_encoder = nullptr;
@@ -57,8 +59,15 @@ std::size_t next_frame(const std::size_t frame) {
 
 std::int16_t scale_playback_sample(const std::int16_t sample) {
     if (g_host_playback_muted || g_config_speaker_disabled) return 0;
-    const auto scaled = static_cast<std::int64_t>(sample) * g_host_playback_gain_q15 * g_config_playback_gain_q15;
-    return static_cast<std::int16_t>(scaled / (32767ll * 32767ll));
+    auto scaled = static_cast<std::int64_t>(sample) * g_host_playback_gain_q15 * g_config_playback_gain_q15;
+    scaled /= 32767ll * 32767ll;
+    scaled = (scaled * g_config_speaker_gain_q8_8) / 256ll;
+    return static_cast<std::int16_t>(std::clamp<std::int64_t>(scaled, -32768, 32767));
+}
+
+std::int16_t scale_capture_sample(const std::int16_t sample) {
+    const auto scaled = (static_cast<std::int64_t>(sample) * g_config_capture_gain_q15) / 32767ll;
+    return static_cast<std::int16_t>(std::clamp<std::int64_t>(scaled, -32768, 32767));
 }
 
 void push_frame(const std::int16_t* frame) {
@@ -206,6 +215,8 @@ void init() {
     g_volume_locked = false;
     g_host_playback_gain_q15 = 32767;
     g_config_playback_gain_q15 = 32767;
+    g_config_capture_gain_q15 = 32767;
+    g_config_speaker_gain_q8_8 = 256;
     g_haptics_gain_q8_8 = 256;
     g_prebuffer_frames = kAudioBlockFrames;
     g_report_sequence = 0;
@@ -298,6 +309,11 @@ void apply_config(const Config& config) {
     g_volume_locked = config.lock_volume;
     g_config_playback_gain_q15 = static_cast<std::uint16_t>(
         (static_cast<std::uint32_t>(config.speaker_volume) * 32767u) / 127u);
+    g_config_capture_gain_q15 = static_cast<std::uint16_t>(
+        (static_cast<std::uint32_t>(config.headset_volume) * 32767u) / 127u);
+    // Keep the optional gain bounded below +6 dB. Saturation is explicit in
+    // scale_playback_sample(), so a saved value cannot wrap a PCM sample.
+    g_config_speaker_gain_q8_8 = static_cast<std::uint16_t>(256u + static_cast<std::uint16_t>(config.speaker_gain) * 32u);
     g_haptics_gain_q8_8 = static_cast<std::uint16_t>(std::clamp<std::int32_t>(
         static_cast<std::int32_t>(config.haptics_gain * 256.0f), 256, 512));
     constexpr std::size_t kMinimumBufferLength = 16;
@@ -320,7 +336,7 @@ std::size_t pull_usb_capture_pcm(std::uint8_t* bytes, const std::size_t capacity
         if (g_capture_buffered_frames == 0 || g_config_microphone_disabled) {
             ++g_capture_underflow_frame_count;
         } else {
-            sample = g_capture_ring[g_capture_read_frame];
+            sample = scale_capture_sample(g_capture_ring[g_capture_read_frame]);
             g_capture_read_frame = next_frame(g_capture_read_frame);
             --g_capture_buffered_frames;
         }

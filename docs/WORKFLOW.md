@@ -57,7 +57,7 @@ pas de commit vide artificiel.
 La version publique actuelle du site est `0.32`. Le paquet npm peut représenter
 cette même version sous la forme technique `0.32.0`, mais l'application, le
 manifeste de livraison et la documentation affichent `0.32`. Le firmware
-actuellement suivi reste `2.4.0`.
+actuellement suivi reste `2.5.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -185,6 +185,16 @@ L'option de réveil USB du candidat 2.4.0 ne peut être demandée qu'après une
 entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
+
+Le candidat firmware 2.5.0 applique les réglages persistants qui peuvent être
+mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
+monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
+sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et
+GPIO d'état limité aux broches `0..22`. La configuration d'un GPIO doit rester
+confirmée par l'utilisateur ; elle ne vaut jamais preuve de sécurité électrique
+sans le circuit réel. La capture UAC2 reste un monitor local, pas un micro
+DualSense, tant qu'une route contrôleur distincte n'a pas été implémentée et
+testée.
 
 Les actions de l’espace Manettes doivent être réellement reliées à l’interface
 et rester locales : Calibration analyse les échantillons déjà reçus, Quick

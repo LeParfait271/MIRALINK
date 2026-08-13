@@ -16,6 +16,10 @@ ValidationResult validate_config(const Config& config) {
     if (config.audio_buffer_length < 16 || config.audio_buffer_length > 127) return {false, "audio_buffer_length is outside 16..127"};
     if (config.controller_mode > 2) return {false, "controller_mode is unsupported"};
     if (config.trigger_reduce > 10) return {false, "trigger_reduce is outside 0..10"};
+    // GPIO 0..22 are the normal user-facing digital pins on Pico 2 W. Keep
+    // CYW43, flash and other board-reserved pins outside this optional status
+    // output so a stored setting cannot alter a board-internal signal.
+    if (config.status_gpio_pin != 0xff && config.status_gpio_pin > 22) return {false, "status_gpio_pin must be disabled or within 0..22"};
     if (config.status_gpio_mode > 1) return {false, "status_gpio_mode is unsupported"};
     return {true, {}};
 }

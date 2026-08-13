@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse the previous
 projects or the supplied UF2.
 
-## Firmware 2.4.0
+## Firmware 2.5.0
 
 The firmware exposes one USB composite device with separate, standards-based
 interfaces:
@@ -42,17 +42,26 @@ gamepad `0x10`, controller output `0x11`.
 - Local Opus speaker/haptic encoding, one bounded pending audio packet and no
   audio persistence or external transmission.
 - Runtime application of saved controller mode, haptic gain, speaker volume,
-  speaker/microphone disable, volume lock, audio prebuffer, gamepad reporting
-  mode and Pico status LED preference.
+  headset monitor volume, bounded speaker gain, speaker/microphone disable,
+  volume lock, audio prebuffer, gamepad reporting mode and Pico status LED
+  preference.
+- Runtime application of trigger-effect reduction to the bounded output body;
+  `10` neutralizes both trigger blocks and intermediate values attenuate their
+  non-type parameters only.
+- Optional privacy-preserving USB serial exposure, conservative local
+  inactivity suspension, and a disabled-by-default status GPIO on user-facing
+  Pico 2 W pins `0..22`. These settings require the existing configuration
+  confirmation; a USB reconnect is required after the serial setting changes.
 - Optional standard USB remote wake: only a validated controller input can
   request it, and only when both the locally saved profile and the USB host
   have enabled it.
 
-Settings such as serial CDC, arbitrary status GPIO, automatic inactivity sleep,
-and a controller-microphone transport are intentionally not represented as
-working features in this firmware because there is no safe, validated hardware
-route for them yet. They remain stored configuration values only and must not
-be presented as active capabilities.
+Serial CDC, arbitrary GPIO outside the safe `0..22` status range, PS host
+shortcuts and a controller-microphone transport are intentionally not
+represented as working features in this firmware because there is no safe,
+validated hardware route for them yet. They remain stored configuration values
+only and must not be presented as active capabilities. The UAC2 capture source
+remains the local playback monitor, not the controller microphone.
 
 ## Validation boundary
 
@@ -67,7 +76,7 @@ hardware tests, never automatic actions.
 
 ## Local manual-test candidate
 
-`firmware/releases/2.4.0/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/2.5.0/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.

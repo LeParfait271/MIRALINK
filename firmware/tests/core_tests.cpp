@@ -3,6 +3,9 @@
 #include "miralink_dualsense.h"
 #include "miralink_protocol.h"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <array>
 #include <cstdint>
@@ -52,6 +55,16 @@ void test_store_requires_validated_commit() {
     auto value = default_config(); value.audio_buffer_length = 2; assert(!store.stage(value).ok); assert(!store.has_draft());
     store.reset_to_defaults(); assert(store.has_draft()); assert(store.commit()); assert(!store.has_draft());
     ConfigStore restored(flash); assert(restored.load()); assert(restored.active().audio_buffer_length == 64);
+}
+
+void test_config_rejects_reserved_status_gpio() {
+    auto config = default_config();
+    config.status_gpio_pin = 23;
+    assert(!validate_config(config).ok);
+    config.status_gpio_pin = 22;
+    assert(validate_config(config).ok);
+    config.status_gpio_pin = 0xff;
+    assert(validate_config(config).ok);
 }
 
 void test_dualsense_usb_report_parser() {
@@ -170,6 +183,32 @@ void test_dualsense_controller_output_mapping() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+void test_dualsense_trigger_reduction() {
+    std::array<std::uint8_t, miralink::dualsense::kUsbOutputPayloadBytes> payload{};
+    payload[miralink::dualsense::kUsbOutputRightTriggerOffset] = 0x02;
+    payload[miralink::dualsense::kUsbOutputRightTriggerOffset + 1] = 100;
+    payload[miralink::dualsense::kUsbOutputRightTriggerOffset + 2] = 255;
+    payload[miralink::dualsense::kUsbOutputLeftTriggerOffset] = 0x05;
+    payload[miralink::dualsense::kUsbOutputLeftTriggerOffset + 1] = 80;
+    const auto original = payload;
+
+    miralink::dualsense::apply_usb_output_trigger_reduction(payload, 0);
+    assert(payload == original);
+
+    miralink::dualsense::apply_usb_output_trigger_reduction(payload, 5);
+    assert(payload[miralink::dualsense::kUsbOutputRightTriggerOffset] == 0x02);
+    assert(payload[miralink::dualsense::kUsbOutputRightTriggerOffset + 1] == 50);
+    assert(payload[miralink::dualsense::kUsbOutputRightTriggerOffset + 2] == 128);
+    assert(payload[miralink::dualsense::kUsbOutputLeftTriggerOffset] == 0x05);
+    assert(payload[miralink::dualsense::kUsbOutputLeftTriggerOffset + 1] == 40);
+
+    miralink::dualsense::apply_usb_output_trigger_reduction(payload, 10);
+    for (std::size_t index = 0; index < miralink::dualsense::kUsbOutputTriggerEffectBytes; ++index) {
+        assert(payload[miralink::dualsense::kUsbOutputRightTriggerOffset + index] == 0);
+        assert(payload[miralink::dualsense::kUsbOutputLeftTriggerOffset + index] == 0);
+    }
+}
+
 void test_dualsense_audio_report_validation() {
     std::vector<std::uint8_t> report(miralink::dualsense::kBluetoothAudioReportBytes, 0);
     report[0] = miralink::dualsense::kBluetoothAudioReportId;
@@ -193,6 +232,6 @@ void test_dualsense_audio_report_validation() {
 }
 
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_audio_report_validation();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }

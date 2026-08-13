@@ -109,6 +109,22 @@ std::uint32_t output_crc32(const std::uint8_t* report, const std::size_t length)
     crc = crc32_update(crc, report, length - kBluetoothCrcBytes);
     return ~crc;
 }
+
+void reduce_trigger_effect(std::uint8_t* effect, const std::uint8_t reduction) {
+    if (effect == nullptr || effect[0] == 0 || reduction == 0) return;
+    if (reduction >= 10) {
+        std::fill(effect, effect + kUsbOutputTriggerEffectBytes, 0);
+        return;
+    }
+
+    // The command byte selects a controller-side effect. It must remain
+    // intact. Every following byte is a bounded parameter in MiraLink's fixed
+    // output body, so attenuating it cannot increase an effect's strength.
+    const auto numerator = static_cast<std::uint16_t>(10u - reduction);
+    for (std::size_t index = 1; index < kUsbOutputTriggerEffectBytes; ++index) {
+        effect[index] = static_cast<std::uint8_t>((static_cast<std::uint16_t>(effect[index]) * numerator + 5u) / 10u);
+    }
+}
 } // namespace
 
 bool is_dualsense_usb(const std::uint16_t vendor_id, const std::uint16_t product_id) {
@@ -244,6 +260,14 @@ std::uint32_t bluetooth_output_crc32(const std::uint8_t* report, const std::size
 
 std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report) {
     return output_crc32(report.data(), report.size());
+}
+
+void apply_usb_output_trigger_reduction(std::array<std::uint8_t, kUsbOutputPayloadBytes>& payload,
+    const std::uint8_t reduction) {
+    const auto bounded = static_cast<std::uint8_t>(std::min<std::uint8_t>(reduction, 10));
+    if (bounded == 0) return;
+    reduce_trigger_effect(payload.data() + kUsbOutputRightTriggerOffset, bounded);
+    reduce_trigger_effect(payload.data() + kUsbOutputLeftTriggerOffset, bounded);
 }
 
 AudioReportValidation validate_bluetooth_audio_report(const std::uint8_t* report, const std::size_t length) {

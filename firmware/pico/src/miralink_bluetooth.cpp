@@ -71,6 +71,10 @@ std::uint64_t g_audio_last_packet_ms = 0;
 std::array<std::uint8_t, 63> g_controller_state{};
 std::uint16_t g_haptic_gain_q8_8 = 256;
 std::uint8_t g_controller_mode = 2;
+std::uint8_t g_trigger_reduce = 0;
+std::uint8_t g_inactive_minutes = 0;
+std::uint64_t g_last_activity_ms = 0;
+bool g_idle_suspended = false;
 
 struct InquiryCandidate {
     bd_addr_t address{};
@@ -108,6 +112,11 @@ std::uint64_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
 }
 
+void note_activity() {
+    g_last_activity_ms = now_ms();
+    g_idle_suspended = false;
+}
+
 std::uint16_t configured_haptic_gain_q8_8() {
     if (!g_initialized) return g_haptic_gain_q8_8;
     critical_section_enter_blocking(&g_state_lock);
@@ -124,7 +133,27 @@ std::uint8_t configured_controller_mode() {
     return value;
 }
 
+std::uint8_t configured_trigger_reduce() {
+    if (!g_initialized) return g_trigger_reduce;
+    critical_section_enter_blocking(&g_state_lock);
+    const auto value = g_trigger_reduce;
+    critical_section_exit(&g_state_lock);
+    return value;
+}
+
+std::uint8_t configured_inactive_minutes() {
+    if (!g_initialized) return g_inactive_minutes;
+    critical_section_enter_blocking(&g_state_lock);
+    const auto value = g_inactive_minutes;
+    critical_section_exit(&g_state_lock);
+    return value;
+}
+
 void schedule_reconnect(const std::uint32_t delay_ms, const bool restart_from_first = true) {
+    if (g_idle_suspended) {
+        g_reconnect_deadline_ms = 0;
+        return;
+    }
     if (g_paired_address_count == 0) {
         g_reconnect_deadline_ms = 0;
         return;
@@ -259,7 +288,7 @@ void stop_inquiry() {
 }
 
 bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false) {
-    if ((!g_pairing_requested && !paired_address_known(address)) || g_connection_pending) return false;
+    if (g_idle_suspended || (!g_pairing_requested && !paired_address_known(address)) || g_connection_pending) return false;
     stop_inquiry();
     bd_addr_t mutable_address;
     std::memcpy(mutable_address, address, sizeof(mutable_address));
@@ -354,6 +383,7 @@ bool queue_output(const dualsense::OutputRequest& request) {
     g_output_packets[slot].length = report.size();
     g_output_packets[slot].occupied = true;
     g_output_queued = slot;
+    note_activity();
     if (request.usb_output) {
         std::copy(request.usb_output_payload.begin(), request.usb_output_payload.end(), g_controller_state.begin());
     }
@@ -416,7 +446,7 @@ void set_connection_closed() {
     clear_candidate();
     g_connection_failure_recorded = false;
     if (pairing_window_active()) start_inquiry();
-    else schedule_reconnect(kReconnectDelayMs, false);
+    else if (!g_idle_suspended) schedule_reconnect(kReconnectDelayMs, false);
 }
 
 void handle_report(const std::uint8_t* report, const std::uint16_t length) {
@@ -428,6 +458,7 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
     const auto parsed = dualsense::parse_bluetooth_input_report(report, length);
     critical_section_enter_blocking(&g_state_lock);
     if (parsed) {
+        note_activity();
         g_snapshot.input = parsed.state;
         g_snapshot.input_available = true;
         g_snapshot.sample_count += 1;
@@ -456,6 +487,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
+                g_idle_suspended = false;
+                g_last_activity_ms = now_ms();
                 clear_candidate();
                 gap_connectable_control(1);
                 gap_discoverable_control(0);
@@ -578,6 +611,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     bd_addr_t address{};
                     hid_subevent_incoming_connection_get_address(packet, address);
                     if (pairing_window_active() || paired_address_known(address)) {
+                        note_activity();
                         stop_inquiry();
                         record_connection_attempt(false);
                         g_hid_cid = cid;
@@ -602,6 +636,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
 
                 case HID_SUBEVENT_CONNECTION_OPENED:
                     if (hid_subevent_connection_opened_get_status(packet) == ERROR_CODE_SUCCESS) {
+                        note_activity();
                         g_hid_cid = hid_subevent_connection_opened_get_hid_cid(packet);
                         bd_addr_t address{};
                         hid_subevent_connection_opened_get_bd_addr(packet, address);
@@ -706,16 +741,27 @@ void apply_config(const Config& config) {
     if (!g_initialized) {
         g_haptic_gain_q8_8 = haptic_gain_q8_8;
         g_controller_mode = config.controller_mode;
+        g_trigger_reduce = config.trigger_reduce;
+        g_inactive_minutes = config.inactive_minutes;
         return;
     }
+    const bool resume_from_idle = config.inactive_minutes == 0 && g_idle_suspended;
     critical_section_enter_blocking(&g_state_lock);
     g_haptic_gain_q8_8 = haptic_gain_q8_8;
     g_controller_mode = config.controller_mode;
+    g_trigger_reduce = config.trigger_reduce;
+    g_inactive_minutes = config.inactive_minutes;
     critical_section_exit(&g_state_lock);
+    if (resume_from_idle) {
+        g_idle_suspended = false;
+        note_activity();
+        schedule_reconnect(kReconnectDelayMs);
+    }
 }
 
 bool open_pairing_window() {
     if (!g_initialized || !g_hci_working) return false;
+    note_activity();
     g_pairing_window_deadline_ms = now_ms() + kPairingWindowMs;
     g_pairing_requested = true;
     g_reconnect_deadline_ms = 0;
@@ -799,6 +845,7 @@ bool send_controller_output(const std::uint8_t* payload, const std::size_t lengt
     dualsense::OutputRequest request{};
     request.usb_output = true;
     std::copy(payload, payload + length, request.usb_output_payload.begin());
+    dualsense::apply_usb_output_trigger_reduction(request.usb_output_payload, configured_trigger_reduce());
     return queue_output(request);
 }
 
@@ -822,6 +869,24 @@ bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t len
 
 void poll() {
     if (!g_initialized) return;
+    const auto inactive_minutes = configured_inactive_minutes();
+    if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {
+        const auto current = snapshot();
+        const auto inactive_ms = static_cast<std::uint64_t>(inactive_minutes) * 60u * 1000u;
+        if (current.state == LinkState::Connected && current.input_available
+            && g_last_activity_ms != 0 && now_ms() - g_last_activity_ms >= inactive_ms) {
+            // Sleep is local and conservative: stop the outgoing reconnect
+            // loop, close the current HID link, and wait for an explicit
+            // pairing action or an inbound reconnection from a remembered
+            // controller. It never erases pairing keys or configuration.
+            g_idle_suspended = true;
+            g_reconnect_deadline_ms = 0;
+            g_haptic_stop_pending = false;
+            hid_host_disconnect(g_hid_cid);
+            return;
+        }
+    }
+    if (g_idle_suspended) return;
     if (g_pairing_window_deadline_ms != 0 && !pairing_window_active()) {
         g_pairing_window_deadline_ms = 0;
         g_pairing_requested = false;

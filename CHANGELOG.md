@@ -1,5 +1,16 @@
 # Changelog
 
+## Firmware 2.5.0 - 2026-08-13
+
+- Activated the remaining safe persisted firmware settings: speaker and
+  headset-monitor volume, bounded speaker gain, trigger-effect reduction,
+  conservative local inactivity suspension, optional USB serial exposure and
+  a disabled-by-default external status GPIO.
+- Enforced core-test assertions under the native Release build and added test
+  coverage for trigger reduction and reserved-GPIO validation.
+- Rebuilt and locally inspected a fresh Pico 2 W / RP2350 ARM Secure UF2.
+  No physical Windows, Pico or DualSense test is claimed.
+
 ## Firmware 2.4.0 - 2026-08-13
 
 - Reintroduced a standards-based USB Audio Class 2 headset function beside the

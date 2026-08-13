@@ -2,6 +2,7 @@
 #include "miralink_bluetooth.h"
 #include "miralink_audio.h"
 #include "miralink_protocol.h"
+#include "miralink_usb_identity.h"
 
 #include <algorithm>
 #include <array>
@@ -12,6 +13,7 @@
 
 #include "bsp/board_api.h"
 #include "hardware/flash.h"
+#include "hardware/gpio.h"
 #include "pico/bootrom.h"
 #include "pico/btstack_flash_bank.h"
 #include "pico/cyw43_arch.h"
@@ -87,6 +89,9 @@ std::uint64_t g_last_gamepad_report_us = 0;
 std::uint64_t g_usb_reconnect_deadline_ms = 0;
 std::uint64_t g_recovery_deadline_ms = 0;
 std::array<std::uint8_t, 11> g_gamepad_report{};
+constexpr std::uint8_t kStatusGpioDisabled = 0xff;
+std::uint8_t g_status_gpio_pin = kStatusGpioDisabled;
+bool g_status_gpio_active_low = false;
 
 struct LogRecord {
     std::uint32_t timestamp_ms = 0;
@@ -102,6 +107,35 @@ std::uint32_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
 }
 
+void write_status_gpio(const bool active) {
+    if (g_status_gpio_pin == kStatusGpioDisabled) return;
+    gpio_put(g_status_gpio_pin, (active ^ g_status_gpio_active_low) ? 1 : 0);
+}
+
+void apply_status_gpio_config(const miralink::Config& config) {
+    const auto requested_pin = config.status_gpio_pin;
+    const auto requested_active_low = config.status_gpio_mode != 0;
+    if (g_status_gpio_pin != kStatusGpioDisabled && g_status_gpio_pin != requested_pin) {
+        // Return a previously selected status output to a safe high-impedance
+        // input before a new one is configured.
+        gpio_set_dir(g_status_gpio_pin, GPIO_IN);
+    }
+    g_status_gpio_pin = requested_pin;
+    g_status_gpio_active_low = requested_active_low;
+    if (g_status_gpio_pin == kStatusGpioDisabled) return;
+    gpio_init(g_status_gpio_pin);
+    gpio_set_dir(g_status_gpio_pin, GPIO_OUT);
+    write_status_gpio(false);
+}
+
+void apply_runtime_config() {
+    const auto& config = g_config_store.active();
+    miralink::audio::apply_config(config);
+    miralink::bluetooth::apply_config(config);
+    miralink::usb_identity::set_unique_serial_enabled(config.enable_usb_serial);
+    apply_status_gpio_config(config);
+}
+
 std::uint64_t gamepad_publish_interval_us() {
     switch (g_config_store.active().polling_mode) {
         case 0: return 4000; // 250 Hz: reliable baseline.
@@ -114,9 +148,11 @@ void update_status_led() {
     const auto snapshot = miralink::bluetooth::snapshot();
     const bool pairing = snapshot.pairing_window_open || snapshot.inquiry_active || snapshot.connection_pending;
     const bool blink_on = ((now_ms() / 250u) & 1u) == 0;
+    const bool status_active = snapshot.state == miralink::bluetooth::LinkState::Connected || pairing;
     const bool visible = !g_config_store.active().disable_led
         && (snapshot.state == miralink::bluetooth::LinkState::Connected || (pairing && blink_on));
     board_led_write(visible ? 1 : 0);
+    write_status_gpio(status_active);
 }
 
 void append_log(const char* message) {
@@ -445,7 +481,7 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
                     | miralink::kFeatureUsbGamepad)});
             return;
         case miralink::Command::GetInfo:
-            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 4, 0, 0});
+            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 5, 0, 0});
             return;
         case miralink::Command::GetConfig: {
             const auto encoded = miralink::encode_config(g_config_store.active());
@@ -465,8 +501,7 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
         }
         case miralink::Command::CommitConfig:
             if (!g_config_store.commit()) { set_error(sequence, decoded.frame.command, "flash verification failed"); return; }
-            miralink::audio::apply_config(g_config_store.active());
-            miralink::bluetooth::apply_config(g_config_store.active());
+            apply_runtime_config();
             g_config_was_loaded = true;
             append_log("configuration committed");
             set_response(sequence, decoded.frame.command, 0, {});
@@ -629,8 +664,7 @@ int main() {
     board_init();
     miralink::audio::init();
     g_config_was_loaded = g_config_store.load();
-    miralink::audio::apply_config(g_config_store.active());
-    miralink::bluetooth::apply_config(g_config_store.active());
+    apply_runtime_config();
     append_log(g_config_was_loaded ? "configuration loaded" : "safe defaults active");
     clear_gamepad_report();
 

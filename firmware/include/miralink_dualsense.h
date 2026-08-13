@@ -15,6 +15,12 @@ constexpr std::size_t kUsbInputReportBytes = 64;
 constexpr std::uint8_t kUsbOutputReportId = 0x02;
 constexpr std::size_t kUsbOutputReportBytes = 48;
 constexpr std::size_t kUsbOutputPayloadBytes = kUsbOutputReportBytes - 1;
+// MiraLink treats the two fixed-size effect blocks as opaque controller
+// commands except for its locally configured reduction policy. The policy
+// preserves the type byte and only attenuates effect parameters.
+constexpr std::size_t kUsbOutputRightTriggerOffset = 10;
+constexpr std::size_t kUsbOutputLeftTriggerOffset = 21;
+constexpr std::size_t kUsbOutputTriggerEffectBytes = 11;
 constexpr std::uint8_t kBluetoothInputReportId = 0x31;
 constexpr std::size_t kBluetoothInputReportBytes = 78;
 constexpr std::uint8_t kBluetoothOutputReportId = 0x31;
@@ -119,6 +125,7 @@ struct OutputRequest {
 std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_report(const OutputRequest& request, std::uint8_t sequence);
 std::uint32_t bluetooth_output_crc32(const std::uint8_t* report, std::size_t length);
 std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report);
+void apply_usb_output_trigger_reduction(std::array<std::uint8_t, kUsbOutputPayloadBytes>& payload, std::uint8_t reduction);
 
 enum class AudioReportError : std::uint8_t {
     None,

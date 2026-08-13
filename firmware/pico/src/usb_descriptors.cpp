@@ -10,6 +10,20 @@
 #include "pico/unique_id.h"
 #include "tusb.h"
 
+namespace miralink::usb_identity {
+namespace {
+bool g_unique_serial_enabled = false;
+}
+
+void set_unique_serial_enabled(const bool enabled) {
+    g_unique_serial_enabled = enabled;
+}
+
+bool unique_serial_enabled() {
+    return g_unique_serial_enabled;
+}
+} // namespace miralink::usb_identity
+
 namespace {
 constexpr std::uint8_t kReportCommand = 0x01;
 constexpr std::uint8_t kReportResponse = 0x02;
@@ -139,7 +153,7 @@ constexpr std::uint8_t kReportDescriptor[] = {
 
 extern "C" {
 
-tusb_desc_device_t const desc_device = {
+tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0200,
@@ -152,11 +166,12 @@ tusb_desc_device_t const desc_device = {
     .bcdDevice = 0x0204,
     .iManufacturer = 0x01,
     .iProduct = 0x02,
-    .iSerialNumber = 0x03,
+    .iSerialNumber = 0x00,
     .bNumConfigurations = 0x01
 };
 
 uint8_t const* tud_descriptor_device_cb(void) {
+    desc_device.iSerialNumber = miralink::usb_identity::unique_serial_enabled() ? 0x03 : 0x00;
     return reinterpret_cast<uint8_t const*>(&desc_device);
 }
 
