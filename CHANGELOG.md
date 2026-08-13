@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0 - 2026-08-13
+
+- Replaced the failing USB composite descriptor with a HID-only Pico 2 W
+  configuration after Windows reported Code 10 on both the audio and HID
+  child interfaces of the 2.0.0 bridge.
+- Kept the MiraLink feature channel and standard gamepad collection while
+  removing the unvalidated UAC2 interface from the active descriptor.
+- Kept audio USB explicitly unavailable; the audio pipeline remains isolated
+  in source for a later descriptor-specific validation cycle.
+- Built and inspected a new RP2350 ARM Secure UF2 locally. It has not been
+  flashed or tested on physical hardware.
+
 ## 2.1.0 - 2026-08-13
 
 - Added the MiraLink bridge VID/PID to the WebHID chooser filters so Chrome can

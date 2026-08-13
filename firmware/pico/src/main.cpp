@@ -618,6 +618,7 @@ int main() {
     }
 }
 
+#if CFG_TUD_AUDIO
 extern "C" bool tud_audio_rx_done_post_read_cb(uint8_t rhport, uint16_t n_bytes_received,
     uint8_t func_id, uint8_t ep_out, uint8_t cur_alt_setting) {
     (void)rhport;
@@ -630,3 +631,4 @@ extern "C" bool tud_audio_rx_done_post_read_cb(uint8_t rhport, uint16_t n_bytes_
     miralink::audio::push_usb_pcm(buffer.data(), read);
     return true;
 }
+#endif

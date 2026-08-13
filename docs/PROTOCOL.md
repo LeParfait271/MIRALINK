@@ -85,18 +85,17 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. The UAC2 input is four-channel, 48 kHz,
-16-bit PCM and is retained only in a bounded RAM ring. MiraLink builds a fixed
-398-byte DualSense audio HID report (`0x36`): the first two channels are
-encoded as bounded Opus stereo speaker data and the latter two become bounded
-3 kHz haptic samples. No standard A2DP/SBC route is used. The audio link is
-reported as available only after a valid DualSense HID input report makes the
-output route ready, and as streaming only after an audio report is accepted by
-BTstack. This does not prove that a particular DualSense accepts or renders
-the audio. Adaptive-trigger effects are reachable through the bounded output
-route below but require real hardware validation. Battery status, compatible rumble,
-lightbar, motion, touch and microphone state are reported only after a
-validated DualSense input report has been received.
+claim that a controller is connected. In firmware 2.2.0 the UAC2 USB input is
+not exposed: the previous composite descriptor produced Windows Code 10 on
+the real bridge's audio and HID child interfaces. Consequently USB audio
+streaming and its packet counter remain unavailable/zero in this candidate.
+The source still contains the bounded local audio pipeline and fixed 398-byte
+DualSense audio-report validator for a later descriptor-specific validation
+cycle. No standard A2DP/SBC route is used. Adaptive-trigger effects are
+reachable through the bounded output route below but require real hardware
+validation. Battery status, compatible rumble, lightbar, motion, touch and
+microphone state are reported only after a validated DualSense input report has
+been received.
 
 ### 3.2 Pico controller state payload
 

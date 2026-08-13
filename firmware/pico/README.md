@@ -33,10 +33,11 @@ The firmware currently provides:
   status after a validated full Bluetooth report;
 - bounded compatible rumble, lightbar/player LED and microphone mute output
   commands with a local queue, Bluetooth CRC and automatic rumble stop.
-- local UAC2 speaker input with four channels at 48 kHz/16-bit PCM, retained
-  only in a bounded RAM ring;
-- a fixed DualSense audio HID report (`0x36`, 398 bytes), with Opus stereo
-  speaker data and 3 kHz haptic channels generated from the USB audio input;
+- a compiled local audio pipeline retained for future descriptor work; USB
+  UAC2 is not exposed in this candidate because the previous composite
+  descriptor produced Windows Code 10 on the physical bridge;
+- the fixed DualSense audio-report validator remains in the source, but no
+  USB audio stream is advertised or counted by this HID-only candidate;
 - a fixed 47-byte DualSense USB output body route for game output and adaptive
   trigger effects, wrapped by MiraLink with its own Bluetooth header and CRC;
 - diagnostics schema 4 and `GET_AUDIO_STATUS` for distinguishing the USB
@@ -47,18 +48,17 @@ The firmware currently provides:
 - a bounded output-flight guard and one in-memory pending audio report so
   concurrent HID writes cannot overwrite each other.
 
-The audio report route is not proof that every DualSense accepts or renders
-the payload. Adaptive-trigger effects are routed but still require physical
-validation on a Pico 2 W and a real DualSense. The output commands are
-bridge-only.
+USB audio and audio streaming are unavailable in 2.2.0. Adaptive-trigger
+effects remain a bounded output route but still require physical validation on
+a Pico 2 W and a real DualSense. The output commands are bridge-only.
 
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-The current source version is `2.0.0`. The source was rebuilt locally with
+The current source version is `2.2.0`. The source was rebuilt locally with
 Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1` and `picotool` `2.3.0`; the
-resulting local 2.0.0 manual-test candidate is in
-`firmware/releases/2.0.0/`. It has not been flashed or published. The
+resulting local 2.2.0 manual-test candidate is in
+`firmware/releases/2.2.0/`. It has not been flashed or published. The
 previously built delivery artifact in `firmware/releases/0.2.0/` is retained
 as historical evidence. No physical Pico 2 W or controller was connected
 during this validation.
@@ -71,6 +71,7 @@ picotool uf2 convert miralink_pico_firmware.elf miralink_pico_firmware.uf2 --fam
 ```
 
 The files in
-`firmware/releases/2.0.0/` are a manually testable local candidate with a
-SHA-256 manifest; the files in `firmware/releases/0.2.0/` are historical
-artifacts. MiraLink never flashes the board automatically.
+`firmware/releases/2.2.0/` are a manually testable local candidate with a
+SHA-256 manifest; the files in `firmware/releases/2.0.0/` and
+`firmware/releases/0.2.0/` are historical artifacts. MiraLink never flashes
+the board automatically.

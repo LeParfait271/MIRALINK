@@ -140,3 +140,10 @@ un Pico 2 W et une DualSense réels.
 
 Le chemin d’appairage Bluetooth classique peut répondre `0000` uniquement dans
 la fenêtre locale explicitement ouverte ou pour une adresse déjà mémorisée.
+
+Le candidat firmware 2.2.0 est un lot de récupération USB HID-only. Il retire
+l’interface UAC2 du descripteur actif après l’observation locale d’un Code 10
+Windows sur les enfants audio et HID du composite 2.0.0. La preuve de build,
+la preuve du descripteur et la preuve de l’échange sur la carte flashée restent
+trois preuves séparées ; l’audio USB doit rester indisponible dans l’application
+tant qu’un Pico 2 W réel n’a pas énuméré l’interface correspondante sans erreur.

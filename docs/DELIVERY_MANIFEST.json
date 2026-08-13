@@ -1,11 +1,11 @@
 {
   "product": "MiraLink",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-13",
   "delivery": "local-source-only",
   "application": "app/src",
-  "applicationVersion": "2.1.0",
+  "applicationVersion": "2.2.0",
   "validatedFirmware": {
     "sourceStatus": "historical-artifact",
     "version": "0.2.0",
@@ -17,26 +17,30 @@
   },
   "sourceBuild": {
     "sourceStatus": "compiled-locally-uf2-packaged",
-    "version": "2.0.0",
-    "directory": "firmware/pico/build-btstack-3",
+    "version": "2.2.0",
+    "directory": "firmware/pico/build-btstack-4",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "sdk": "2.3.0",
     "armToolchain": "15.2.1",
     "opus": "1.5.2-vendored",
     "outputs": ["miralink_pico_firmware.elf", "miralink_pico_firmware.bin", "miralink_pico_firmware.hex", "miralink_pico_firmware.uf2"],
-    "hardwareTest": "not-tested"
+    "hardwareTest": "not-tested",
+    "usbConfiguration": "hid-only",
+    "usbAudio": "unavailable-until-descriptor-validation"
   },
   "releaseArtifact": {
     "sourceStatus": "local-manual-test-candidate",
-    "version": "2.0.0",
-    "directory": "firmware/releases/2.0.0",
-    "uf2": "firmware/releases/2.0.0/miralink_pico_firmware.uf2",
-    "sha256": "FDCCB5E7F40F0A0EB7220ADA8620E61BCAAB51B23B28EF1412662A88B2496C3E",
-    "bytes": 1404416,
+    "version": "2.2.0",
+    "directory": "firmware/releases/2.2.0",
+    "uf2": "firmware/releases/2.2.0/miralink_pico_firmware.uf2",
+    "sha256": "1027599BC3E81F352BC4C6DEBE738B5287211EB41EC1E206EA37FE2D1699BC54",
+    "bytes": 1398784,
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "hardwareTest": "not-tested",
+    "usbConfiguration": "hid-only",
+    "usbAudio": "unavailable-until-descriptor-validation",
     "flashAction": "manual-only"
   },
   "hardwareAction": "none"
