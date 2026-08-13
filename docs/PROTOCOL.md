@@ -85,7 +85,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 2.5.0 exposes a standard UAC2
+claim that a controller is connected. Firmware 0.32 exposes a standard UAC2
 headset function beside the HID interface: four playback channels at 48 kHz /
 PCM 16-bit and one local mono capture-monitor channel. The USB packet counter
 therefore tracks accepted local UAC2 playback packets. The capture endpoint is

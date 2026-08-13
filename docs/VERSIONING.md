@@ -21,14 +21,17 @@ The public site version must be reflected in:
 packaging metadata for the public site version `0.32`, not a separate product
 release.
 
-Firmware versions are independent. The current firmware source and release
-artifact are `2.5.0` and must not be renamed when only the site changes.
+The firmware and public site share one displayed version. A firmware build is
+released with the exact current public-site version, so the source, embedded
+UF2 metadata, release folder and manifest currently use `0.32`. CMake uses
+the technical form `0.32.0` only because it requires three numeric segments;
+the firmware reported by the device remains exactly `0.32`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current committed site version is `0.32`. The current firmware version is
-`2.5.0`, containing the HID + UAC2 headset candidate and active persisted
-runtime settings. USB audio enumeration remains a hardware-validation boundary:
+The current committed site and firmware version is `0.32`, containing the HID
+and UAC2 headset candidate and active persisted runtime settings. USB audio
+enumeration remains a hardware-validation boundary:
 the source exposes standard 48 kHz playback and local-monitor capture, but no
 real Pico 2 W test is claimed.
 

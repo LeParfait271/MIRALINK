@@ -481,7 +481,7 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
                     | miralink::kFeatureUsbGamepad)});
             return;
         case miralink::Command::GetInfo:
-            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 5, 0, 0});
+            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 0, 32, 0, 0});
             return;
         case miralink::Command::GetConfig: {
             const auto encoded = miralink::encode_config(g_config_store.active());

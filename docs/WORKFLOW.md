@@ -44,8 +44,9 @@ l’utilisateur.
    règle, une décision, une limite ou une procédure.
 2. Mettre à jour la version publique du site et la date dans le même commit
    lorsque le dépôt est modifié ; augmenter la version du site de `0.01` à
-   chaque commit. La version firmware est indépendante et ne change que lors
-   d'un nouveau build firmware documenté.
+   chaque commit. La version affichée du firmware est identique à la version
+   publique du site et tout changement de version exige un nouveau build
+   firmware documenté.
 3. Exécuter les contrôles adaptés et conserver les résultats et limites.
 4. Vérifier `git diff --check`, l’état Git et le périmètre des fichiers.
 5. Créer un seul commit local complet avec toutes les modifications du prompt.
@@ -56,8 +57,9 @@ pas de commit vide artificiel.
 
 La version publique actuelle du site est `0.32`. Le paquet npm peut représenter
 cette même version sous la forme technique `0.32.0`, mais l'application, le
-manifeste de livraison et la documentation affichent `0.32`. Le firmware
-actuellement suivi reste `2.5.0`.
+manifeste de livraison, la documentation et le firmware affichent `0.32`.
+La source CMake peut employer `0.32.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.32`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -186,7 +188,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le candidat firmware 2.5.0 applique les réglages persistants qui peuvent être
+Le build firmware 0.32 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et

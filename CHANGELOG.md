@@ -1,7 +1,10 @@
 # Changelog
 
-## Firmware 2.5.0 - 2026-08-13
+## 0.32 - 2026-08-13
 
+- Synchronized the firmware source, embedded UF2 metadata and local release
+  folder with the public MiraLink version `0.32`; firmware and site no longer
+  use separate displayed version numbers.
 - Activated the remaining safe persisted firmware settings: speaker and
   headset-monitor volume, bounded speaker gain, trigger-effect reduction,
   conservative local inactivity suspension, optional USB serial exposure and
@@ -23,8 +26,6 @@
   the host must also explicitly allow that USB feature.
 - Rebuilt and locally inspected a Pico 2 W / RP2350 ARM Secure UF2. Native core
   tests passed; no physical Windows, Pico or DualSense test is claimed.
-
-## 0.32 - 2026-08-13
 
 - Removed the supplied decorative image layer from the desktop interface.
 - Removed the decorative header, hero calls to action, scroll cue and UF2 drop
