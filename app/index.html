@@ -9,13 +9,13 @@
   <title>MiraLink</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?ui=29">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Skip to content</a>
   <header class="topbar" id="site-header">
     <a class="brand-lockup" href="#top" aria-label="MiraLink home">
-      <div class="brand-mark" aria-hidden="true"><span></span></div>
+      <div class="brand-mark" aria-hidden="true"><img src="assets/visuals/miralink-icon-option-06.png" alt=""><span></span></div>
       <div><p class="brand-name">MiraLink</p><p class="brand-subtitle" data-i18n="brandSubtitle">Pico 2 W control center</p></div>
     </a>
     <nav class="topbar-nav" aria-label="Navigation principale">
@@ -27,7 +27,7 @@
     <div class="topbar-actions">
       <select id="language-select" class="sr-only" aria-hidden="true" tabindex="-1"></select>
       <span class="language-chip" aria-label="Français">FR</span>
-      <span class="version-chip" id="version-chip">v0.27</span>
+      <span class="version-chip" id="version-chip">v0.29</span>
       <span class="status-chip" id="global-status" data-state="idle"><span class="status-dot" aria-hidden="true"></span><span id="global-status-text" data-i18n="statusReady">Ready</span></span>
     </div>
   </header>
@@ -37,9 +37,11 @@
   <main id="main-content" class="shell">
     <section class="hero-panel connection-hero" id="top" aria-labelledby="page-title">
       <div class="hero-media" aria-hidden="true">
-        <img class="hero-scene is-active" src="assets/visuals/miralink-hero-cinematic.png" alt="">
-        <img class="hero-scene" src="assets/visuals/miralink-hardware-bridge.png" alt="">
-        <img class="hero-scene" src="assets/visuals/miralink-signal-hub.png" alt="">
+        <img class="hero-scene is-active" src="assets/visuals/site-pack-v2/banners/miralink-hero-connection.png" alt="">
+        <img class="hero-scene" src="assets/visuals/site-pack-v2/banners/miralink-banner-local-first.png" alt="">
+        <img class="hero-scene" src="assets/visuals/site-pack-v2/banners/miralink-banner-observability.png" alt="">
+        <img class="hero-scene" src="assets/visuals/site-pack-v2/banners/miralink-banner-protocol-flow.png" alt="">
+        <img class="hero-scene" src="assets/visuals/site-pack-v2/banners/miralink-banner-trust-stability.png" alt="">
         <span class="hero-media-grid"></span>
         <span class="hero-media-scanline"></span>
       </div>
@@ -98,10 +100,10 @@
 
   </main>
 
-  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.27</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
+  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.29</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog" class="dialog-card"><p class="eyebrow" data-i18n="confirmation">CONFIRMATION</p><h2 id="confirm-title" data-i18n="confirmTitle">Confirm action</h2><p id="confirm-message"></p><div class="action-row"><button class="button quiet" value="cancel" data-i18n="cancel">Cancel</button><button class="button danger" id="confirm-submit" value="confirm" data-i18n="confirm">Confirm</button></div></form></dialog>
-  <script type="module" src="src/app.js?ui=27"></script>
+  <script type="module" src="src/app.js?ui=29"></script>
   <script type="module" src="src/visual-effects.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier unique : `C:\MIRALINK\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.28`
+- Version publique actuelle du site : `0.29`
 - Version firmware suivie séparément : `2.3.0`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
@@ -62,7 +62,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.27` → `0.28`. La version technique du paquet npm utilise `0.28.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.28`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.28` → `0.29`. La version technique du paquet npm utilise `0.29.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.29`.
 - La version du firmware est indépendante de celle du site. Le firmware actuellement suivi reste `2.3.0` et ne change que lorsqu'un nouveau firmware est réellement construit et documenté.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
@@ -150,4 +150,5 @@ automatique.
 - `2026-08-13` — La version publique du site MiraLink est `0.27`; son paquet technique est `0.27.0`. La version firmware indépendante courante est `2.3.0`.
 - `2026-08-13` — Les boutons Manettes doivent déclencher une action locale vérifiable : Controller Lab analyse uniquement les échantillons reçus, les snapshots restent sur l'ordinateur et aucune calibration n'est écrite dans le Pico sans une procédure distincte et confirmée. Les vibrations et l'audio restent « non testés » lorsqu'aucune sortie réelle n'a été vérifiée.
 - `2026-08-13` — La version publique du site MiraLink est `0.28`; son paquet technique est `0.28.0`. La version firmware indépendante courante est `2.3.0`.
+- `2026-08-13` — La version publique du site MiraLink est `0.29`; son paquet technique est `0.29.0`. Le pack visuel fourni dans `Images/site-pack-v2` remplace les trois anciens visuels du site ; les scènes desktop, les cartes système, le logo et la texture de pied de page sont intégrés localement.
 - `2026-08-13` — Les artefacts générés par Codex hors du dossier unique `C:\MIRALINK\MIRALINK` doivent être supprimés en fin de tâche après vérification de leur périmètre ; les fichiers existants de l'utilisateur restent protégés.

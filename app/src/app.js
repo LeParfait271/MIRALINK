@@ -16,7 +16,7 @@ import {
   encodeConfig
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, setupLanguage, translate } from './i18n.js?ui=27';
+import { applyTranslations, setupLanguage, translate } from './i18n.js?ui=29';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
@@ -29,7 +29,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.28', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '0.29', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);

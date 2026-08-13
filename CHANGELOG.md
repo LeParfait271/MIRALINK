@@ -1,5 +1,13 @@
 # Changelog
 
+# 0.29 - 2026-08-13
+
+- Replaced the three legacy hero assets with the supplied desktop image pack.
+- Added a five-scene connection carousel, the selected MiraLink mark, textured
+  system cards and a textured footer while keeping the interface connection-first.
+- Removed the old cinematic, hardware-bridge and signal-hub image files from the
+  deployed application assets.
+
 # 0.28 - 2026-08-13
 
 - Wired the Manettes workspace actions that were previously inert.

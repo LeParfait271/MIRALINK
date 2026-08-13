@@ -1,11 +1,19 @@
-const CACHE = 'miralink-shell-0.28-ui22';
+const CACHE = 'miralink-shell-0.29-ui23';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/dualsense.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
   './src/compatibility.js', './src/diagnostics.js', './src/action-guard.js', './src/session-recorder.js',
   './src/health-analysis.js', './src/visual-effects.js', './manifest.webmanifest', './icon.svg',
-  './assets/visuals/miralink-hero-cinematic.png', './assets/visuals/miralink-hardware-bridge.png',
-  './assets/visuals/miralink-signal-hub.png'
+  './assets/visuals/miralink-icon-option-06.png',
+  './assets/visuals/site-pack-v2/banners/miralink-hero-connection.png',
+  './assets/visuals/site-pack-v2/banners/miralink-banner-local-first.png',
+  './assets/visuals/site-pack-v2/banners/miralink-banner-observability.png',
+  './assets/visuals/site-pack-v2/banners/miralink-banner-protocol-flow.png',
+  './assets/visuals/site-pack-v2/banners/miralink-banner-trust-stability.png',
+  './assets/visuals/site-pack-v2/cards/miralink-card-clarity.png',
+  './assets/visuals/site-pack-v2/cards/miralink-card-link.png',
+  './assets/visuals/site-pack-v2/cards/miralink-card-stability.png',
+  './assets/visuals/site-pack-v2/textures/miralink-footer-texture.png'
 ];
 
 self.addEventListener('install', (event) => {
