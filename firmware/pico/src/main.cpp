@@ -23,6 +23,7 @@ constexpr std::uint8_t kReportCommand = 0x01;
 constexpr std::uint8_t kReportResponse = 0x02;
 constexpr std::uint8_t kReportEvent = 0x03;
 constexpr std::uint8_t kReportGamepad = 0x10;
+constexpr std::uint8_t kReportControllerOutput = 0x11;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
 constexpr std::uint8_t kLogSchema = 1;
@@ -555,7 +556,7 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
     (void)instance;
-    if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == miralink::dualsense::kUsbOutputReportId) {
+    if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == kReportControllerOutput) {
         if (buffer == nullptr) return;
         const auto* payload = buffer;
         auto length = static_cast<std::size_t>(bufsize);

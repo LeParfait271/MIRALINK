@@ -164,7 +164,7 @@ compatible-rumble pulse is stopped automatically.
 The firmware validates the fixed size, copies it into a local queue, preserves
 MiraLink ownership of the Bluetooth report id/sequence/CRC and sends the
 result only when a validated controller link is ready. A HID output report id
-`0x02` carrying the same fixed 47-byte body is accepted on the Pico's host
+`0x11` carrying the same fixed 47-byte body is accepted on the Pico's host
 interface for compatibility with a local game path. No variable-length or
 arbitrary HID payload is accepted.
 

@@ -54,10 +54,10 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.25`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.25.0`, mais l'application, le
-manifeste de livraison et la documentation affichent `0.25`. Le firmware
-actuellement suivi reste `2.2.0`.
+La version publique actuelle du site est `0.26`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.26.0`, mais l'application, le
+manifeste de livraison et la documentation affichent `0.26`. Le firmware
+actuellement suivi reste `2.3.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -136,7 +136,7 @@ passe à « liaison disponible » qu’après un rapport HID DualSense valide et
 implémentation logicielle ne remplace pas la validation d’une DualSense réelle.
 
 Le chemin de sortie contrôleur 1.9.0 accepte un corps USB DualSense fixe de
-47 octets via `SET_CONTROLLER_OUTPUT` ou le rapport HID de sortie id `0x02`.
+47 octets via `SET_CONTROLLER_OUTPUT` ou le rapport HID de sortie id `0x11`.
 MiraLink recalcule l’en-tête Bluetooth et le CRC ; le chemin ne permet pas
 d’injecter une trame HID arbitraire.
 
@@ -157,3 +157,10 @@ Windows sur les enfants audio et HID du composite 2.0.0. La preuve de build,
 la preuve du descripteur et la preuve de l’échange sur la carte flashée restent
 trois preuves séparées ; l’audio USB doit rester indisponible dans l’application
 tant qu’un Pico 2 W réel n’a pas énuméré l’interface correspondante sans erreur.
+
+Le correctif firmware 2.3.0 impose que chaque identifiant de rapport HID soit
+unique dans le descripteur complet, quel que soit son type (feature, input ou
+output). Une collision de rapport est un risque d’énumération Windows : un
+build et une inspection statique ne valent pas confirmation matérielle. Toute
+release qui modifie le descripteur doit documenter ses IDs et être testée
+manuellement sur un Pico 2 W avant d’être annoncée fonctionnelle.

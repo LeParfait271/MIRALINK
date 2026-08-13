@@ -14,7 +14,11 @@ constexpr std::uint8_t kReportCommand = 0x01;
 constexpr std::uint8_t kReportResponse = 0x02;
 constexpr std::uint8_t kReportEvent = 0x03;
 constexpr std::uint8_t kReportGamepad = 0x10;
-constexpr std::uint8_t kReportControllerOutput = miralink::dualsense::kUsbOutputReportId;
+// HID report identifiers are global to this descriptor. Keep the raw
+// controller-output envelope separate from the DualSense-internal USB body
+// identifier (0x02), which is already used by the MiraLink response feature
+// report.
+constexpr std::uint8_t kReportControllerOutput = 0x11;
 constexpr std::uint8_t kInterfaceNumber = 0;
 constexpr std::uint8_t kEndpointIn = 0x81;
 
@@ -51,8 +55,7 @@ constexpr std::uint8_t kReportDescriptor[] = {
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
     MIRALINK_FEATURE_REPORT(kReportCommand, 0x02)
     MIRALINK_FEATURE_REPORT(kReportResponse, 0x03)
-    MIRALINK_FEATURE_REPORT(kReportEvent, 0x04)
-    MIRALINK_INPUT_REPORT(kReportEvent, 0x05)
+    MIRALINK_INPUT_REPORT(kReportEvent, 0x04)
     HID_COLLECTION_END,
     HID_USAGE_PAGE_N(HID_USAGE_PAGE_VENDOR, 2),
     HID_USAGE(0x06),

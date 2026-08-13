@@ -1,5 +1,23 @@
 # Changelog
 
+# 0.26 - 2026-08-13
+
+- Released firmware `2.3.0` as a local manual-test candidate after correcting
+  the HID report-ID collision that could cause Windows to report Code 10 and
+  hide the Pico from WebHID.
+- Assigned unique descriptor IDs for commands (`0x01`), responses (`0x02`),
+  events (`0x03`), gamepad input (`0x10`) and raw controller output (`0x11`).
+- Kept USB audio unavailable and did not claim a physical hardware test.
+
+## Firmware 2.3.0 - 2026-08-13
+
+- Rebuilt and inspected a Pico 2 W / RP2350 ARM Secure UF2 from MiraLink
+  source, with only HID interfaces exposed.
+- Changed the raw controller-output envelope from `0x02` to `0x11`; the
+  validated 47-byte DualSense body and its safety bounds are unchanged.
+- Passed native core tests and static descriptor inspection. No Pico or
+  DualSense hardware test is claimed.
+
 # 0.25 - 2026-08-13
 
 - Fixed the desktop edge-to-edge hero sizing so the cinematic scene and

@@ -48,17 +48,17 @@ The firmware currently provides:
 - a bounded output-flight guard and one in-memory pending audio report so
   concurrent HID writes cannot overwrite each other.
 
-USB audio and audio streaming are unavailable in 2.2.0. Adaptive-trigger
+USB audio and audio streaming are unavailable in 2.3.0. Adaptive-trigger
 effects remain a bounded output route but still require physical validation on
 a Pico 2 W and a real DualSense. The output commands are bridge-only.
 
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-The current source version is `2.2.0`. The source was rebuilt locally with
+The current source version is `2.3.0`. The source was rebuilt locally with
 Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1` and `picotool` `2.3.0`; the
-resulting local 2.2.0 manual-test candidate is in
-`firmware/releases/2.2.0/`. It has not been flashed or published. The
+resulting local 2.3.0 manual-test candidate is in
+`firmware/releases/2.3.0/`. It has not been flashed or published. The
 previously built delivery artifact in `firmware/releases/0.2.0/` is retained
 as historical evidence. No physical Pico 2 W or controller was connected
 during this validation.
@@ -71,7 +71,15 @@ picotool uf2 convert miralink_pico_firmware.elf miralink_pico_firmware.uf2 --fam
 ```
 
 The files in
-`firmware/releases/2.2.0/` are a manually testable local candidate with a
+`firmware/releases/2.3.0/` are a manually testable local candidate with a
 SHA-256 manifest; the files in `firmware/releases/2.0.0/` and
 `firmware/releases/0.2.0/` are historical artifacts. MiraLink never flashes
 the board automatically.
+
+Version 2.3.0 also assigns a unique HID report identifier to every top-level
+report in the active descriptor. The raw controller-output envelope now uses
+`0x11`; the 47-byte DualSense body it transports is unchanged. This fixes the
+previous descriptor collision between command/response feature reports and
+output reports that could make Windows reject the HID device with Code 10.
+This correction is statically verified only; physical enumeration still needs
+to be tested on a Pico 2 W.
