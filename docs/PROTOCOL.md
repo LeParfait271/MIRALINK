@@ -54,13 +54,13 @@ or the command is not supported.
 
 ### 3.1 Current diagnostics payload
 
-`GET_DIAGNOSTICS` returns 28 structured bytes for schema `3`. The application
-keeps accepting the historical three-byte schema `1` so an older local build
-does not become unreadable:
+`GET_DIAGNOSTICS` returns 48 structured bytes for schema `4`. The application
+keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
+28-byte schema `3` so an older local build does not become unreadable:
 
 | Offset | Size | Meaning |
 |---:|---:|---|
-| 0 | 1 | Diagnostics schema (`3`) |
+| 0 | 1 | Diagnostics schema (`4`) |
 | 1 | 1 | Configuration loaded from a valid flash record (`0` or `1`) |
 | 2 | 1 | MiraLink USB device mounted (`0` or `1`) |
 | 3 | 1 | Pico Bluetooth host initialized (`0` or `1`) |
@@ -76,6 +76,13 @@ does not become unreadable:
 | 19 | 1 | Bluetooth audio stream active (`0` or `1`) |
 | 20 | 4 | USB audio packet count, little-endian |
 | 24 | 4 | Dropped audio-frame count, little-endian |
+| 28 | 1 | Last Bluetooth failure stage (`0` none, `1` inquiry, `2` HID connect, `3` HID accept, `4` connection open, `5` protocol handshake, `6` descriptor, `7` timeout, `8` close) |
+| 29 | 1 | Last Bluetooth status byte, or `0` when the stage has no status |
+| 30..31 | 2 | Reserved and zero-filled |
+| 32 | 4 | Bluetooth connection attempts, little-endian |
+| 36 | 4 | Bluetooth connection failures, little-endian |
+| 40 | 4 | Automatic-reconnect attempts, little-endian |
+| 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
 claim that a controller is connected. The UAC2 input is four-channel, 48 kHz,

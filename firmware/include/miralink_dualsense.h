@@ -21,6 +21,14 @@ constexpr std::uint8_t kBluetoothOutputReportId = 0x31;
 constexpr std::size_t kBluetoothOutputReportBytes = 78;
 constexpr std::uint8_t kBluetoothAudioReportId = 0x36;
 constexpr std::size_t kBluetoothAudioReportBytes = 398;
+constexpr std::size_t kBluetoothAudioHapticHeaderOffset = 76;
+constexpr std::size_t kBluetoothAudioHapticLengthOffset = 77;
+constexpr std::size_t kBluetoothAudioHapticDataOffset = 78;
+constexpr std::size_t kBluetoothAudioHapticBytes = 64;
+constexpr std::size_t kBluetoothAudioOpusHeaderOffset = 142;
+constexpr std::size_t kBluetoothAudioOpusLengthOffset = 143;
+constexpr std::size_t kBluetoothAudioOpusDataOffset = 144;
+constexpr std::size_t kBluetoothAudioOpusBytes = 200;
 
 enum class BatteryState : std::uint8_t {
     Unknown = 0,
@@ -111,5 +119,22 @@ struct OutputRequest {
 std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_report(const OutputRequest& request, std::uint8_t sequence);
 std::uint32_t bluetooth_output_crc32(const std::uint8_t* report, std::size_t length);
 std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report);
+
+enum class AudioReportError : std::uint8_t {
+    None,
+    Empty,
+    BadLength,
+    UnsupportedReportId,
+    InvalidLayout
+};
+
+struct AudioReportValidation {
+    AudioReportError error = AudioReportError::None;
+
+    explicit operator bool() const { return error == AudioReportError::None; }
+};
+
+AudioReportValidation validate_bluetooth_audio_report(const std::uint8_t* report, std::size_t length);
+AudioReportValidation validate_bluetooth_audio_report(const std::vector<std::uint8_t>& report);
 
 } // namespace miralink::dualsense

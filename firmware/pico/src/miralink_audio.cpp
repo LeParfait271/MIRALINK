@@ -16,7 +16,7 @@ namespace {
 
 constexpr std::size_t kRingFrames = 2048;
 constexpr std::uint64_t kStreamingTimeoutUs = 150000;
-constexpr std::size_t kOpusBytes = 200;
+constexpr std::size_t kOpusBytes = dualsense::kBluetoothAudioOpusBytes;
 
 std::array<std::int16_t, kRingFrames * kChannelCount> g_pcm_ring{};
 std::size_t g_read_frame = 0;
@@ -30,6 +30,9 @@ bool g_usb_streaming = false;
 OpusEncoder* g_opus_encoder = nullptr;
 std::uint8_t g_report_sequence = 0;
 std::uint8_t g_audio_packet_sequence = 0;
+std::array<std::int16_t, kAudioBlockFrames * kChannelCount> g_pending_block{};
+std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> g_pending_report{};
+bool g_pending_report_ready = false;
 
 std::size_t next_frame(const std::size_t frame) {
     return (frame + 1) % kRingFrames;
@@ -110,23 +113,35 @@ bool build_audio_report(const std::int16_t* block, std::array<std::uint8_t, dual
     report[10] = g_audio_packet_sequence++;
     report[11] = 0x90;
     report[12] = 63;
-    report[76] = 0x92;
-    report[77] = static_cast<std::uint8_t>(kHapticBytes);
-    std::copy(haptic.begin(), haptic.end(), report.begin() + 78);
-    report[142] = 0x13;
-    report[143] = static_cast<std::uint8_t>(kOpusBytes);
-    std::copy(opus_packet.begin(), opus_packet.end(), report.begin() + 144);
-    return true;
+    report[dualsense::kBluetoothAudioHapticHeaderOffset] = 0x92;
+    report[dualsense::kBluetoothAudioHapticLengthOffset] = static_cast<std::uint8_t>(kHapticBytes);
+    std::copy(haptic.begin(), haptic.end(), report.begin() + dualsense::kBluetoothAudioHapticDataOffset);
+    report[dualsense::kBluetoothAudioOpusHeaderOffset] = 0x13;
+    report[dualsense::kBluetoothAudioOpusLengthOffset] = static_cast<std::uint8_t>(encoded);
+    std::copy(opus_packet.begin(), opus_packet.begin() + encoded,
+        report.begin() + dualsense::kBluetoothAudioOpusDataOffset);
+    return static_cast<bool>(dualsense::validate_bluetooth_audio_report(report.data(), report.size()));
 }
 
 void process_audio_block() {
-    if (g_opus_encoder == nullptr || g_buffered_frames < kAudioBlockFrames) return;
+    if (g_opus_encoder == nullptr) return;
 
-    std::array<std::int16_t, kAudioBlockFrames * kChannelCount> block{};
-    read_quad_block(block.data());
-    std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> report{};
-    if (!build_audio_report(block.data(), report)) return;
-    if (miralink::bluetooth::send_audio_haptics_report(report.data(), report.size())) {
+    const auto link = miralink::bluetooth::snapshot();
+    if (g_pending_report_ready && !link.audio_link_available) {
+        g_pending_report_ready = false;
+        g_dropped_frame_count += static_cast<std::uint32_t>(kAudioBlockFrames);
+    }
+    if (!g_pending_report_ready) {
+        if (g_buffered_frames < kAudioBlockFrames || !link.audio_link_available) return;
+        read_quad_block(g_pending_block.data());
+        if (!build_audio_report(g_pending_block.data(), g_pending_report)) {
+            g_dropped_frame_count += static_cast<std::uint32_t>(kAudioBlockFrames);
+            return;
+        }
+        g_pending_report_ready = true;
+    }
+    if (miralink::bluetooth::send_audio_haptics_report(g_pending_report.data(), g_pending_report.size())) {
+        g_pending_report_ready = false;
         ++g_audio_report_count;
     }
 }
@@ -145,6 +160,9 @@ void init() {
     g_usb_streaming = false;
     g_report_sequence = 0;
     g_audio_packet_sequence = 0;
+    g_pending_block.fill(0);
+    g_pending_report.fill(0);
+    g_pending_report_ready = false;
     int error = OPUS_OK;
     g_opus_encoder = opus_encoder_create(static_cast<opus_int32>(kSampleRate), 2,
         OPUS_APPLICATION_AUDIO, &error);

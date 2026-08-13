@@ -170,7 +170,29 @@ void test_dualsense_controller_output_mapping() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+void test_dualsense_audio_report_validation() {
+    std::vector<std::uint8_t> report(miralink::dualsense::kBluetoothAudioReportBytes, 0);
+    report[0] = miralink::dualsense::kBluetoothAudioReportId;
+    report[miralink::dualsense::kBluetoothAudioHapticHeaderOffset] = 0x92;
+    report[miralink::dualsense::kBluetoothAudioHapticLengthOffset] = static_cast<std::uint8_t>(miralink::dualsense::kBluetoothAudioHapticBytes);
+    report[miralink::dualsense::kBluetoothAudioOpusHeaderOffset] = 0x13;
+    report[miralink::dualsense::kBluetoothAudioOpusLengthOffset] = 10;
+    assert(miralink::dualsense::validate_bluetooth_audio_report(report));
+
+    report[miralink::dualsense::kBluetoothAudioOpusLengthOffset] = 0;
+    assert(miralink::dualsense::validate_bluetooth_audio_report(report).error
+        == miralink::dualsense::AudioReportError::InvalidLayout);
+    report[miralink::dualsense::kBluetoothAudioOpusLengthOffset] = 10;
+    report[0] = 0;
+    assert(miralink::dualsense::validate_bluetooth_audio_report(report).error
+        == miralink::dualsense::AudioReportError::UnsupportedReportId);
+    report[0] = miralink::dualsense::kBluetoothAudioReportId;
+    report.resize(miralink::dualsense::kBluetoothAudioReportBytes - 1);
+    assert(miralink::dualsense::validate_bluetooth_audio_report(report).error
+        == miralink::dualsense::AudioReportError::BadLength);
+}
+
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }

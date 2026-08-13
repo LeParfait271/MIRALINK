@@ -59,7 +59,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0` → `1.5.0` → `1.6.0` → `1.7.0` → `1.8.0` → `1.9.0`.
+- Chaque commit qui modifie le projet augmente la version de `0.1` : `0.1.0` → `0.2.0` → `0.3.0` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.0` → `0.8.0` → `0.9.0` → `1.0.0` → `1.1.0` → `1.2.0` → `1.3.0` → `1.4.0` → `1.5.0` → `1.6.0` → `1.7.0` → `1.8.0` → `1.9.0` → `2.0.0`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -136,3 +136,6 @@ automatique.
 - `2026-08-13` — La sortie DualSense de 1.9.0 accepte soit des commandes MiraLink typées, soit un corps de rapport de sortie USB DualSense strictement borné à 47 octets ; MiraLink ajoute l'en-tête Bluetooth, la séquence et le CRC, et n'accepte jamais un tampon HID arbitraire.
 - `2026-08-13` — Les gâchettes adaptatives sont exposées comme voie de sortie contrôleur bornée et négociable, mais ne sont pas déclarées validées tant qu'un Pico 2 W et une DualSense réels n'ont pas confirmé l'effet.
 - `2026-08-13` — Le statut audio distingue endpoint local, encodeur prêt, liaison HID Bluetooth validée et flux actif après envoi réussi ; aucun compteur audio, échantillon ou identifiant ne quitte l'ordinateur.
+- `2026-08-13` — Le lot 2.0.0 expose un diagnostic local borné de la dernière étape Bluetooth en échec et de compteurs d'essais ; ces champs ne contiennent ni adresse radio, ni identifiant sensible, ni télémétrie distante.
+- `2026-08-13` — La file de sortie protège un rapport accepté par BTstack pendant une fenêtre bornée afin de ne pas l'écraser par un rapport concurrent ; l'absence d'événement de fin BTstack reste une limite documentée et doit être vérifiée sur Pico 2 W réel.
+- `2026-08-13` — Le pipeline audio conserve au plus un rapport en attente en RAM, valide la structure fixe avant l'envoi et abandonne un bloc devenu obsolète après perte de liaison ; il ne persiste aucun audio.

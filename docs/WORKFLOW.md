@@ -52,6 +52,18 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
+Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
+etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
+Ces donnees restent bornees au Pico et a l'ordinateur ; aucune adresse radio,
+aucun numero de serie et aucune donnee de session n'est exporte.
+
+La file de sortie considere un rapport accepte par l'API BTstack comme « en
+vol » pendant une courte fenetre bornee, car BTstack ne fournit pas a MiraLink
+un evenement de fin d'envoi HID. Un rapport concurrent est conserve en attente
+ou refuse proprement, puis le comportement doit etre confirme avec un Pico 2 W
+reel. L'audio conserve au plus un rapport encode en RAM, valide sa structure
+fixe et abandonne le rapport s'il devient obsolete apres une perte de liaison.
+
 ## État de référence
 
 - Développeur : `MaruChiwa`.

@@ -246,4 +246,33 @@ std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report) {
     return output_crc32(report.data(), report.size());
 }
 
+AudioReportValidation validate_bluetooth_audio_report(const std::uint8_t* report, const std::size_t length) {
+    AudioReportValidation result{};
+    if (report == nullptr || length == 0) {
+        result.error = AudioReportError::Empty;
+        return result;
+    }
+    if (length != kBluetoothAudioReportBytes) {
+        result.error = AudioReportError::BadLength;
+        return result;
+    }
+    if (report[0] != kBluetoothAudioReportId) {
+        result.error = AudioReportError::UnsupportedReportId;
+        return result;
+    }
+    if (report[kBluetoothAudioHapticHeaderOffset] != 0x92
+        || report[kBluetoothAudioHapticLengthOffset] != kBluetoothAudioHapticBytes
+        || report[kBluetoothAudioOpusHeaderOffset] != 0x13
+        || report[kBluetoothAudioOpusLengthOffset] == 0
+        || report[kBluetoothAudioOpusLengthOffset] > kBluetoothAudioOpusBytes) {
+        result.error = AudioReportError::InvalidLayout;
+        return result;
+    }
+    return result;
+}
+
+AudioReportValidation validate_bluetooth_audio_report(const std::vector<std::uint8_t>& report) {
+    return validate_bluetooth_audio_report(report.data(), report.size());
+}
+
 } // namespace miralink::dualsense

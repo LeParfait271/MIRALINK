@@ -163,6 +163,18 @@ test('diagnostics payload keeps unavailable capabilities out of binary status', 
   new DataView(extended.buffer).setUint32(24, 3, true);
   assert.equal(decodeDiagnosticsPayload(extended).audioUsbPacketCount, 12);
   assert.equal(decodeDiagnosticsPayload(extended).audioBluetoothStreaming, true);
+  const detailed = new Uint8Array(48);
+  detailed.set(extended, 0);
+  detailed[0] = 4;
+  detailed[28] = 5;
+  detailed[29] = 0x0e;
+  new DataView(detailed.buffer).setUint32(32, 9, true);
+  new DataView(detailed.buffer).setUint32(36, 3, true);
+  new DataView(detailed.buffer).setUint32(40, 2, true);
+  assert.deepEqual(
+    (({ lastConnectionError, lastConnectionStatus, connectionAttemptCount, connectionFailureCount, reconnectAttemptCount }) => ({ lastConnectionError, lastConnectionStatus, connectionAttemptCount, connectionFailureCount, reconnectAttemptCount }))(decodeDiagnosticsPayload(detailed)),
+    { lastConnectionError: 5, lastConnectionStatus: 0x0e, connectionAttemptCount: 9, connectionFailureCount: 3, reconnectAttemptCount: 2 }
+  );
   assert.throws(() => decodeDiagnosticsPayload(Uint8Array.from([1])), /diagnostics/i);
 });
 

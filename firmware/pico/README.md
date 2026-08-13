@@ -39,9 +39,13 @@ The firmware currently provides:
   speaker data and 3 kHz haptic channels generated from the USB audio input;
 - a fixed 47-byte DualSense USB output body route for game output and adaptive
   trigger effects, wrapped by MiraLink with its own Bluetooth header and CRC;
-- diagnostics schema 3 and `GET_AUDIO_STATUS` for distinguishing the USB
+- diagnostics schema 4 and `GET_AUDIO_STATUS` for distinguishing the USB
   stream, a validated Bluetooth HID output link and an active audio report
   stream.
+- local Bluetooth failure stage and bounded connection/reconnect counters,
+  without radio addresses or remote telemetry;
+- a bounded output-flight guard and one in-memory pending audio report so
+  concurrent HID writes cannot overwrite each other.
 
 The audio report route is not proof that every DualSense accepts or renders
 the payload. Adaptive-trigger effects are routed but still require physical
@@ -51,10 +55,10 @@ bridge-only.
 The USB VID/PID in `include/miralink_usb_identity.h` is development-only. It
 must be replaced by an assigned identity before any public release.
 
-The current source version is `1.9.0`. The source was rebuilt locally with
+The current source version is `2.0.0`. The source was rebuilt locally with
 Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1` and `picotool` `2.3.0`; the
-resulting local 1.9.0 manual-test candidate is in
-`firmware/releases/1.9.0/`. It has not been flashed or published. The
+resulting local 2.0.0 manual-test candidate is in
+`firmware/releases/2.0.0/`. It has not been flashed or published. The
 previously built delivery artifact in `firmware/releases/0.2.0/` is retained
 as historical evidence. No physical Pico 2 W or controller was connected
 during this validation.
@@ -67,6 +71,6 @@ picotool uf2 convert miralink_pico_firmware.elf miralink_pico_firmware.uf2 --fam
 ```
 
 The files in
-`firmware/releases/1.9.0/` are a manually testable local candidate with a
+`firmware/releases/2.0.0/` are a manually testable local candidate with a
 SHA-256 manifest; the files in `firmware/releases/0.2.0/` are historical
 artifacts. MiraLink never flashes the board automatically.

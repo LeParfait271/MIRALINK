@@ -9,7 +9,7 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current version: `1.9.0`
+- Current version: `2.0.0`
 - Last update: `2026-08-13`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: local only

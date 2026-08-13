@@ -27,11 +27,24 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '1.9.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '2.0.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function connectionErrorLabel(code) {
+  return ({
+    1: 'inquiry',
+    2: 'HID connection',
+    3: 'HID acceptance',
+    4: 'connection opening',
+    5: 'protocol handshake',
+    6: 'HID descriptor',
+    7: 'handshake timeout',
+    8: 'unexpected close'
+  })[code] || 'unknown Bluetooth step';
+}
 
 function addLog(level, message) {
   const entry = { timestamp: new Date().toISOString(), level, message: String(message) };
@@ -421,7 +434,10 @@ async function runDiagnostics() {
       ? diagnostics.controllerConnected ? 'connected' : diagnostics.pairingWindowOpen ? 'pairing window open' : 'ready'
       : 'unavailable';
     const audioState = audioStreaming ? 'streaming' : audioLinked ? 'link ready, no stream' : 'no active local stream';
-    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio ${audioState}.`;
+    const connectionIssue = diagnostics.lastConnectionError
+      ? ` Last Bluetooth issue: ${connectionErrorLabel(diagnostics.lastConnectionError)} (status 0x${diagnostics.lastConnectionStatus.toString(16).padStart(2, '0')}).`
+      : '';
+    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio ${audioState}.${connectionIssue}`;
     addLog('info', 'Diagnostics completed with capability limits reported.');
   } catch (error) {
     for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';

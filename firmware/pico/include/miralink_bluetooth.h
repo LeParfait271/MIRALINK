@@ -15,6 +15,18 @@ enum class LinkState : std::uint8_t {
     Disconnected
 };
 
+enum class ConnectionError : std::uint8_t {
+    None,
+    Inquiry,
+    HidConnect,
+    HidAccept,
+    ConnectionOpen,
+    ProtocolHandshake,
+    Descriptor,
+    Timeout,
+    Closed
+};
+
 struct Snapshot {
     LinkState state = LinkState::Unavailable;
     bool bluetooth_available = false;
@@ -30,6 +42,11 @@ struct Snapshot {
     dualsense::InputState input{};
     std::uint32_t sample_count = 0;
     std::uint32_t rejected_report_count = 0;
+    ConnectionError last_connection_error = ConnectionError::None;
+    std::uint8_t last_connection_status = 0;
+    std::uint32_t connection_attempt_count = 0;
+    std::uint32_t connection_failure_count = 0;
+    std::uint32_t reconnect_attempt_count = 0;
 };
 
 void init();

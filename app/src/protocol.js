@@ -145,8 +145,12 @@ export function decodeDiagnosticsPayload(input) {
       rejectedReportCount: 0
     });
   }
-  if ((bytes.length !== 18 || bytes[0] !== 2) && (bytes.length !== 28 || bytes[0] !== 3)) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
+  if ((bytes.length !== 18 || bytes[0] !== 2)
+    && (bytes.length !== 28 || bytes[0] !== 3)
+    && (bytes.length !== 48 || bytes[0] !== 4)) throw new ProtocolError('Diagnostics payload is invalid', 'invalid_diagnostics_payload');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const hasConnectionFailure = bytes.length === 48 && bytes[0] === 4;
+  const hasAudio = bytes.length === 28 || hasConnectionFailure;
   const result = {
     schema: bytes[0],
     configLoaded: Boolean(bytes[1]),
@@ -160,11 +164,18 @@ export function decodeDiagnosticsPayload(input) {
     inputAvailable: Boolean(bytes[9]),
     sampleCount: view.getUint32(10, true),
     rejectedReportCount: view.getUint32(14, true),
-    audioUsbStreaming: bytes.length === 28 ? Boolean(bytes[18]) : false,
-    audioBluetoothStreaming: bytes.length === 28 ? Boolean(bytes[19]) : false,
-    audioUsbPacketCount: bytes.length === 28 ? view.getUint32(20, true) : 0,
-    audioDroppedFrameCount: bytes.length === 28 ? view.getUint32(24, true) : 0
+    audioUsbStreaming: hasAudio ? Boolean(bytes[18]) : false,
+    audioBluetoothStreaming: hasAudio ? Boolean(bytes[19]) : false,
+    audioUsbPacketCount: hasAudio ? view.getUint32(20, true) : 0,
+    audioDroppedFrameCount: hasAudio ? view.getUint32(24, true) : 0
   };
+  if (hasConnectionFailure) {
+    result.lastConnectionError = bytes[28];
+    result.lastConnectionStatus = bytes[29];
+    result.connectionAttemptCount = view.getUint32(32, true);
+    result.connectionFailureCount = view.getUint32(36, true);
+    result.reconnectAttemptCount = view.getUint32(40, true);
+  }
   return Object.freeze(result);
 }
 

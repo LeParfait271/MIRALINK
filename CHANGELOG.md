@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.0 - 2026-08-13
+
+- Added local Bluetooth failure diagnostics: last failing stage, controller
+  attempt/failure counters and automatic-reconnect attempts, without exposing
+  radio addresses or sending data away from the computer.
+- Hardened the bounded Bluetooth output queue so a pending BTstack report is
+  not overwritten by a concurrent haptic, trigger or audio report.
+- Kept one validated audio report in local RAM while the output queue is busy,
+  discarded stale audio after a link loss, and encoded the actual Opus payload
+  length instead of advertising the full capacity as audio data.
+- Added host coverage for fixed DualSense audio-report layout validation and
+  application coverage for diagnostics schema 4.
+- Rebuilt the local Pico 2 W manual-test candidate. Hardware behavior remains
+  untested; no flash, push or public publication is claimed.
+
 ## 1.9.0 - 2026-08-13
 
 - Added a local UAC2 audio input for four-channel, 48 kHz, 16-bit PCM. Audio

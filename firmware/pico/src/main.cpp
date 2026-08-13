@@ -26,7 +26,7 @@ constexpr std::uint8_t kReportGamepad = 0x10;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
 constexpr std::uint8_t kLogSchema = 1;
-constexpr std::uint8_t kDiagnosticsSchema = 3;
+constexpr std::uint8_t kDiagnosticsSchema = 4;
 constexpr std::size_t kLogMessageBytes = 40;
 constexpr std::size_t kLogCapacity = 12;
 constexpr std::array<std::uint8_t, 4> kRecoveryToken = {'R', 'C', 'V', '1'};
@@ -270,6 +270,14 @@ std::vector<std::uint8_t> diagnostics_payload() {
     payload.push_back(static_cast<std::uint8_t>(snapshot.audio_streaming ? 1 : 0));
     write_u32(payload, audio.usb_packet_count);
     write_u32(payload, audio.dropped_frame_count);
+    payload.push_back(static_cast<std::uint8_t>(snapshot.last_connection_error));
+    payload.push_back(snapshot.last_connection_status);
+    payload.push_back(0);
+    payload.push_back(0);
+    write_u32(payload, snapshot.connection_attempt_count);
+    write_u32(payload, snapshot.connection_failure_count);
+    write_u32(payload, snapshot.reconnect_attempt_count);
+    payload.resize(48, 0);
     return payload;
 }
 
