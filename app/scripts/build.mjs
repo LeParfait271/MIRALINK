@@ -13,6 +13,7 @@ for (const name of ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js',
   await cp(path.join(appRoot, name), path.join(dist, name));
 }
 await cp(path.join(appRoot, 'src'), path.join(dist, 'src'), { recursive: true });
+await cp(path.join(appRoot, 'assets'), path.join(dist, 'assets'), { recursive: true });
 
 const version = JSON.parse(await readFile(path.join(projectRoot, 'VERSION.json'), 'utf8'));
 await writeFile(path.join(dist, 'build-info.json'), `${JSON.stringify(version, null, 2)}\n`);

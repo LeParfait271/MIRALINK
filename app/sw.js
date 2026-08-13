@@ -1,9 +1,11 @@
-const CACHE = 'miralink-shell-0.22-ui16';
+const CACHE = 'miralink-shell-0.23-ui17';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/dualsense.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
   './src/compatibility.js', './src/diagnostics.js', './src/action-guard.js', './src/session-recorder.js',
-  './src/health-analysis.js', './manifest.webmanifest', './icon.svg'
+  './src/health-analysis.js', './src/visual-effects.js', './manifest.webmanifest', './icon.svg',
+  './assets/visuals/miralink-hero-cinematic.png', './assets/visuals/miralink-hardware-bridge.png',
+  './assets/visuals/miralink-signal-hub.png'
 ];
 
 self.addEventListener('install', (event) => {

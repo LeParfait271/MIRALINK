@@ -1,5 +1,11 @@
 # Changelog
 
+# 0.23 - 2026-08-13
+
+- Rebuilt the public desktop landing hero with cinematic local hardware scenes,
+  crossfades, parallax, scroll choreography and magnetic calls to action while
+  preserving the existing WebHID application underneath.
+
 ## 0.22 - 2026-08-13
 
 - Corrected the public MiraLink site/application version to `0.22`, with a

@@ -20,24 +20,42 @@
     </div>
     <div class="topbar-actions">
       <label class="language-picker" for="language-select"><span class="sr-only" data-i18n="language">Language</span><select id="language-select" aria-label="Language"></select></label>
-      <span class="version-chip" id="version-chip">v0.3.0</span>
+      <span class="version-chip" id="version-chip">v0.23</span>
       <span class="status-chip" id="global-status" data-state="idle"><span class="status-dot" aria-hidden="true"></span><span id="global-status-text" data-i18n="statusReady">Ready</span></span>
     </div>
   </header>
 
   <main id="main-content" class="shell">
     <section class="hero-panel" aria-labelledby="page-title">
-      <div class="hero-copy"><p class="eyebrow" data-i18n="eyebrow">LOCAL / HARDWARE / CONTROL</p><h1 id="page-title" data-i18n="title">Make every connection intentional.</h1><p class="hero-lede" data-i18n="heroLede">A focused workspace for your bridge, controllers and firmware state. Your data stays on this computer.</p></div>
+      <div class="hero-media" aria-hidden="true">
+        <img class="hero-scene is-active" src="assets/visuals/miralink-hero-cinematic.png" alt="">
+        <img class="hero-scene" src="assets/visuals/miralink-hardware-bridge.png" alt="">
+        <img class="hero-scene" src="assets/visuals/miralink-signal-hub.png" alt="">
+        <span class="hero-media-grid"></span>
+        <span class="hero-media-scanline"></span>
+      </div>
+      <div class="hero-copy">
+        <div class="hero-kicker-row"><p class="eyebrow" data-i18n="eyebrow">LOCAL / HARDWARE / CONTROL</p><span class="hero-live"><span class="hero-live-dot"></span> LIVE LOCAL SIGNAL</span></div>
+        <h1 id="page-title" data-i18n="title">Make every connection intentional.</h1>
+        <p class="hero-lede" data-i18n="heroLede">A focused workspace for your bridge, controllers and firmware state. Your data stays on this computer.</p>
+        <div class="hero-actions">
+          <a class="hero-cta hero-cta-primary" data-magnetic href="#workspace"><span data-i18n="openWorkspace">Open workspace</span><span aria-hidden="true">↗</span></a>
+          <a class="hero-cta hero-cta-secondary" data-magnetic href="#system-view"><span data-i18n="tabOverview">Overview</span><span aria-hidden="true">↓</span></a>
+        </div>
+      </div>
+      <div class="hero-rail" aria-hidden="true"><span>FIELD SYSTEM / 01</span><span class="hero-rail-line"></span><span>LOCAL ONLY</span></div>
+      <div class="hero-scene-index" aria-hidden="true"><span>SCENE</span><strong id="hero-scene-number">01</strong><span>/ 03</span></div>
+      <div class="hero-scroll-cue" aria-hidden="true"><span>SCROLL TO ENTER</span><span class="hero-scroll-line"></span></div>
       <div class="hero-octagon" aria-hidden="true"><span class="hero-octagon-line"></span><span class="hero-octagon-core">ML</span></div>
     </section>
 
-    <section class="device-strip panel" aria-labelledby="devices-title">
+    <section class="device-strip panel" id="workspace" aria-labelledby="devices-title">
       <div class="section-heading compact"><div><p class="eyebrow" data-i18n="workspace">WORKSPACE</p><h2 id="devices-title" data-i18n="devices">Connected devices</h2></div><div class="action-row"><button class="button primary" id="connect-button" type="button" data-i18n="connect">Connect device</button><button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh">Refresh</button></div></div>
       <div id="hid-warning" class="notice warning" hidden role="status"><strong data-i18n="webhidMissingTitle">WebHID is unavailable.</strong><span data-i18n="webhidMissingBody">Use a desktop browser with WebHID enabled.</span></div>
       <div id="device-list" class="device-list" aria-live="polite"><div class="empty-state" id="empty-devices"><span class="empty-glyph" aria-hidden="true">◇</span><p class="empty-title" data-i18n="noDevices">No device connected</p><p class="empty-copy" data-i18n="noDevicesCopy">Connect a MiraLink device to begin.</p></div></div>
     </section>
 
-    <nav class="tab-nav panel" aria-label="MiraLink sections" role="tablist">
+    <nav class="tab-nav panel" id="system-view" aria-label="MiraLink sections" role="tablist">
       <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview" data-i18n="tabOverview">Overview</button>
       <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-bridge" id="tab-button-bridge" data-tab="bridge" data-i18n="tabBridge">Bridge</button>
       <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-controllers" id="tab-button-controllers" data-tab="controllers" data-i18n="tabControllers">Controllers</button>
@@ -76,9 +94,10 @@
     <section class="tab-panel" id="tab-logs" role="tabpanel" aria-labelledby="tab-button-logs" data-panel="logs" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="logsEyebrow">LOCAL EVENT TRAIL</p><h2 data-i18n="logsTitle">Logs</h2></div><button class="button quiet" id="clear-logs-button" type="button" data-i18n="clearLogs">Clear logs</button></div><div class="log-view" id="log-view" aria-live="polite"></div></section>
   </main>
 
-  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.3.0</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-12</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
+  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.23</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog" class="dialog-card"><p class="eyebrow" data-i18n="confirmation">CONFIRMATION</p><h2 id="confirm-title" data-i18n="confirmTitle">Confirm action</h2><p id="confirm-message"></p><div class="action-row"><button class="button quiet" value="cancel" data-i18n="cancel">Cancel</button><button class="button danger" id="confirm-submit" value="confirm" data-i18n="confirm">Confirm</button></div></form></dialog>
   <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/visual-effects.js"></script>
 </body>
 </html>
