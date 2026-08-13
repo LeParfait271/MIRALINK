@@ -1,5 +1,10 @@
 # Changelog
 
+# 0.25 - 2026-08-13
+
+- Fixed the desktop edge-to-edge hero sizing so the cinematic scene and
+  headline remain fully framed at wide viewport widths.
+
 # 0.24 - 2026-08-13
 
 - Rebuilt the desktop landing as a long-form editorial control-center story
