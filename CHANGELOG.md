@@ -1,5 +1,13 @@
 # Changelog
 
+# 0.28 - 2026-08-13
+
+- Wired the Manettes workspace actions that were previously inert.
+- Added local Controller Lab calibration analysis from received samples,
+  confirmation-gated local snapshot saving and per-controller history restore.
+- Added a read-only quick test that reports live input separately from
+  unsupported or untested vibration and audio output.
+
 # 0.27 - 2026-08-13
 
 - Simplified the desktop interface around the connection workflow: removed the

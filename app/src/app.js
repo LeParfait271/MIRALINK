@@ -16,7 +16,7 @@ import {
   encodeConfig
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, setupLanguage, translate } from './i18n.js';
+import { applyTranslations, setupLanguage, translate } from './i18n.js?ui=27';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
@@ -29,7 +29,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.27', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '0.28', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -464,11 +464,196 @@ async function openPairingWindow(targetEntry = activeEntry()) {
   }
 }
 
+function ensureControllerLabDialog() {
+  const existing = $('#controller-lab-dialog');
+  if (existing) return existing;
+  const dialog = document.createElement('dialog');
+  dialog.id = 'controller-lab-dialog';
+  dialog.className = 'confirm-dialog';
+  const form = document.createElement('form');
+  form.method = 'dialog';
+  form.className = 'dialog-card';
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = 'CONTROLLER LAB / LOCAL';
+  const title = document.createElement('h2');
+  title.id = 'controller-lab-title';
+  const body = document.createElement('div');
+  body.id = 'controller-lab-body';
+  body.setAttribute('aria-live', 'polite');
+  const actions = document.createElement('div');
+  actions.id = 'controller-lab-actions';
+  actions.className = 'action-row';
+  form.append(eyebrow, title, body, actions);
+  dialog.append(form);
+  document.body.append(dialog);
+  return dialog;
+}
+
+function showControllerLabDialog({ title, message, buildBody, actions = [] }) {
+  const dialog = ensureControllerLabDialog();
+  const titleNode = $('#controller-lab-title');
+  const body = $('#controller-lab-body');
+  const actionRow = $('#controller-lab-actions');
+  titleNode.textContent = title;
+  body.replaceChildren();
+  if (message) {
+    const copy = document.createElement('p');
+    copy.textContent = message;
+    body.append(copy);
+  }
+  buildBody?.(body);
+  actionRow.replaceChildren();
+  for (const action of actions) {
+    const button = document.createElement('button');
+    button.className = `button ${action.kind === 'primary' ? 'primary' : 'quiet'}`;
+    button.type = 'button';
+    button.textContent = action.label;
+    button.addEventListener('click', action.onClick);
+    actionRow.append(button);
+  }
+  const close = document.createElement('button');
+  close.className = 'button quiet';
+  close.type = 'submit';
+  close.value = 'close';
+  close.textContent = 'Close';
+  actionRow.append(close);
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else window.alert(`${title}\n\n${message || ''}`);
+  return dialog;
+}
+
+function appendLabMetric(container, label, value) {
+  const line = document.createElement('p');
+  line.className = 'log-line';
+  line.textContent = `${label}: ${value}`;
+  container.append(line);
+}
+
+function formatLabValue(value, digits = 3) {
+  return Number.isFinite(value) ? Number(value).toFixed(digits) : '—';
+}
+
+function controllerSamples(entry) {
+  return entry?.sampleHistory?.length ? entry.sampleHistory : entry?.lastSample ? [entry.lastSample] : [];
+}
+
+function openCalibrationWorkspace() {
+  const entry = activeEntry();
+  if (!entry) {
+    showControllerLabDialog({ title: 'Calibration unavailable', message: 'Connect the Pico 2 W and a controller before opening the local calibration workspace.' });
+    return;
+  }
+  const samples = controllerSamples(entry);
+  if (!samples.length) {
+    showControllerLabDialog({ title: 'Calibration waiting for input', message: 'The bridge is connected, but no controller input sample has arrived yet. Press a stick, trigger or button, then try again.' });
+    addLog('info', 'Controller Lab opened without an input sample.');
+    return;
+  }
+  let analysis;
+  try {
+    analysis = analyzeControllerInputs(samples);
+  } catch (error) {
+    showControllerLabDialog({ title: 'Calibration unavailable', message: `The local samples could not be analyzed: ${error.message}` });
+    addLog('error', `Controller Lab analysis failed: ${error.message}`);
+    return;
+  }
+  const dialog = showControllerLabDialog({
+    title: 'Calibration workspace',
+    message: 'Analysis is local only. Saving a snapshot does not write anything to the Pico 2 W.',
+    buildBody: (body) => {
+      appendLabMetric(body, 'Input samples', analysis.sampleCount);
+      appendLabMetric(body, 'Left stick drift', analysis.sticks.left.drift.detected ? `detected (${formatLabValue(analysis.sticks.left.center.offset)})` : 'not detected');
+      appendLabMetric(body, 'Right stick drift', analysis.sticks.right.drift.detected ? `detected (${formatLabValue(analysis.sticks.right.center.offset)})` : 'not detected');
+      appendLabMetric(body, 'Left trigger amplitude', `${formatLabValue(analysis.triggers.left.amplitude)} / 1`);
+      appendLabMetric(body, 'Right trigger amplitude', `${formatLabValue(analysis.triggers.right.amplitude)} / 1`);
+      appendLabMetric(body, 'Hardware claim', analysis.status === 'available' && samples.at(-1)?.hardwareTested === true ? 'input received from connected hardware' : 'not tested');
+    },
+    actions: [{
+      label: 'Save local snapshot',
+      kind: 'primary',
+      onClick: () => {
+        const revision = createCalibrationRevision({ id: `revision-${Date.now()}`, deviceId: entry.id, analysis, source: 'hardware-local-snapshot' });
+        const next = appendCalibrationRevision(calibrationHistory.get(entry.id), revision);
+        calibrationHistory.set(entry.id, next);
+        dialog.close('saved');
+        addLog('info', `Local calibration snapshot saved for ${entry.label}; Pico flash was not modified.`);
+        showControllerLabDialog({ title: 'Snapshot saved', message: 'The calibration snapshot is stored on this computer only. It has not been written to the Pico 2 W.' });
+      }
+    }]
+  });
+}
+
+function runQuickControllerTest() {
+  const entry = activeEntry();
+  if (!entry) {
+    showControllerLabDialog({ title: 'Quick test unavailable', message: 'Connect the Pico 2 W and a controller before running the local test.' });
+    return;
+  }
+  const sample = entry.lastSample;
+  const pressedButtons = sample?.buttons ? Object.entries(sample.buttons).filter(([name, pressed]) => name !== 'dpad' && pressed === true).map(([name]) => name) : [];
+  showControllerLabDialog({
+    title: 'Quick controller test',
+    message: 'This test only reads local input. It never sends vibration, audio or trigger commands.',
+    buildBody: (body) => {
+      appendLabMetric(body, 'Bridge', entry.state === 'ready' ? 'PASS' : 'FAIL');
+      appendLabMetric(body, 'Controller input', sample ? 'PASS — live sample received' : 'NOT TESTED — no sample received');
+      appendLabMetric(body, 'Sticks and triggers', sample ? 'PASS — values available' : 'NOT TESTED');
+      appendLabMetric(body, 'Buttons currently pressed', pressedButtons.length ? pressedButtons.join(', ') : 'none observed');
+      appendLabMetric(body, 'Vibration / audio', 'NOT TESTED — no output command sent');
+      appendLabMetric(body, 'Test status', sample?.hardwareTested === true ? 'hardware input observed; output remains untested' : 'not tested');
+    }
+  });
+  addLog('info', `Quick controller test completed locally for ${entry.label}.`);
+}
+
+function openCalibrationHistory() {
+  const entry = activeEntry();
+  if (!entry) {
+    showControllerLabDialog({ title: 'History unavailable', message: 'Connect a controller to view its local calibration history.' });
+    return;
+  }
+  const history = calibrationHistory.get(entry.id);
+  const dialog = showControllerLabDialog({
+    title: 'Calibration history',
+    message: history.length ? 'Snapshots stay on this computer. Restoring one changes the local draft only.' : 'No local calibration snapshot has been saved for this controller yet.'
+  });
+  if (!history.length) return;
+  const body = $('#controller-lab-body');
+  for (const revision of [...history].reverse()) {
+    const row = document.createElement('div');
+    row.className = 'log-line';
+    const date = new Date(revision.createdAt).toLocaleString();
+    const label = document.createElement('span');
+    label.textContent = `${date} · ${revision.analysis?.sampleCount || 0} samples`;
+    const restore = document.createElement('button');
+    restore.className = 'button quiet';
+    restore.type = 'button';
+    restore.textContent = 'Restore locally';
+    restore.addEventListener('click', async () => {
+      dialog.close('restore');
+      const preview = prepareCalibrationRestore(history, revision.id);
+      if (!preview.ok || !await askConfirmation('Restore this calibration snapshot locally? Nothing will be written to the Pico 2 W.')) return;
+      try {
+        const result = commitCalibrationRestore(preview, { confirmed: true });
+        entry.localCalibration = result.calibration;
+        addLog('info', `Local calibration snapshot restored for ${entry.label}; Pico flash was not modified.`);
+        showControllerLabDialog({ title: 'Snapshot restored', message: 'The snapshot is active as a local calibration draft. The Pico 2 W was not written.' });
+      } catch (error) {
+        addLog('error', `Calibration restore failed: ${error.message}`);
+        showControllerLabDialog({ title: 'Restore failed', message: error.message });
+      }
+    });
+    row.append(label, restore);
+    body.append(row);
+  }
+}
+
 function init() {
   setupLanguage($('#language-select'), () => { applyTranslations(); renderDevices(); renderConfig(state.draft || defaultConfig()); });
   renderLogs();
   $$('.tab-button').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.tab)));
-  $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
+  $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#open-calibration-button').addEventListener('click', openCalibrationWorkspace); $('#run-quick-test-button').addEventListener('click', runQuickControllerTest); $('#open-history-button').addEventListener('click', openCalibrationHistory); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
   wireDraftControls();
   window.addEventListener('miralink:open-pairing-window', openPairingWindow);
   if (!requireHid()) addLog('info', 'WebHID diagnostics are visible in the local event log.');

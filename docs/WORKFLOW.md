@@ -54,9 +54,9 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.27`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.27.0`, mais l'application, le
-manifeste de livraison et la documentation affichent `0.27`. Le firmware
+La version publique actuelle du site est `0.28`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.28.0`, mais l'application, le
+manifeste de livraison et la documentation affichent `0.28`. Le firmware
 actuellement suivi reste `2.3.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
@@ -164,3 +164,10 @@ output). Une collision de rapport est un risque d’énumération Windows : un
 build et une inspection statique ne valent pas confirmation matérielle. Toute
 release qui modifie le descripteur doit documenter ses IDs et être testée
 manuellement sur un Pico 2 W avant d’être annoncée fonctionnelle.
+
+Les actions de l’espace Manettes doivent être réellement reliées à l’interface
+et rester locales : Calibration analyse les échantillons déjà reçus, Quick
+tests ne fait aucune écriture et History conserve des snapshots par manette.
+Un snapshot restauré est un brouillon local ; il ne vaut pas une calibration
+flashée. Les vibrations, l’audio et les gâchettes adaptatives doivent rester
+« non testés » tant qu’une sortie physique correspondante n’a pas été vérifiée.

@@ -1,5 +1,5 @@
 const PREFIX = 'miralink:';
-const KEYS = Object.freeze({ language: `${PREFIX}language`, logs: `${PREFIX}logs`, drafts: `${PREFIX}drafts`, backups: `${PREFIX}backups` });
+const KEYS = Object.freeze({ language: `${PREFIX}language`, logs: `${PREFIX}logs`, drafts: `${PREFIX}drafts`, backups: `${PREFIX}backups`, calibrationHistory: `${PREFIX}calibration-history` });
 
 function storageAvailable() {
   try {
@@ -39,6 +39,18 @@ export const drafts = {
   get: (deviceId) => read(`${KEYS.drafts}:${deviceId}`, null),
   set: (deviceId, value) => write(`${KEYS.drafts}:${deviceId}`, value),
   clear: (deviceId) => { if (available) localStorage.removeItem(`${KEYS.drafts}:${deviceId}`); }
+};
+
+export const calibrationHistory = {
+  get: (deviceId) => {
+    if (typeof deviceId !== 'string' || !deviceId.trim()) return [];
+    return read(`${KEYS.calibrationHistory}:${deviceId}`, []).filter((entry) => entry && typeof entry.id === 'string').slice(-20);
+  },
+  set: (deviceId, value) => {
+    if (typeof deviceId !== 'string' || !deviceId.trim() || !Array.isArray(value)) return false;
+    return write(`${KEYS.calibrationHistory}:${deviceId}`, value.slice(-20));
+  },
+  clear: (deviceId) => { if (available && typeof deviceId === 'string' && deviceId.trim()) localStorage.removeItem(`${KEYS.calibrationHistory}:${deviceId}`); }
 };
 
 export function createBackup({ config, device = {}, version = '2.0.0' }) {
