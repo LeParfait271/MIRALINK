@@ -55,11 +55,11 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.32`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.32.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.32`.
-La source CMake peut employer `0.32.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.32`.
+La version publique actuelle du site est `0.33`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.33.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.33`.
+La source CMake peut employer `0.33.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.33`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -188,7 +188,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.32 applique les réglages persistants qui peuvent être
+Le build firmware 0.33 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et
@@ -204,3 +204,8 @@ tests ne fait aucune écriture et History conserve des snapshots par manette.
 Un snapshot restauré est un brouillon local ; il ne vaut pas une calibration
 flashée. Les vibrations, l’audio et les gâchettes adaptatives doivent rester
 « non testés » tant qu’une sortie physique correspondante n’a pas été vérifiée.
+
+Le build statique doit rester reproductible depuis un clone Git propre. Le
+dossier `app/assets` est optionnel pour l'interface actuelle, mais il conserve
+un marqueur suivi par Git lorsqu'il est vide afin que la copie vers `app/dist`
+ne provoque pas d'erreur `ENOENT` sur Cloudflare Pages.

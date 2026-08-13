@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.32`
-- Current firmware version: `0.32` (HID + standard UAC2 headset candidate with active persisted runtime settings; physical Windows enumeration and controller-output validation still required)
+- Current site version: `0.33`
+- Current firmware version: `0.33` (HID + standard UAC2 headset candidate with active persisted runtime settings; physical Windows enumeration and controller-output validation still required)
 - Last update: `2026-08-13`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: local only

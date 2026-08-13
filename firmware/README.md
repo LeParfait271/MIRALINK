@@ -6,7 +6,7 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Firmware 0.32 adds the remaining safe runtime wiring for persisted settings:
+Firmware 0.33 adds the remaining safe runtime wiring for persisted settings:
 speaker/headset volume, bounded speaker gain, trigger-effect reduction,
 optional unique USB serial exposure, conservative local inactivity suspension
 and a disabled-by-default external status GPIO. It retains the local Bluetooth
