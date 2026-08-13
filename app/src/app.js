@@ -16,11 +16,12 @@ import {
   encodeConfig
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=32-layout';
+import { applyTranslations, translate } from './i18n.js?ui=35-editorial';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, commitCalibrationRestore, createCalibrationRevision, prepareCalibrationRestore } from './controller-lab.js';
+import './site-effects.js';
 
 const state = {
   devices: new Map(),
@@ -687,7 +688,7 @@ function init() {
   const initialHidStatus = webHidStatus();
   if (!initialHidStatus.available) addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=32-layout').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=35-editorial').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink started in local-only mode.');
 }

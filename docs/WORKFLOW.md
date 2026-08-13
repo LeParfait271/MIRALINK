@@ -7,7 +7,7 @@ l’utilisateur.
 ## Avant chaque prompt de travail
 
 1. Relire entièrement `MIRALINK_GARDE_FOU.md`.
-2. Vérifier que le dépôt actif est exactement `C:\MIRALINK\MIRALINK`.
+2. Vérifier que le dépôt actif est exactement `C:\MIRALINK\MIRALINK` ; le dossier OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est toujours hors périmètre.
 3. Inspecter l’état Git et repérer les modifications d’une autre conversation.
 4. Définir le périmètre du prompt avant toute écriture.
 5. Préserver les fichiers visuels travaillés dans une autre conversation.
