@@ -8,7 +8,7 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier unique : `C:\MIRALINK\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.23`
+- Version publique actuelle du site : `0.24`
 - Version firmware suivie séparément : `2.2.0`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
@@ -62,7 +62,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.22` → `0.23`. La version technique du paquet npm utilise `0.23.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.23`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.23` → `0.24`. La version technique du paquet npm utilise `0.24.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.24`.
 - La version du firmware est indépendante de celle du site. Le firmware actuellement suivi reste `2.2.0` et ne change que lorsqu'un nouveau firmware est réellement construit et documenté.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
@@ -144,5 +144,5 @@ automatique.
 - `2026-08-13` — La file de sortie protège un rapport accepté par BTstack pendant une fenêtre bornée afin de ne pas l'écraser par un rapport concurrent ; l'absence d'événement de fin BTstack reste une limite documentée et doit être vérifiée sur Pico 2 W réel.
 - `2026-08-13` — Le pipeline audio conserve au plus un rapport en attente en RAM, valide la structure fixe avant l'envoi et abandonne un bloc devenu obsolète après perte de liaison ; il ne persiste aucun audio.
 - `2026-08-13` — Le candidat firmware 2.2.0 expose uniquement le HID MiraLink et le gamepad standard : l'interface audio UAC2 est retiree apres un Code 10 Windows observe sur les interfaces audio et HID du composite 2.0.0. Aucun fonctionnement audio USB n'est declare avant une nouvelle validation du descripteur sur materiel reel.
-- `2026-08-13` — La version publique du site MiraLink est `0.23` et augmente de `0.01` par commit de site/application ; la version firmware reste indépendante et courante `2.2.0`.
+- `2026-08-13` — La version publique du site MiraLink est `0.24` et augmente de `0.01` par commit de site/application ; la version firmware reste indépendante et courante `2.2.0`.
 - `2026-08-13` — Les artefacts générés par Codex hors du dossier unique `C:\MIRALINK\MIRALINK` doivent être supprimés en fin de tâche après vérification de leur périmètre ; les fichiers existants de l'utilisateur restent protégés.

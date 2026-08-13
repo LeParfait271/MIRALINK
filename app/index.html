@@ -13,20 +13,28 @@
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Skip to content</a>
-  <header class="topbar">
-    <div class="brand-lockup">
+  <header class="topbar" id="site-header">
+    <a class="brand-lockup" href="#top" aria-label="MiraLink home">
       <div class="brand-mark" aria-hidden="true"><span></span></div>
       <div><p class="brand-name">MiraLink</p><p class="brand-subtitle" data-i18n="brandSubtitle">Pico 2 W control center</p></div>
-    </div>
+    </a>
+    <nav class="topbar-nav" aria-label="Primary navigation">
+      <a href="#signal" data-nav-link>Signal</a>
+      <a href="#capabilities" data-nav-link>Capabilities</a>
+      <a href="#workspace" data-nav-link>Workspace</a>
+      <a href="#system-view" data-nav-link>System</a>
+    </nav>
     <div class="topbar-actions">
       <label class="language-picker" for="language-select"><span class="sr-only" data-i18n="language">Language</span><select id="language-select" aria-label="Language"></select></label>
-      <span class="version-chip" id="version-chip">v0.23</span>
+      <span class="version-chip" id="version-chip">v0.24</span>
       <span class="status-chip" id="global-status" data-state="idle"><span class="status-dot" aria-hidden="true"></span><span id="global-status-text" data-i18n="statusReady">Ready</span></span>
     </div>
   </header>
 
+  <div class="page-progress" aria-hidden="true"><span id="page-progress-bar"></span></div>
+
   <main id="main-content" class="shell">
-    <section class="hero-panel" aria-labelledby="page-title">
+    <section class="hero-panel" id="top" aria-labelledby="page-title">
       <div class="hero-media" aria-hidden="true">
         <img class="hero-scene is-active" src="assets/visuals/miralink-hero-cinematic.png" alt="">
         <img class="hero-scene" src="assets/visuals/miralink-hardware-bridge.png" alt="">
@@ -47,6 +55,86 @@
       <div class="hero-scene-index" aria-hidden="true"><span>SCENE</span><strong id="hero-scene-number">01</strong><span>/ 03</span></div>
       <div class="hero-scroll-cue" aria-hidden="true"><span>SCROLL TO ENTER</span><span class="hero-scroll-line"></span></div>
       <div class="hero-octagon" aria-hidden="true"><span class="hero-octagon-line"></span><span class="hero-octagon-core">ML</span></div>
+    </section>
+
+    <section class="story-intro reveal-section" id="signal" aria-labelledby="signal-title">
+      <div class="story-intro-index" aria-hidden="true"><span>01</span><span class="story-intro-index-line"></span><span>04</span></div>
+      <div class="story-intro-copy" data-reveal>
+        <p class="section-overline">THE LOCAL CONTROL LAYER</p>
+        <h2 id="signal-title">Hardware should feel <em>legible.</em></h2>
+        <p class="story-intro-lede">MiraLink turns the invisible state between a Pico 2 W, a controller and your desktop into one calm, inspectable surface.</p>
+        <a class="text-link" data-magnetic href="#workspace">Enter the control center <span aria-hidden="true">&#8599;</span></a>
+      </div>
+      <div class="story-intro-diagram" data-reveal data-reveal-delay="140" aria-label="Local signal path diagram">
+        <div class="diagram-orbit diagram-orbit-outer"></div>
+        <div class="diagram-orbit diagram-orbit-inner"></div>
+        <div class="diagram-core"><span>ML</span><small>LOCAL</small></div>
+        <div class="diagram-node diagram-node-bridge"><span>01</span><strong>BRIDGE</strong></div>
+        <div class="diagram-node diagram-node-controller"><span>02</span><strong>INPUT</strong></div>
+        <div class="diagram-node diagram-node-firmware"><span>03</span><strong>FIRMWARE</strong></div>
+        <span class="diagram-crosshair diagram-crosshair-one"></span>
+        <span class="diagram-crosshair diagram-crosshair-two"></span>
+      </div>
+    </section>
+
+    <div class="signal-marquee" aria-label="MiraLink principles">
+      <div class="signal-marquee-track">
+        <span>LOCAL BY DEFAULT</span><i aria-hidden="true">&#9670;</i><span>VISIBLE STATE</span><i aria-hidden="true">&#9670;</i><span>CONFIRM BEFORE WRITE</span><i aria-hidden="true">&#9670;</i><span>NO CLOUD REQUIRED</span><i aria-hidden="true">&#9670;</i>
+        <span>LOCAL BY DEFAULT</span><i aria-hidden="true">&#9670;</i><span>VISIBLE STATE</span><i aria-hidden="true">&#9670;</i><span>CONFIRM BEFORE WRITE</span><i aria-hidden="true">&#9670;</i><span>NO CLOUD REQUIRED</span><i aria-hidden="true">&#9670;</i>
+      </div>
+    </div>
+
+    <section class="capability-split reveal-section" id="capabilities" aria-labelledby="capabilities-title">
+      <div class="capability-visual" data-reveal>
+        <img src="assets/visuals/miralink-hardware-bridge.png" alt="MiraLink hardware bridge on a dark technical surface">
+        <span class="visual-label visual-label-top">PICO 2 W / HARDWARE BRIDGE</span>
+        <span class="visual-label visual-label-bottom">SIGNAL LOCKED <b></b></span>
+        <span class="visual-corner visual-corner-tl"></span><span class="visual-corner visual-corner-br"></span>
+      </div>
+      <div class="capability-copy" data-reveal data-reveal-delay="160">
+        <p class="section-overline">ONE SURFACE / THREE STATES</p>
+        <h2 id="capabilities-title">See the connection before you change it.</h2>
+        <p>From first handshake to firmware recovery, every high-consequence action gets a visible state, a local draft and a clear next step.</p>
+        <div class="capability-list">
+          <a class="capability-row" data-open-tab="bridge" href="#system-view"><span>01</span><strong>Bridge</strong><small>Persistent settings, exposed.</small><b aria-hidden="true">&#8599;</b></a>
+          <a class="capability-row" data-open-tab="controllers" href="#system-view"><span>02</span><strong>Controllers</strong><small>Inputs you can measure.</small><b aria-hidden="true">&#8599;</b></a>
+          <a class="capability-row" data-open-tab="firmware" href="#system-view"><span>03</span><strong>Firmware</strong><small>Files checked before flash.</small><b aria-hidden="true">&#8599;</b></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-story reveal-section" aria-labelledby="system-story-title">
+      <div class="system-story-heading" data-reveal>
+        <p class="section-overline">BUILT FOR THE MOMENT AFTER CONNECT</p>
+        <h2 id="system-story-title">The quiet system behind the signal.</h2>
+      </div>
+      <div class="system-story-grid">
+        <article class="story-card story-card-primary" data-reveal>
+          <span class="story-card-number">01</span>
+          <div class="story-card-art story-card-art-bridge" aria-hidden="true"><span></span><i></i><b></b></div>
+          <div><p class="story-card-kicker">CONTROL</p><h3>Make the bridge readable.</h3><p>Transport, state and safety gates stay in view instead of hiding behind a command.</p><a data-open-tab="overview" href="#system-view">View system <span aria-hidden="true">&#8599;</span></a></div>
+        </article>
+        <article class="story-card" data-reveal data-reveal-delay="120">
+          <span class="story-card-number">02</span>
+          <div class="story-card-art story-card-art-input" aria-hidden="true"><span></span><i></i><b></b></div>
+          <div><p class="story-card-kicker">INPUT</p><h3>Measure what your hands do.</h3><p>Calibration, quick tests and history stay local, bounded and recoverable.</p><a data-open-tab="controllers" href="#system-view">Open controller lab <span aria-hidden="true">&#8599;</span></a></div>
+        </article>
+        <article class="story-card" data-reveal data-reveal-delay="240">
+          <span class="story-card-number">03</span>
+          <div class="story-card-art story-card-art-recovery" aria-hidden="true"><span></span><i></i><b></b></div>
+          <div><p class="story-card-kicker">RECOVERY</p><h3>Keep the risky part calm.</h3><p>Firmware and backups are inspected before they are allowed near hardware.</p><a data-open-tab="firmware" href="#system-view">Enter firmware center <span aria-hidden="true">&#8599;</span></a></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="workspace-intro reveal-section" aria-labelledby="workspace-intro-title">
+      <div class="workspace-intro-index">02 <span>/</span> 04</div>
+      <div data-reveal>
+        <p class="section-overline">NOW ENTERING THE WORKSPACE</p>
+        <h2 id="workspace-intro-title">Bring the hardware into focus.</h2>
+      </div>
+      <p data-reveal data-reveal-delay="120">Connect a device, inspect its state and move only when the next action is clear.</p>
+      <a class="workspace-intro-link" href="#workspace" data-magnetic data-reveal data-reveal-delay="180">Scroll to devices <span aria-hidden="true">&#8595;</span></a>
     </section>
 
     <section class="device-strip panel" id="workspace" aria-labelledby="devices-title">
@@ -92,9 +180,20 @@
     <section class="tab-panel" id="tab-backups" role="tabpanel" aria-labelledby="tab-button-backups" data-panel="backups" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="backupEyebrow">LOCAL / PORTABLE / VERSIONED</p><h2 data-i18n="backupTitle">Backups and profiles</h2></div><span class="panel-status" data-i18n="noCloud">NO CLOUD</span></div><div class="backup-grid"><article class="feature-card"><span class="feature-glyph" aria-hidden="true">↓</span><h3 data-i18n="exportTitle">Export</h3><p data-i18n="exportCopy">Save a versioned configuration file on this computer.</p><button class="button primary" id="export-button" type="button" data-i18n="exportButton">Export backup</button></article><article class="feature-card"><span class="feature-glyph" aria-hidden="true">↑</span><h3 data-i18n="importTitle">Import</h3><p data-i18n="importCopy">Load a local backup into a draft for review.</p><label class="button quiet file-button" for="backup-file"><span data-i18n="chooseBackup">Choose backup</span><input id="backup-file" type="file" accept="application/json,.json"></label></article><article class="feature-card"><span class="feature-glyph" aria-hidden="true">≋</span><h3 data-i18n="profileTitle">Profiles</h3><p data-i18n="profileCopy">Keep named local profiles without changing the Pico 2 W until you confirm.</p><button class="button quiet" id="profiles-button" type="button" data-i18n="manageProfiles">Manage profiles</button></article></div><div class="notice info"><strong data-i18n="backupNoticeTitle">Backups are user-controlled.</strong><span data-i18n="backupNoticeBody">MiraLink does not sync or upload them.</span></div></section>
 
     <section class="tab-panel" id="tab-logs" role="tabpanel" aria-labelledby="tab-button-logs" data-panel="logs" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="logsEyebrow">LOCAL EVENT TRAIL</p><h2 data-i18n="logsTitle">Logs</h2></div><button class="button quiet" id="clear-logs-button" type="button" data-i18n="clearLogs">Clear logs</button></div><div class="log-view" id="log-view" aria-live="polite"></div></section>
+
+    <section class="closing-panel reveal-section" aria-labelledby="closing-title">
+      <div class="closing-panel-mark" aria-hidden="true"><span>03</span><span></span><span>04</span></div>
+      <div class="closing-panel-copy" data-reveal>
+        <p class="section-overline">MIRALINK / DESKTOP CONTROL CENTER</p>
+        <h2 id="closing-title">Your hardware state, <em>in view.</em></h2>
+        <p>Everything stays on this computer. The interface gets out of the way. The important part stays visible.</p>
+        <a class="hero-cta hero-cta-primary" data-magnetic href="#workspace"><span>Return to workspace</span><span aria-hidden="true">&#8593;</span></a>
+      </div>
+      <div class="closing-panel-signal" aria-hidden="true"><span></span><span></span><span></span><b>LOCAL<br>SIGNAL<br>STABLE</b></div>
+    </section>
   </main>
 
-  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.23</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
+  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.24</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog" class="dialog-card"><p class="eyebrow" data-i18n="confirmation">CONFIRMATION</p><h2 id="confirm-title" data-i18n="confirmTitle">Confirm action</h2><p id="confirm-message"></p><div class="action-row"><button class="button quiet" value="cancel" data-i18n="cancel">Cancel</button><button class="button danger" id="confirm-submit" value="confirm" data-i18n="confirm">Confirm</button></div></form></dialog>
   <script type="module" src="src/app.js"></script>

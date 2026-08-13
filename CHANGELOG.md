@@ -1,5 +1,11 @@
 # Changelog
 
+# 0.24 - 2026-08-13
+
+- Rebuilt the desktop landing as a long-form editorial control-center story
+  with a floating navigation, signal diagram, capability sequence, scroll
+  reveals and direct links into the functional workspace.
+
 # 0.23 - 2026-08-13
 
 - Rebuilt the public desktop landing hero with cinematic local hardware scenes,
