@@ -212,11 +212,32 @@ function hasHid() {
   return webHidStatus().available;
 }
 
+function showHidWarning(status) {
+  const warning = $('#hid-warning');
+  if (!warning) return;
+  const copyKeys = {
+    'insecure-context': ['webhidInsecureTitle', 'webhidInsecureBody'],
+    'permissions-policy': ['webhidPolicyTitle', 'webhidPolicyBody'],
+    'browser-or-context': ['webhidContextTitle', 'webhidContextBody']
+  }[status.reason] || ['webhidMissingTitle', 'webhidMissingBody'];
+  const title = warning.querySelector('strong');
+  const body = warning.querySelector('span');
+  if (title) {
+    title.dataset.i18n = copyKeys[0];
+    title.textContent = translate(copyKeys[0]);
+  }
+  if (body) {
+    body.dataset.i18n = copyKeys[1];
+    body.textContent = translate(copyKeys[1]);
+  }
+  warning.hidden = false;
+}
+
 function requireHid() {
   const status = webHidStatus();
   if (status.available) return true;
-  $('#hid-warning').hidden = false;
-  addLog('error', `WebHID unavailable: ${status.reason} (secure context: ${status.isSecureContext ? 'yes' : 'no'}).`);
+  showHidWarning(status);
+  addLog('error', `MiraLink bridge unavailable: ${status.reason} (secure context: ${status.isSecureContext ? 'yes' : 'no'}, permissions policy: ${status.permissionsPolicy === false ? 'blocked' : status.permissionsPolicy === true ? 'allowed' : 'unknown'}).`);
   return false;
 }
 
@@ -656,7 +677,8 @@ function init() {
   $('#connect-button').addEventListener('click', connectDevice); $('#refresh-devices-button').addEventListener('click', refreshDevices); $('#read-config-button').addEventListener('click', readConfig); $('#save-config-button').addEventListener('click', saveConfig); $('#reset-config-button').addEventListener('click', resetDraft); $('#firmware-file').addEventListener('change', inspectFirmware); $('#backup-file').addEventListener('change', importBackup); $('#export-button').addEventListener('click', exportBackup); $('#run-diagnostics-button').addEventListener('click', runDiagnostics); $('#open-calibration-button').addEventListener('click', openCalibrationWorkspace); $('#run-quick-test-button').addEventListener('click', runQuickControllerTest); $('#open-history-button').addEventListener('click', openCalibrationHistory); $('#clear-logs-button').addEventListener('click', () => { state.logs = []; logStore.clear(); renderLogs(); });
   wireDraftControls();
   window.addEventListener('miralink:open-pairing-window', openPairingWindow);
-  if (!requireHid()) addLog('info', 'WebHID diagnostics are visible in the local event log.');
+  const initialHidStatus = webHidStatus();
+  if (!initialHidStatus.available) addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();

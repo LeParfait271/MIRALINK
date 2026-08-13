@@ -1,5 +1,14 @@
 # Changelog
 
+# 0.30 - 2026-08-13
+
+- Clarified that WebHID is the browser-to-Pico 2 W bridge transport, not the
+  controller Bluetooth transport.
+- Delayed the visible WebHID warning until a connection action is requested and
+  separated insecure-context and permissions-policy diagnostics.
+- Kept denied WebHID permissions unavailable even when the browser exposes the
+  API.
+
 # 0.29 - 2026-08-13
 
 - Replaced the three legacy hero assets with the supplied desktop image pack.

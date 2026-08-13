@@ -54,9 +54,9 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.29`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.29.0`, mais l'application, le
-manifeste de livraison et la documentation affichent `0.29`. Le firmware
+La version publique actuelle du site est `0.30`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.30.0`, mais l'application, le
+manifeste de livraison et la documentation affichent `0.30`. Le firmware
 actuellement suivi reste `2.3.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
@@ -164,6 +164,10 @@ output). Une collision de rapport est un risque d’énumération Windows : un
 build et une inspection statique ne valent pas confirmation matérielle. Toute
 release qui modifie le descripteur doit documenter ses IDs et être testée
 manuellement sur un Pico 2 W avant d’être annoncée fonctionnelle.
+
+Le bandeau WebHID décrit uniquement la liaison du navigateur vers le pont Pico
+2 W. Il n’est affiché qu’au lancement d’une action de connexion ou d’actualisation
+et ne doit pas être présenté comme l’absence de Bluetooth de la manette.
 
 Les actions de l’espace Manettes doivent être réellement reliées à l’interface
 et rester locales : Calibration analyse les échantillons déjà reçus, Quick

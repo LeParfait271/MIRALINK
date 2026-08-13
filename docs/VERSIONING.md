@@ -7,7 +7,7 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.28 → 0.29
+0.10 → 0.11 → 0.12 → … → 0.29 → 0.30
 ```
 
 The public site version must be reflected in:
@@ -17,8 +17,8 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.29.0`; this is
-packaging metadata for the public site version `0.29`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.30.0`; this is
+packaging metadata for the public site version `0.30`, not a separate product
 release.
 
 Firmware versions are independent. The current firmware source and release
@@ -26,7 +26,7 @@ artifact are `2.3.0` and must not be renamed when only the site changes.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current committed site version is `0.29`. The current firmware version is
+The current committed site version is `0.30`. The current firmware version is
 `2.3.0`, containing the HID-only USB recovery candidate. USB audio is
 intentionally not exposed until the composite descriptor is independently
 validated on Windows hardware.

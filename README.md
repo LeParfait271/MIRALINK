@@ -9,7 +9,7 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.29`
+- Current site version: `0.30`
 - Current firmware version: `2.3.0` (HID-only USB recovery candidate; Windows Code 10 descriptor conflict corrected; audio USB remains deliberately unavailable)
 - Last update: `2026-08-13`
 - First hardware target: Raspberry Pi Pico 2 W

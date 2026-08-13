@@ -33,6 +33,15 @@ test('WebHID availability identifies a blocked permissions policy locally', () =
   assert.deepEqual(status, { available: false, isSecureContext: true, permissionsPolicy: false, reason: 'permissions-policy' });
 });
 
+test('WebHID availability rejects a denied permissions policy even when the API exists', () => {
+  const status = inspectWebHidAvailability({
+    navigator: { hid: {} },
+    isSecureContext: true,
+    document: { permissionsPolicy: { allowsFeature: () => false } }
+  });
+  assert.deepEqual(status, { available: false, isSecureContext: true, permissionsPolicy: false, reason: 'permissions-policy' });
+});
+
 test('WebHID availability identifies an insecure local context', () => {
   const status = inspectWebHidAvailability({ navigator: {}, isSecureContext: false });
   assert.deepEqual(status, { available: false, isSecureContext: false, permissionsPolicy: null, reason: 'insecure-context' });

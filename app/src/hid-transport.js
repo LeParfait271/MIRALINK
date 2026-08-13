@@ -11,7 +11,7 @@ const DEFAULT_TIMEOUT_MS = 1400;
 const DEFAULT_POLL_INTERVAL_MS = 20;
 
 export function inspectWebHidAvailability({ navigator: browserNavigator = null, document: browserDocument = null, isSecureContext = false } = {}) {
-  const available = Boolean(browserNavigator && 'hid' in browserNavigator);
+  const apiAvailable = Boolean(browserNavigator && 'hid' in browserNavigator);
   let permissionsPolicy = null;
   try {
     if (browserDocument?.permissionsPolicy && typeof browserDocument.permissionsPolicy.allowsFeature === 'function') {
@@ -20,13 +20,10 @@ export function inspectWebHidAvailability({ navigator: browserNavigator = null, 
   } catch {
     permissionsPolicy = null;
   }
-  const reason = available
-    ? 'available'
-    : !isSecureContext
-      ? 'insecure-context'
-      : permissionsPolicy === false
-        ? 'permissions-policy'
-        : 'browser-or-context';
+  const available = apiAvailable && permissionsPolicy !== false;
+  let reason = 'available';
+  if (permissionsPolicy === false) reason = 'permissions-policy';
+  else if (!apiAvailable) reason = !isSecureContext ? 'insecure-context' : 'browser-or-context';
   return Object.freeze({ available, isSecureContext: Boolean(isSecureContext), permissionsPolicy, reason });
 }
 
