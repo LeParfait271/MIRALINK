@@ -2209,3 +2209,81 @@ h1 {
   font-size: 1.5rem;
   text-shadow: none;
 }
+
+/* Desktop composition correction: keep the connection surface complete and in flow. */
+.connection-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(360px, .82fr);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 5.5rem);
+  min-height: 0;
+  height: auto;
+  padding: clamp(3rem, 5vh, 4.5rem) clamp(2rem, 7vw, 7rem) clamp(2.5rem, 5vh, 3.5rem);
+  overflow: visible;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(83, 214, 168, .08), transparent 25rem),
+    repeating-linear-gradient(90deg, transparent 0 79px, rgba(131, 233, 223, .025) 80px),
+    repeating-linear-gradient(0deg, transparent 0 79px, rgba(131, 233, 223, .02) 80px),
+    var(--bg-deep);
+}
+
+.connection-hero .hero-copy {
+  position: static;
+  top: auto;
+  left: auto;
+  max-width: 600px;
+  transform: none;
+  align-self: start;
+  margin-top: .8rem;
+}
+
+.connection-hero .hero-copy h1 {
+  max-width: 600px;
+  margin-top: 1.35rem;
+  font-size: clamp(3.8rem, 5.6vw, 6.5rem);
+  line-height: .86;
+}
+
+.connection-surface {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: auto;
+  max-width: 430px;
+  margin: 0;
+  align-self: center;
+}
+
+.connection-surface #hid-warning.notice.warning {
+  display: block;
+  padding: .72rem .9rem;
+}
+
+.connection-surface #hid-warning strong {
+  display: inline;
+  margin-right: .4rem;
+  white-space: nowrap;
+}
+
+.connection-surface #hid-warning span {
+  display: inline;
+}
+
+.connection-surface .empty-state {
+  min-height: 185px;
+  padding: 1.35rem .8rem .9rem;
+}
+
+.tab-nav.panel {
+  margin-top: .9rem;
+}
+
+@media (max-width: 940px) and (min-width: 821px) {
+  .connection-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, .86fr);
+    gap: 2rem;
+    padding-inline: 3rem;
+  }
+}
