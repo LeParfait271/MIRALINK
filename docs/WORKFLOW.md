@@ -33,7 +33,7 @@ l’utilisateur.
 - L’ancien UF2 peut uniquement servir de référence observée en lecture seule
   pour les capacités attendues ; ne jamais en extraire ni réutiliser du code,
   du binaire ou une structure interne.
-- Demander confirmation avant une action dangereuse, un flash, un push ou une publication.
+- Demander confirmation avant une action dangereuse, un flash ou une publication ; le push Git est autorisé par la règle permanente du 2026-08-14 après un prompt qui modifie MiraLink.
 - Après une correction USB, conserver séparément la preuve du build, du
   descripteur, du paquet UF2 et du test de l’échange sur la carte réellement
   flashée ; un build réussi ne valide pas le binaire déjà installé.
@@ -50,7 +50,7 @@ l’utilisateur.
 3. Exécuter les contrôles adaptés et conserver les résultats et limites.
 4. Vérifier `git diff --check`, l’état Git et le périmètre des fichiers.
 5. Créer un seul commit local complet avec toutes les modifications du prompt.
-6. Ne jamais créer de commit partiel ni pousser automatiquement.
+6. Ne jamais créer de commit partiel ; pousser immédiatement le commit complet vers le remote configuré après tout prompt qui modifie le dépôt.
 
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
@@ -89,7 +89,7 @@ fixe et abandonne le rapport s'il devient obsolete apres une perte de liaison.
 - Développeur : `MaruChiwa`.
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement.
 - Données : locales à l’ordinateur et au Pico 2 W.
-- Publication : uniquement après autorisation explicite.
+- Publication applicative : uniquement après autorisation explicite ; le push Git de clôture est régi par l'autorisation permanente du 2026-08-14.
 - Les artefacts generes par Codex hors de `C:\MIRALINK\MIRALINK` sont verifies puis
   supprimes en fin de tache lorsque l'utilisateur l'a demande ; les fichiers
   preexistants ou appartenant a l'utilisateur ne sont pas supprimes.

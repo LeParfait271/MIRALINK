@@ -23,7 +23,7 @@
 6. La première cible matérielle est exclusivement le Raspberry Pi Pico 2 W.
 7. Les réglages restent enregistrés dans la mémoire flash du Pico 2 W.
 8. Aucune télémétrie, statistique, analyse ou donnée de périphérique ne quitte l'ordinateur.
-9. Ne pas publier, pousser, flasher, écraser ou contacter un service externe sans autorisation explicite.
+9. Ne pas publier, pousser, flasher, écraser ou contacter un service externe sans autorisation explicite ; l'autorisation permanente ajoutée le 2026-08-14 couvre uniquement le commit local puis le push Git de MiraLink après chaque prompt qui modifie le dépôt, pas le flash, la publication applicative ou les autres services externes.
 10. Ne jamais déclarer un test matériel sans matériel réellement connecté.
 11. Préserver les fichiers existants tant qu'une suppression n'est pas explicitement autorisée.
 12. Toute nouvelle règle donnée par l'utilisateur doit être ajoutée à ce fichier avant de poursuivre.
@@ -68,7 +68,7 @@ La compatibilité avec les contrôleurs est réimplémentée selon les contraint
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
 - Aucun commit vide artificiel pour un prompt purement conversationnel sans modification du dépôt.
-- Aucun push automatique.
+- Pour MiraLink, l'autorisation explicite permanente du 2026-08-14 impose qu'un prompt qui modifie le dépôt se termine par un commit local complet puis un push immédiat vers le remote configuré. Un prompt purement conversationnel sans modification ne crée ni commit ni push.
 
 ## Méthode obligatoire
 
@@ -84,7 +84,7 @@ Avant chaque intervention :
 8. Mettre à jour le workflow et les garde-fous avant le commit si le prompt ajoute une règle, une décision ou une limite.
 9. Mettre à jour version et date avant le commit.
 10. Vérifier que le commit contient toutes les modifications du prompt et aucun fichier hors périmètre.
-11. Créer un seul commit local complet ; ne pas pousser sans autorisation explicite.
+11. Créer un seul commit local complet ; pour tout prompt qui modifie MiraLink, pousser immédiatement ce commit vers le remote configuré et vérifier la branche distante.
 12. Demander une décision si une ambiguïté change l'architecture, la compatibilité ou la sécurité.
 
 ## Contrôles avant livraison
@@ -161,3 +161,4 @@ automatique.
 - `2026-08-13` — Le candidat firmware `0.34` revient à une configuration USB HID-only pour rétablir le chemin bridge/WebHID après l'échec non validé du composite UAC2 ; l'audio reste source-only jusqu'à une validation Pico 2 W réelle.
 - `2026-08-14` — Le dossier OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est définitivement hors périmètre ; toutes les interventions MiraLink doivent rester dans `C:\MIRALINK\MIRALINK`.
 - `2026-08-14` — Pour une première association, un Pico sans clé BTstack mémorisée ouvre automatiquement sa fenêtre Bluetooth locale et son inquiry au démarrage ; le site WebHID n'est pas requis, et la preuve de fonctionnement reste matérielle.
+- `2026-08-14` — À chaque prompt qui modifie MiraLink, regrouper toutes les modifications du prompt dans un seul commit local complet puis pousser immédiatement vers le dépôt distant configuré ; un prompt purement conversationnel sans modification ne crée ni commit ni push.
