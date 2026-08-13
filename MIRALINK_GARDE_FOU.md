@@ -25,6 +25,7 @@
 10. Ne jamais déclarer un test matériel sans matériel réellement connecté.
 11. Préserver les fichiers existants tant qu'une suppression n'est pas explicitement autorisée.
 12. Toute nouvelle règle donnée par l'utilisateur doit être ajoutée à ce fichier avant de poursuivre.
+13. Un correctif WebHID limité à l'application peut cibler le VID/PID MiraLink sans imposer un reflash du firmware compatible déjà installé ; l'énumération du Pico et l'appairage de la manette restent des validations séparées.
 
 ## Produit attendu
 

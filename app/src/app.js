@@ -1,6 +1,7 @@
 import {
   COMMANDS,
   HID_USAGE_PAGE,
+  MIRALINK_USB_FILTER,
   REPORT_IDS,
   ProtocolError,
   assertValidConfig,
@@ -27,7 +28,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '2.0.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '2.1.0', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -330,7 +331,7 @@ async function connectDevice() {
   if (!requireHid()) return;
   try {
     setGlobalStatus('Waiting for device', 'busy');
-    const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: HID_USAGE_PAGE }, ...dualSenseWebHidFilters()] });
+    const devices = await navigator.hid.requestDevice({ filters: [MIRALINK_USB_FILTER, { usagePage: HID_USAGE_PAGE }, ...dualSenseWebHidFilters()] });
     for (const device of devices) {
       await registerDevice(device);
       const entry = [...state.devices.values()].find((item) => item.device === device);

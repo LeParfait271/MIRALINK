@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 - 2026-08-13
+
+- Added the MiraLink bridge VID/PID to the WebHID chooser filters so Chrome can
+  select the enumerated Pico 2 W HID interface even when the vendor collection
+  usage page is not exposed consistently by the host.
+- Kept this as an application-only transport hotfix: the already installed
+  firmware `2.0.0` remains compatible and does not require a reflash.
+- Local Windows enumeration confirmed the connected bridge identity as
+  `VID_CAFE/PID_4D4C`; this is not a claim that a controller has paired.
+
 ## 2.0.0 - 2026-08-13
 
 - Added local Bluetooth failure diagnostics: last failing stage, controller

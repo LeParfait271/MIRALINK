@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMMANDS,
+  MIRALINK_PRODUCT_ID,
+  MIRALINK_USB_FILTER,
+  MIRALINK_VENDOR_ID,
   ProtocolError,
   assertValidConfig,
   decodeControllerCapabilities,
@@ -33,6 +36,15 @@ test('WebHID availability identifies a blocked permissions policy locally', () =
 test('WebHID availability identifies an insecure local context', () => {
   const status = inspectWebHidAvailability({ navigator: {}, isSecureContext: false });
   assert.deepEqual(status, { available: false, isSecureContext: false, permissionsPolicy: null, reason: 'insecure-context' });
+});
+
+test('MiraLink bridge WebHID filter uses the deployed USB identity', () => {
+  assert.deepEqual(MIRALINK_USB_FILTER, {
+    vendorId: MIRALINK_VENDOR_ID,
+    productId: MIRALINK_PRODUCT_ID
+  });
+  assert.equal(MIRALINK_VENDOR_ID, 0xcafe);
+  assert.equal(MIRALINK_PRODUCT_ID, 0x4d4c);
 });
 
 test('frame round trip preserves sequence, command and payload', () => {

@@ -84,6 +84,12 @@ La collection HID gamepad standard et le canal vendor MiraLink doivent rester
 séparés ; un rapport gamepad ne peut être envoyé qu'après validation d'un
 rapport DualSense, et toute déconnexion doit remettre les boutons à zéro.
 
+Un correctif de découverte WebHID qui ne modifie que l'application peut ajouter
+le VID/PID MiraLink au filtre du navigateur sans exiger un nouveau flash si le
+firmware installé expose déjà cette identité. L'énumération Windows du Pico,
+la sélection WebHID et l'appairage DualSense doivent rester consignés comme
+trois preuves séparées.
+
 Les rapports DualSense doivent être décodés avec leurs offsets documentés :
 l'octet de séquence précède les trois groupes de boutons et ne peut pas être
 traité comme un bouton. Les données de batterie, mouvement, tactile et audio

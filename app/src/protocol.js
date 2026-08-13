@@ -4,6 +4,12 @@ export const HID_REPORT_BYTES = 64;
 export const FRAME_OVERHEAD_BYTES = 13;
 export const MAX_PAYLOAD = HID_REPORT_BYTES - FRAME_OVERHEAD_BYTES - 3;
 export const HID_USAGE_PAGE = 0xff00;
+export const MIRALINK_VENDOR_ID = 0xcafe;
+export const MIRALINK_PRODUCT_ID = 0x4d4c;
+export const MIRALINK_USB_FILTER = Object.freeze({
+  vendorId: MIRALINK_VENDOR_ID,
+  productId: MIRALINK_PRODUCT_ID
+});
 
 export const REPORT_IDS = Object.freeze({ command: 0x01, response: 0x02, event: 0x03 });
 export const RESPONSE_FLAGS = Object.freeze({ response: 1 << 0, error: 1 << 1 });
