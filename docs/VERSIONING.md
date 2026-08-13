@@ -7,7 +7,7 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.31 → 0.32
+0.10 → 0.11 → 0.12 → … → 0.32 → 0.33
 ```
 
 The public site version must be reflected in:
@@ -17,19 +17,19 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.32.0`; this is
-packaging metadata for the public site version `0.32`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.33.0`; this is
+packaging metadata for the public site version `0.33`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest currently use `0.32`. CMake uses
-the technical form `0.32.0` only because it requires three numeric segments;
-the firmware reported by the device remains exactly `0.32`.
+UF2 metadata, release folder and manifest currently use `0.33`. CMake uses
+the technical form `0.33.0` only because it requires three numeric segments;
+the firmware reported by the device remains exactly `0.33`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current committed site and firmware version is `0.32`, containing the HID
+The current committed site and firmware version is `0.33`, containing the HID
 and UAC2 headset candidate and active persisted runtime settings. USB audio
 enumeration remains a hardware-validation boundary:
 the source exposes standard 48 kHz playback and local-monitor capture, but no

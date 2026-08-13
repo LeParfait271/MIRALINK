@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse the previous
 projects or the supplied UF2.
 
-## Firmware 0.32
+## Firmware 0.33
 
 The firmware exposes one USB composite device with separate, standards-based
 interfaces:
@@ -76,7 +76,7 @@ hardware tests, never automatic actions.
 
 ## Local manual-test candidate
 
-`firmware/releases/0.32/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/0.33/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.

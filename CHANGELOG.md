@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.33 - 2026-08-13
+
+- Kept the optional `app/assets` directory in the Git checkout so the
+  Cloudflare Pages build can copy it from a clean clone instead of failing
+  with `ENOENT`.
+- Synchronized the site and firmware version to `0.33` and rebuilt the local
+  Pico 2 W candidate metadata.
+
 ## 0.32 - 2026-08-13
 
 - Synchronized the firmware source, embedded UF2 metadata and local release
