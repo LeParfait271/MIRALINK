@@ -25,13 +25,13 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--bg); }
+html { min-width: 320px; overflow-x: clip; background: var(--bg); }
 body {
   position: relative;
   isolation: isolate;
   margin: 0;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background:
     radial-gradient(ellipse at 14% -8%, rgba(33, 182, 215, .24), transparent 33rem),
     radial-gradient(ellipse at 88% 20%, rgba(73, 94, 218, .14), transparent 30rem),
