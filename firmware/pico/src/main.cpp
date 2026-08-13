@@ -26,6 +26,7 @@ constexpr std::uint8_t kReportResponse = 0x02;
 constexpr std::uint8_t kReportEvent = 0x03;
 constexpr std::uint8_t kReportGamepad = 0x10;
 constexpr std::uint8_t kReportControllerOutput = 0x11;
+constexpr std::uint64_t kGamepadHeartbeatUs = 16'000;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
 constexpr std::uint8_t kLogSchema = 1;
@@ -82,6 +83,7 @@ bool g_last_event_inquiry_active = false;
 bool g_last_event_connection_pending = false;
 bool g_usb_reconnect_pending = false;
 bool g_recovery_pending = false;
+bool g_cyw43_ready = false;
 bool g_gamepad_report_pending = false;
 bool g_gamepad_was_available = false;
 std::uint32_t g_last_gamepad_sample_count = 0;
@@ -110,6 +112,17 @@ std::uint32_t now_ms() {
 void write_status_gpio(const bool active) {
     if (g_status_gpio_pin == kStatusGpioDisabled) return;
     gpio_put(g_status_gpio_pin, (active ^ g_status_gpio_active_low) ? 1 : 0);
+}
+
+void write_status_led(const bool visible) {
+#if defined(CYW43_WL_GPIO_LED_PIN)
+    if (g_cyw43_ready) {
+        // The Pico 2 W LED is on the CYW43 wireless chip, not a RP2350 GPIO.
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, visible);
+        return;
+    }
+#endif
+    board_led_write(visible ? 1 : 0);
 }
 
 void apply_status_gpio_config(const miralink::Config& config) {
@@ -151,7 +164,7 @@ void update_status_led() {
     const bool status_active = snapshot.state == miralink::bluetooth::LinkState::Connected || pairing;
     const bool visible = !g_config_store.active().disable_led
         && (snapshot.state == miralink::bluetooth::LinkState::Connected || (pairing && blink_on));
-    board_led_write(visible ? 1 : 0);
+    write_status_led(visible);
     write_status_gpio(status_active);
 }
 
@@ -389,6 +402,7 @@ void clear_gamepad_report() {
     g_gamepad_report.fill(0);
     // TinyUSB's gamepad template uses 8 as the neutral hat value.
     g_gamepad_report[6] = 8;
+    g_gamepad_report_pending = true;
 }
 
 void set_gamepad_button(std::uint32_t& buttons, const std::uint8_t value, const std::uint8_t bit, const std::uint8_t mask) {
@@ -400,8 +414,9 @@ void build_gamepad_report(const miralink::dualsense::InputState& input) {
     g_gamepad_report[1] = signed_axis(input.left_y);
     g_gamepad_report[2] = signed_axis(input.right_x);
     g_gamepad_report[3] = signed_axis(input.right_y);
-    g_gamepad_report[4] = input.left_trigger;
-    g_gamepad_report[5] = input.right_trigger;
+    // TinyUSB's template declares all six axes as signed 8-bit values.
+    g_gamepad_report[4] = signed_axis(input.left_trigger);
+    g_gamepad_report[5] = signed_axis(input.right_trigger);
     const auto dpad = static_cast<std::uint8_t>(input.dpad_face & 0x0f);
     g_gamepad_report[6] = static_cast<std::uint8_t>(dpad < 8 ? dpad + 1 : 8);
 
@@ -429,6 +444,7 @@ void build_gamepad_report(const miralink::dualsense::InputState& input) {
 
 void publish_gamepad_report() {
     const auto snapshot = miralink::bluetooth::snapshot();
+    const auto now_us = time_us_64();
     if (snapshot.input_available && snapshot.sample_count != g_last_gamepad_sample_count) {
         build_gamepad_report(snapshot.input);
         // Remote wake is opt-in twice: the saved local profile must enable it
@@ -444,10 +460,17 @@ void publish_gamepad_report() {
     } else if (!snapshot.input_available && g_gamepad_was_available) {
         clear_gamepad_report();
         g_gamepad_was_available = false;
+    }
+    // Windows opens the game-controller test page before a Bluetooth report
+    // is necessarily available. Keep the HID gamepad alive with a neutral
+    // report so the device is usable even while the radio is disconnected.
+    if (!g_gamepad_report_pending
+        && (g_last_gamepad_report_us == 0 || now_us - g_last_gamepad_report_us >= kGamepadHeartbeatUs)) {
+        if (snapshot.input_available) build_gamepad_report(snapshot.input);
+        else clear_gamepad_report();
         g_gamepad_report_pending = true;
     }
     const auto minimum_interval_us = gamepad_publish_interval_us();
-    const auto now_us = time_us_64();
     const bool interval_elapsed = minimum_interval_us == 0
         || g_last_gamepad_report_us == 0
         || now_us - g_last_gamepad_report_us >= minimum_interval_us;
@@ -669,6 +692,7 @@ int main() {
     clear_gamepad_report();
 
     if (cyw43_arch_init() == PICO_OK) {
+        g_cyw43_ready = true;
         miralink::bluetooth::init();
     }
 

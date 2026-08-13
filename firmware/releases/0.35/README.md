@@ -17,6 +17,17 @@ published nor flashed automatically.
   standard gamepad collection. Windows can enumerate the gamepad collection
   independently of the web interface; only validated Bluetooth input feeds it.
 
+## Correction included in this rebuilt candidate
+
+- The Pico 2 W status LED is driven through the CYW43 wireless chip, which is
+  where the board LED is physically connected.
+- The USB gamepad sends a neutral report as soon as Windows mounts it and a
+  bounded neutral heartbeat while Bluetooth input is unavailable. This lets
+  the Windows game-controller test open before the first valid DualSense
+  report arrives.
+- Trigger values are encoded within the signed axis range declared by the
+  standard TinyUSB gamepad descriptor.
+
 ## Verification completed
 
 - Pico 2 W / RP2350 ARM Secure target compiled locally with Pico SDK 2.3.0 and
@@ -29,9 +40,12 @@ published nor flashed automatically.
 
 ## Manual test boundary
 
-No Pico 2 W, DualSense or Windows game-controller panel was connected during
-this build session. The actual first-pair association, Windows enumeration,
-input reports and persistence remain physical tests.
+The first 0.35 flash was physically checked by the user: Windows enumerated
+`MiraLink Pico 2 W`, but the game-controller Properties test reported that the
+controller was not connected correctly, and no status-LED blink was observed.
+This rebuilt candidate contains the corresponding software corrections and
+still requires a fresh physical flash before those corrections can be called
+successful. Full DualSense input/output behavior remains a separate test.
 
 To test manually, put the Pico 2 W into BOOTSEL mode and copy **only**
 `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. After it reboots, the

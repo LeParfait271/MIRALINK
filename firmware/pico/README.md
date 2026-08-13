@@ -10,8 +10,9 @@ The firmware exposes one HID-only USB configuration:
 
 - MiraLink vendor HID feature reports for local configuration, diagnostics,
   pairing and recovery;
-- a standard USB HID gamepad forwarding validated DualSense input and sending a
-  neutral report on disconnection;
+- a standard USB HID gamepad forwarding validated DualSense input, sending a
+  neutral report on USB mount/disconnection and a bounded heartbeat while the
+  Bluetooth input is unavailable;
 - unique HID report IDs: command `0x01`, response `0x02`, event `0x03`, gamepad
   `0x10` and controller output `0x11`.
 
@@ -40,7 +41,8 @@ as a working USB capability.
 - Runtime application of saved controller mode, haptic gain, speaker volume,
   headset monitor volume, bounded speaker gain, speaker/microphone disable,
   volume lock, audio prebuffer, gamepad reporting mode and Pico status LED
-  preference.
+  preference. On Pico 2 W, the status LED is driven through the CYW43 wireless
+  chip rather than a normal RP2350 GPIO.
 - Runtime application of trigger-effect reduction to the bounded output body;
   `10` neutralizes both trigger blocks and intermediate values attenuate their
   non-type parameters only.
@@ -65,9 +67,12 @@ vendored Opus and picotool. Native MiraLink core tests pass. The HID-only
 configuration descriptor is checked at compile time, and the UF2 is inspected
 locally for Pico 2 W / RP2350 ARM Secure targeting.
 
-None of that proves Windows enumeration, WebHID, Bluetooth pairing, rumble,
-adaptive triggers or reconnection on a real Pico 2 W and DualSense. Those are
-manual hardware tests, never automatic actions.
+The first manual 0.35 flash showed that Windows enumerated the Pico but the
+game-controller Properties test failed and no LED blink was observed. The
+rebuilt candidate records corrections for the neutral gamepad report path and
+CYW43 LED path; it has not yet been flashed again. Windows input, Bluetooth
+pairing, rumble, adaptive triggers and reconnection on a real Pico 2 W and
+DualSense remain manual hardware tests, never automatic actions.
 
 ## Local manual-test candidate
 

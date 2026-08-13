@@ -15,7 +15,9 @@ first association.
 
 The active USB descriptor remains HID-only and contains the MiraLink vendor
 collections plus the separate standard gamepad collection (`report ID 0x10`).
-Only validated Bluetooth input is published into that gamepad report.
+The gamepad now emits a neutral report on USB mount and a bounded heartbeat
+while Bluetooth input is unavailable; validated DualSense input replaces that
+neutral state when it arrives. The Pico 2 W LED is driven through CYW43 GPIO.
 
 ## Static and automated validation
 
@@ -25,7 +27,7 @@ Only validated Bluetooth input is published into that gamepad report.
 | Application JavaScript syntax checks | Passed |
 | Native MiraLink core test | Passed (`1/1`) |
 | Pico 2 W firmware build | Passed with ARM GNU 15.2.1 and Pico SDK 2.3.0 |
-| Firmware source regression checks | Passed: boot pairing, discoverability, HID gamepad, HID-only policy and version metadata |
+| Firmware source regression checks | Passed: boot pairing, discoverability, CYW43 LED path, neutral gamepad heartbeat, signed axes, HID-only policy and version metadata |
 | UF2 metadata inspection | Passed: MiraLink Pico 2 W, `0.35`, `pico2_w`, RP2350 ARM Secure |
 | UF2 family | Passed: `rp2350-arm-s` |
 
@@ -33,16 +35,18 @@ Only validated Bluetooth input is published into that gamepad report.
 
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `firmware/releases/0.35/miralink_pico_firmware.uf2` | 1,404,928 | `F582A42B5DE51FACCFC79340A68024DB64E0F3188B92F61EAE26B7D3BD582E00` |
-| `firmware/releases/0.35/miralink_pico_firmware.elf` | 4,431,736 | `678FFC0CD88D552853B71C8424BE3BF792233F5EEFF87466EDE868028CC744C6` |
-| `firmware/releases/0.35/miralink_pico_firmware.bin` | 701,996 | `8215C308EE427B048778AAE040C90A0802ECEB657EF92697900834A6E851844D` |
-| `firmware/releases/0.35/miralink_pico_firmware.hex` | 1,974,606 | `DFC4E2476F3DAF70CE4656926C8E8FDC60E9AAF800CFE5FFB2B073B964BFFF12` |
+| `firmware/releases/0.35/miralink_pico_firmware.uf2` | 1,405,952 | `1DB6D29EFAE650E4B9E05C2783E89EEAD99079B6D7EA9FB1BE180124E2EA68E1` |
+| `firmware/releases/0.35/miralink_pico_firmware.elf` | 4,433,968 | `03A13D4BAF0883339E3A2C31EC1E77D75CC99AE6013377D350EA69E4995824FB` |
+| `firmware/releases/0.35/miralink_pico_firmware.bin` | 702,516 | `C59AF3A3FADAFCF5F88F5F79424813A113519519776720CB8D659B2624B44C9E` |
+| `firmware/releases/0.35/miralink_pico_firmware.hex` | 1,976,062 | `07D77F856CE89C509E0E0F52190DA9B78AC77791657BD6317534B24ECD3D8A1C` |
 
 ## Hardware validation still required
 
-No Pico 2 W, DualSense or Windows game-controller panel was connected for
-this build session, and no UF2 was flashed. The following remain manual
-hardware checks: the LED pairing window, first Bluetooth association,
-Windows gamepad enumeration without Code 10, actual input reports,
-reconnection after a reboot and BTstack key persistence. The build and the
-source checks do not claim those physical results.
+The first 0.35 UF2 was flashed and checked by the user. Windows enumerated
+`MiraLink Pico 2 W` with status `OK`, but opening Properties produced the
+Windows error that the controller was not connected correctly; no status-LED
+blink was observed. This is a real failure report, not a successful hardware
+validation. The corrected UF2 above has not yet been flashed again. The
+remaining manual checks are the corrected Properties test, live input reports,
+the LED pairing window, first Bluetooth association, reconnection after a
+reboot and BTstack key persistence.
