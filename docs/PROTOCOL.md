@@ -85,17 +85,17 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. In firmware 2.2.0 the UAC2 USB input is
-not exposed: the previous composite descriptor produced Windows Code 10 on
-the real bridge's audio and HID child interfaces. Consequently USB audio
-streaming and its packet counter remain unavailable/zero in this candidate.
-The source still contains the bounded local audio pipeline and fixed 398-byte
-DualSense audio-report validator for a later descriptor-specific validation
-cycle. No standard A2DP/SBC route is used. Adaptive-trigger effects are
-reachable through the bounded output route below but require real hardware
-validation. Battery status, compatible rumble, lightbar, motion, touch and
-microphone state are reported only after a validated DualSense input report has
-been received.
+claim that a controller is connected. Firmware 2.4.0 exposes a standard UAC2
+headset function beside the HID interface: four playback channels at 48 kHz /
+PCM 16-bit and one local mono capture-monitor channel. The USB packet counter
+therefore tracks accepted local UAC2 playback packets. The capture endpoint is
+not a DualSense microphone transport. No standard A2DP/SBC route is used.
+`bluetoothStreaming` only means that a bounded audio report was accepted by the
+local Bluetooth queue; it is not proof that a physical controller rendered
+audio. Adaptive-trigger effects are reachable through the bounded output route
+below but require real hardware validation. Battery status, compatible rumble,
+lightbar, motion, touch and microphone state are reported only after a
+validated DualSense input report has been received.
 
 ### 3.2 Pico controller state payload
 

@@ -10,7 +10,7 @@ The project is intentionally created from zero. It has its own application, firm
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
 - Current site version: `0.30`
-- Current firmware version: `2.3.0` (HID-only USB recovery candidate; Windows Code 10 descriptor conflict corrected; audio USB remains deliberately unavailable)
+- Current firmware version: `2.4.0` (HID + standard UAC2 headset candidate; physical Windows enumeration and controller-output validation still required)
 - Last update: `2026-08-13`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: local only

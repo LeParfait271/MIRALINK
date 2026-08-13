@@ -83,6 +83,7 @@ bool g_recovery_pending = false;
 bool g_gamepad_report_pending = false;
 bool g_gamepad_was_available = false;
 std::uint32_t g_last_gamepad_sample_count = 0;
+std::uint64_t g_last_gamepad_report_us = 0;
 std::uint64_t g_usb_reconnect_deadline_ms = 0;
 std::uint64_t g_recovery_deadline_ms = 0;
 std::array<std::uint8_t, 11> g_gamepad_report{};
@@ -99,6 +100,23 @@ std::size_t g_log_count = 0;
 
 std::uint32_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
+}
+
+std::uint64_t gamepad_publish_interval_us() {
+    switch (g_config_store.active().polling_mode) {
+        case 0: return 4000; // 250 Hz: reliable baseline.
+        case 1: return 2000; // 500 Hz: default balance.
+        default: return 0;   // Real-time: send each validated input report.
+    }
+}
+
+void update_status_led() {
+    const auto snapshot = miralink::bluetooth::snapshot();
+    const bool pairing = snapshot.pairing_window_open || snapshot.inquiry_active || snapshot.connection_pending;
+    const bool blink_on = ((now_ms() / 250u) & 1u) == 0;
+    const bool visible = !g_config_store.active().disable_led
+        && (snapshot.state == miralink::bluetooth::LinkState::Connected || (pairing && blink_on));
+    board_led_write(visible ? 1 : 0);
 }
 
 void append_log(const char* message) {
@@ -377,6 +395,13 @@ void publish_gamepad_report() {
     const auto snapshot = miralink::bluetooth::snapshot();
     if (snapshot.input_available && snapshot.sample_count != g_last_gamepad_sample_count) {
         build_gamepad_report(snapshot.input);
+        // Remote wake is opt-in twice: the saved local profile must enable it
+        // and the USB host must have armed the standard USB remote-wakeup
+        // feature.  A validated controller report is the only event that can
+        // request it, so background polling can never wake the computer.
+        if (g_config_store.active().enable_wake && tud_suspended()) {
+            (void)tud_remote_wakeup();
+        }
         g_last_gamepad_sample_count = snapshot.sample_count;
         g_gamepad_was_available = true;
         g_gamepad_report_pending = true;
@@ -385,9 +410,15 @@ void publish_gamepad_report() {
         g_gamepad_was_available = false;
         g_gamepad_report_pending = true;
     }
-    if (g_gamepad_report_pending && tud_mounted() && tud_hid_ready()) {
+    const auto minimum_interval_us = gamepad_publish_interval_us();
+    const auto now_us = time_us_64();
+    const bool interval_elapsed = minimum_interval_us == 0
+        || g_last_gamepad_report_us == 0
+        || now_us - g_last_gamepad_report_us >= minimum_interval_us;
+    if (g_gamepad_report_pending && interval_elapsed && tud_mounted() && tud_hid_ready()) {
         if (tud_hid_report(kReportGamepad, g_gamepad_report.data(), static_cast<std::uint16_t>(g_gamepad_report.size()))) {
             g_gamepad_report_pending = false;
+            g_last_gamepad_report_us = now_us;
         }
     }
 }
@@ -414,7 +445,7 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
                     | miralink::kFeatureUsbGamepad)});
             return;
         case miralink::Command::GetInfo:
-            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 0, 1, 0});
+            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 2, 4, 0, 0});
             return;
         case miralink::Command::GetConfig: {
             const auto encoded = miralink::encode_config(g_config_store.active());
@@ -434,6 +465,8 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
         }
         case miralink::Command::CommitConfig:
             if (!g_config_store.commit()) { set_error(sequence, decoded.frame.command, "flash verification failed"); return; }
+            miralink::audio::apply_config(g_config_store.active());
+            miralink::bluetooth::apply_config(g_config_store.active());
             g_config_was_loaded = true;
             append_log("configuration committed");
             set_response(sequence, decoded.frame.command, 0, {});
@@ -596,6 +629,8 @@ int main() {
     board_init();
     miralink::audio::init();
     g_config_was_loaded = g_config_store.load();
+    miralink::audio::apply_config(g_config_store.active());
+    miralink::bluetooth::apply_config(g_config_store.active());
     append_log(g_config_was_loaded ? "configuration loaded" : "safe defaults active");
     clear_gamepad_report();
 
@@ -613,23 +648,9 @@ int main() {
         tud_task();
         miralink::audio::poll();
         miralink::bluetooth::poll();
+        update_status_led();
         publish_gamepad_report();
         publish_controller_event();
         service_deferred_actions();
     }
 }
-
-#if CFG_TUD_AUDIO
-extern "C" bool tud_audio_rx_done_post_read_cb(uint8_t rhport, uint16_t n_bytes_received,
-    uint8_t func_id, uint8_t ep_out, uint8_t cur_alt_setting) {
-    (void)rhport;
-    (void)func_id;
-    (void)ep_out;
-    (void)cur_alt_setting;
-    std::array<std::uint8_t, CFG_TUD_AUDIO_FUNC_1_EP_OUT_SZ_MAX> buffer{};
-    const auto length = std::min<std::size_t>(n_bytes_received, buffer.size());
-    const auto read = tud_audio_read(buffer.data(), static_cast<std::uint16_t>(length));
-    miralink::audio::push_usb_pcm(buffer.data(), read);
-    return true;
-}
-#endif

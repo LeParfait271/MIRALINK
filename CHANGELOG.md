@@ -1,5 +1,17 @@
 # Changelog
 
+## Firmware 2.4.0 - 2026-08-13
+
+- Reintroduced a standards-based USB Audio Class 2 headset function beside the
+  independent MiraLink HID and standard gamepad collections.
+- Added fixed 48 kHz / PCM 16-bit four-channel playback, mono local-monitor
+  capture, explicit UAC2 clock/mute/volume handling and separate endpoints.
+- Applied saved controller mode, haptic gain, audio, reporting and LED
+  preferences at firmware runtime rather than only persisting them in flash.
+- Added opt-in standard USB remote wake from validated controller input only;
+  the host must also explicitly allow that USB feature.
+- Rebuilt and locally inspected a Pico 2 W / RP2350 ARM Secure UF2. Native core
+  tests passed; no physical Windows, Pico or DualSense test is claimed.
 # 0.30 - 2026-08-13
 
 - Clarified that WebHID is the browser-to-Pico 2 W bridge transport, not the

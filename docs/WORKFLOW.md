@@ -57,7 +57,7 @@ pas de commit vide artificiel.
 La version publique actuelle du site est `0.30`. Le paquet npm peut représenter
 cette même version sous la forme technique `0.30.0`, mais l'application, le
 manifeste de livraison et la documentation affichent `0.30`. Le firmware
-actuellement suivi reste `2.3.0`.
+actuellement suivi reste `2.4.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -169,6 +169,26 @@ Le bandeau WebHID décrit uniquement la liaison du navigateur vers le pont Pico
 2 W. Il n’est affiché qu’au lancement d’une action de connexion ou d’actualisation
 et ne doit pas être présenté comme l’absence de Bluetooth de la manette.
 
+Le candidat firmware 2.4.0 réintroduit une fonction USB UAC2 standard dans le
+composite sans fusionner les canaux HID : quatre canaux de lecture 48 kHz / PCM
+16 bits, un canal de capture mono local, une horloge fixe, des contrôles
+mute/volume et des endpoints distincts. La capture est un monitor local de la
+lecture, pas un microphone DualSense. Chaque contrôle UAC2 est borné et le
+buffer reste en RAM. Un build et l'inspection UF2 ne remplacent ni
+l’énumération Windows, ni un test audio/haptique/gâchette sur Pico 2 W et
+DualSense réels.
+
+Si un dossier de build a été configuré avec `PICO_NO_PICOTOOL=1`, un ancien
+fichier UF2 peut rester présent alors que l'ELF vient d'être recompilé. Avant
+toute livraison locale, régénérer alors explicitement l'UF2 depuis cet ELF avec
+le picotool local, inspecter sa version embarquée, sa famille RP2350 et son
+type ARM Secure, puis calculer son SHA-256. La simple date d'un fichier UF2 ne
+constitue pas une preuve de fraîcheur.
+
+L'option de réveil USB du candidat 2.4.0 ne peut être demandée qu'après une
+entrée manette validée, avec l'option locale active et l'autorisation de
+l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
+physique de veille/réveil sur le Pico 2 W réel.
 Les actions de l’espace Manettes doivent être réellement reliées à l’interface
 et rester locales : Calibration analyse les échantillons déjà reçus, Quick
 tests ne fait aucune écriture et History conserve des snapshots par manette.

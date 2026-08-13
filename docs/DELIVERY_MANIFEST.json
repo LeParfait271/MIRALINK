@@ -1,7 +1,7 @@
 {
   "product": "MiraLink",
   "version": "0.30",
-  "firmwareVersion": "2.3.0",
+  "firmwareVersion": "2.4.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-13",
   "delivery": "local-source-only",
@@ -18,7 +18,7 @@
   },
   "sourceBuild": {
     "sourceStatus": "compiled-locally-uf2-packaged",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "directory": "firmware/pico/build-btstack-4",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
@@ -27,21 +27,23 @@
     "opus": "1.5.2-vendored",
     "outputs": ["miralink_pico_firmware.elf", "miralink_pico_firmware.bin", "miralink_pico_firmware.hex", "miralink_pico_firmware.uf2"],
     "hardwareTest": "not-tested",
-    "usbConfiguration": "hid-only",
-    "usbAudio": "unavailable-until-descriptor-validation"
+    "usbConfiguration": "uac2-headset-plus-hid",
+    "usbAudio": "uac2-48khz-4ch-playback-1ch-local-monitor-capture; hardware-enumeration-not-tested",
+    "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested"
   },
   "releaseArtifact": {
     "sourceStatus": "local-manual-test-candidate",
-    "version": "2.3.0",
-    "directory": "firmware/releases/2.3.0",
-    "uf2": "firmware/releases/2.3.0/miralink_pico_firmware.uf2",
-    "sha256": "8A235D81079277900AEF81002C3C1353175F6F6D35BE21A9B01E27A1E731D8EF",
-    "bytes": 1397760,
+    "version": "2.4.0",
+    "directory": "firmware/releases/2.4.0",
+    "uf2": "firmware/releases/2.4.0/miralink_pico_firmware.uf2",
+    "sha256": "D1F9C30CECEDEB4B31CDE43CEB415F144469C47B30D128D0CB753BFCB252121E",
+    "bytes": 1413632,
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "hardwareTest": "not-tested",
-    "usbConfiguration": "hid-only",
-    "usbAudio": "unavailable-until-descriptor-validation",
+    "usbConfiguration": "uac2-headset-plus-hid",
+    "usbAudio": "uac2-48khz-4ch-playback-1ch-local-monitor-capture; hardware-enumeration-not-tested",
+    "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested",
     "flashAction": "manual-only"
   },
   "hardwareAction": "none"

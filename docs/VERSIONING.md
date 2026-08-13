@@ -22,14 +22,14 @@ packaging metadata for the public site version `0.30`, not a separate product
 release.
 
 Firmware versions are independent. The current firmware source and release
-artifact are `2.3.0` and must not be renamed when only the site changes.
+artifact are `2.4.0` and must not be renamed when only the site changes.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
 The current committed site version is `0.30`. The current firmware version is
-`2.3.0`, containing the HID-only USB recovery candidate. USB audio is
-intentionally not exposed until the composite descriptor is independently
-validated on Windows hardware.
+`2.4.0`, containing the HID + UAC2 headset candidate. USB audio enumeration
+remains a hardware-validation boundary: the source exposes standard 48 kHz
+playback and local-monitor capture, but no real Pico 2 W test is claimed.
 
 Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
 `docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is

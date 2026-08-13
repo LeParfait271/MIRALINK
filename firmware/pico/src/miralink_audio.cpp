@@ -1,6 +1,7 @@
 #include "miralink_audio.h"
 
 #include "miralink_bluetooth.h"
+#include "miralink_config.h"
 
 #include <algorithm>
 #include <array>
@@ -22,11 +23,27 @@ std::array<std::int16_t, kRingFrames * kChannelCount> g_pcm_ring{};
 std::size_t g_read_frame = 0;
 std::size_t g_write_frame = 0;
 std::size_t g_buffered_frames = 0;
+std::array<std::int16_t, kRingFrames> g_capture_ring{};
+std::size_t g_capture_read_frame = 0;
+std::size_t g_capture_write_frame = 0;
+std::size_t g_capture_buffered_frames = 0;
 std::uint32_t g_usb_packet_count = 0;
 std::uint32_t g_dropped_frame_count = 0;
 std::uint32_t g_audio_report_count = 0;
+std::uint32_t g_usb_capture_packet_count = 0;
+std::uint32_t g_capture_underflow_frame_count = 0;
 std::uint64_t g_last_packet_us = 0;
 bool g_usb_streaming = false;
+bool g_usb_playback_endpoint_active = false;
+bool g_usb_capture_endpoint_active = false;
+bool g_host_playback_muted = false;
+bool g_config_speaker_disabled = false;
+bool g_config_microphone_disabled = false;
+bool g_volume_locked = false;
+std::uint16_t g_host_playback_gain_q15 = 32767;
+std::uint16_t g_config_playback_gain_q15 = 32767;
+std::uint16_t g_haptics_gain_q8_8 = 256;
+std::size_t g_prebuffer_frames = kAudioBlockFrames;
 OpusEncoder* g_opus_encoder = nullptr;
 std::uint8_t g_report_sequence = 0;
 std::uint8_t g_audio_packet_sequence = 0;
@@ -36,6 +53,12 @@ bool g_pending_report_ready = false;
 
 std::size_t next_frame(const std::size_t frame) {
     return (frame + 1) % kRingFrames;
+}
+
+std::int16_t scale_playback_sample(const std::int16_t sample) {
+    if (g_host_playback_muted || g_config_speaker_disabled) return 0;
+    const auto scaled = static_cast<std::int64_t>(sample) * g_host_playback_gain_q15 * g_config_playback_gain_q15;
+    return static_cast<std::int16_t>(scaled / (32767ll * 32767ll));
 }
 
 void push_frame(const std::int16_t* frame) {
@@ -48,6 +71,16 @@ void push_frame(const std::int16_t* frame) {
         kChannelCount * sizeof(std::int16_t));
     g_write_frame = next_frame(g_write_frame);
     ++g_buffered_frames;
+}
+
+void push_capture_frame(const std::int16_t sample) {
+    if (g_capture_buffered_frames == kRingFrames) {
+        g_capture_read_frame = next_frame(g_capture_read_frame);
+        --g_capture_buffered_frames;
+    }
+    g_capture_ring[g_capture_write_frame] = sample;
+    g_capture_write_frame = next_frame(g_capture_write_frame);
+    ++g_capture_buffered_frames;
 }
 
 void read_quad_block(std::int16_t* destination) {
@@ -75,7 +108,8 @@ std::int8_t haptic_sample(const std::int16_t* block, const std::size_t first_fra
     for (std::size_t offset = 0; offset < 16; ++offset) {
         sum += block[(first_frame + offset) * kChannelCount + channel];
     }
-    const auto scaled = std::clamp<std::int64_t>(sum / 4096, -128, 127);
+    const auto amplified = (sum * g_haptics_gain_q8_8) / 256;
+    const auto scaled = std::clamp<std::int64_t>(amplified / 4096, -128, 127);
     return static_cast<std::int8_t>(scaled);
 }
 
@@ -132,7 +166,7 @@ void process_audio_block() {
         g_dropped_frame_count += static_cast<std::uint32_t>(kAudioBlockFrames);
     }
     if (!g_pending_report_ready) {
-        if (g_buffered_frames < kAudioBlockFrames || !link.audio_link_available) return;
+        if (g_buffered_frames < g_prebuffer_frames || !link.audio_link_available) return;
         read_quad_block(g_pending_block.data());
         if (!build_audio_report(g_pending_block.data(), g_pending_report)) {
             g_dropped_frame_count += static_cast<std::uint32_t>(kAudioBlockFrames);
@@ -153,11 +187,27 @@ void init() {
     g_read_frame = 0;
     g_write_frame = 0;
     g_buffered_frames = 0;
+    g_capture_ring.fill(0);
+    g_capture_read_frame = 0;
+    g_capture_write_frame = 0;
+    g_capture_buffered_frames = 0;
     g_usb_packet_count = 0;
     g_dropped_frame_count = 0;
     g_audio_report_count = 0;
+    g_usb_capture_packet_count = 0;
+    g_capture_underflow_frame_count = 0;
     g_last_packet_us = 0;
     g_usb_streaming = false;
+    g_usb_playback_endpoint_active = false;
+    g_usb_capture_endpoint_active = false;
+    g_host_playback_muted = false;
+    g_config_speaker_disabled = false;
+    g_config_microphone_disabled = false;
+    g_volume_locked = false;
+    g_host_playback_gain_q15 = 32767;
+    g_config_playback_gain_q15 = 32767;
+    g_haptics_gain_q8_8 = 256;
+    g_prebuffer_frames = kAudioBlockFrames;
     g_report_sequence = 0;
     g_audio_packet_sequence = 0;
     g_pending_block.fill(0);
@@ -197,21 +247,104 @@ void push_usb_pcm(const std::uint8_t* bytes, const std::size_t length) {
                 static_cast<std::uint16_t>(bytes[offset])
                 | (static_cast<std::uint16_t>(bytes[offset + 1]) << 8u));
         }
+        // UAC2 feature-unit controls apply only to the speaker pair. Haptic
+        // channels stay independent so a host volume change cannot amplify a
+        // motor waveform unexpectedly.
+        frame[0] = scale_playback_sample(frame[0]);
+        frame[1] = scale_playback_sample(frame[1]);
         push_frame(frame.data());
+        const auto monitor = (static_cast<std::int32_t>(frame[0]) + static_cast<std::int32_t>(frame[1])) / 2;
+        push_capture_frame(static_cast<std::int16_t>(monitor));
     }
     ++g_usb_packet_count;
     g_last_packet_us = time_us_64();
     g_usb_streaming = true;
 }
 
+void set_usb_playback_endpoint_active(const bool active) {
+    g_usb_playback_endpoint_active = active;
+    if (!active) {
+        g_usb_streaming = false;
+        g_buffered_frames = 0;
+        g_read_frame = g_write_frame;
+    }
+}
+
+void set_usb_capture_endpoint_active(const bool active) {
+    g_usb_capture_endpoint_active = active;
+    if (!active) {
+        g_capture_buffered_frames = 0;
+        g_capture_read_frame = g_capture_write_frame;
+    }
+}
+
+void set_usb_playback_mute(const bool muted) {
+    g_host_playback_muted = muted;
+}
+
+void set_usb_playback_volume_q8_8(const std::int16_t volume) {
+    // UAC2 volume is expressed in signed 8.8 dB units. A linear attenuation
+    // keeps this fixed-point audio path deterministic on the Pico while the
+    // host still owns its global mixer policy.
+    constexpr std::int32_t kMinimumVolumeQ8_8 = -90 * 256;
+    const auto clamped = std::clamp<std::int32_t>(volume, kMinimumVolumeQ8_8, 0);
+    g_host_playback_gain_q15 = static_cast<std::uint16_t>(
+        ((clamped - kMinimumVolumeQ8_8) * 32767) / -kMinimumVolumeQ8_8);
+}
+
+void apply_config(const Config& config) {
+    g_config_speaker_disabled = config.disable_speaker;
+    g_config_microphone_disabled = config.disable_mic;
+    g_volume_locked = config.lock_volume;
+    g_config_playback_gain_q15 = static_cast<std::uint16_t>(
+        (static_cast<std::uint32_t>(config.speaker_volume) * 32767u) / 127u);
+    g_haptics_gain_q8_8 = static_cast<std::uint16_t>(std::clamp<std::int32_t>(
+        static_cast<std::int32_t>(config.haptics_gain * 256.0f), 256, 512));
+    constexpr std::size_t kMinimumBufferLength = 16;
+    constexpr std::size_t kMaximumBufferLength = 127;
+    const auto bounded_buffer = std::clamp<std::size_t>(config.audio_buffer_length,
+        kMinimumBufferLength, kMaximumBufferLength);
+    g_prebuffer_frames = kAudioBlockFrames + ((bounded_buffer - kMinimumBufferLength)
+        * (kRingFrames - kAudioBlockFrames)) / (kMaximumBufferLength - kMinimumBufferLength);
+}
+
+bool usb_volume_locked() {
+    return g_volume_locked;
+}
+
+std::size_t pull_usb_capture_pcm(std::uint8_t* bytes, const std::size_t capacity) {
+    if (bytes == nullptr || capacity < kBytesPerSample || !g_usb_capture_endpoint_active) return 0;
+    const auto samples = capacity / kBytesPerSample;
+    for (std::size_t index = 0; index < samples; ++index) {
+        std::int16_t sample = 0;
+        if (g_capture_buffered_frames == 0 || g_config_microphone_disabled) {
+            ++g_capture_underflow_frame_count;
+        } else {
+            sample = g_capture_ring[g_capture_read_frame];
+            g_capture_read_frame = next_frame(g_capture_read_frame);
+            --g_capture_buffered_frames;
+        }
+        const auto encoded = static_cast<std::uint16_t>(sample);
+        bytes[index * kBytesPerSample] = static_cast<std::uint8_t>(encoded & 0xffu);
+        bytes[index * kBytesPerSample + 1] = static_cast<std::uint8_t>((encoded >> 8u) & 0xffu);
+    }
+    ++g_usb_capture_packet_count;
+    return samples * kBytesPerSample;
+}
+
 Snapshot snapshot() {
     return Snapshot{
         g_usb_streaming,
+        g_usb_playback_endpoint_active,
+        g_usb_capture_endpoint_active,
+        g_host_playback_muted || g_config_speaker_disabled,
         g_opus_encoder != nullptr,
         g_usb_packet_count,
         g_dropped_frame_count,
         static_cast<std::uint32_t>(g_buffered_frames),
-        g_audio_report_count
+        g_audio_report_count,
+        g_usb_capture_packet_count,
+        g_capture_underflow_frame_count
     };
 }
 

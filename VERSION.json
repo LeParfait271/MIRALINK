@@ -1,7 +1,7 @@
 {
   "product": "MiraLink",
   "version": "0.30",
-  "firmwareVersion": "2.3.0",
+  "firmwareVersion": "2.4.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-13",
   "versionRule": "Increase the public site/application version by 0.01 for every project commit; firmware versions are tracked separately."

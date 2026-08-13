@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace miralink { struct Config; }
+
 namespace miralink::bluetooth {
 
 enum class LinkState : std::uint8_t {
@@ -50,6 +52,7 @@ struct Snapshot {
 };
 
 void init();
+void apply_config(const Config& config);
 bool open_pairing_window();
 bool send_haptic(std::uint8_t left_motor, std::uint8_t right_motor, std::uint16_t duration_ms);
 bool set_lightbar(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t player_leds_mask);

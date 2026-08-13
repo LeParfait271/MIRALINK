@@ -6,7 +6,7 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(miralink_pico_firmware VERSION 2.3.0 LANGUAGES C CXX ASM)
+project(miralink_pico_firmware VERSION 2.4.0 LANGUAGES C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -38,6 +38,7 @@ add_subdirectory(../third_party/opus opus-build EXCLUDE_FROM_ALL)
 add_executable(miralink_pico_firmware
     src/main.cpp
     src/usb_descriptors.cpp
+    src/miralink_usb_audio.cpp
     src/miralink_audio.cpp
     src/miralink_bluetooth.cpp
     ../src/miralink_protocol.cpp
@@ -53,7 +54,7 @@ target_include_directories(miralink_pico_firmware PRIVATE
 
 target_compile_definitions(miralink_pico_firmware PRIVATE
     CFG_TUD_HID=1
-    CFG_TUD_AUDIO=0
+    CFG_TUD_AUDIO=1
     CFG_TUD_HID_EP_BUFSIZE=65
     CFG_TUD_ENDPOINT0_SIZE=64
     ENABLE_CLASSIC=1
@@ -73,7 +74,7 @@ target_link_libraries(miralink_pico_firmware PRIVATE
 )
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
-pico_set_program_version(miralink_pico_firmware "2.3.0")
+pico_set_program_version(miralink_pico_firmware "2.4.0")
 pico_enable_stdio_uart(miralink_pico_firmware 0)
 pico_enable_stdio_usb(miralink_pico_firmware 0)
 pico_add_extra_outputs(miralink_pico_firmware)

@@ -1,4 +1,5 @@
 #include "miralink_bluetooth.h"
+#include "miralink_config.h"
 
 #include "btstack.h"
 #include "btstack_config.h"
@@ -68,6 +69,8 @@ bool g_haptic_stop_pending = false;
 std::uint64_t g_haptic_stop_deadline_ms = 0;
 std::uint64_t g_audio_last_packet_ms = 0;
 std::array<std::uint8_t, 63> g_controller_state{};
+std::uint16_t g_haptic_gain_q8_8 = 256;
+std::uint8_t g_controller_mode = 2;
 
 struct InquiryCandidate {
     bd_addr_t address{};
@@ -105,6 +108,22 @@ std::uint64_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
 }
 
+std::uint16_t configured_haptic_gain_q8_8() {
+    if (!g_initialized) return g_haptic_gain_q8_8;
+    critical_section_enter_blocking(&g_state_lock);
+    const auto value = g_haptic_gain_q8_8;
+    critical_section_exit(&g_state_lock);
+    return value;
+}
+
+std::uint8_t configured_controller_mode() {
+    if (!g_initialized) return g_controller_mode;
+    critical_section_enter_blocking(&g_state_lock);
+    const auto value = g_controller_mode;
+    critical_section_exit(&g_state_lock);
+    return value;
+}
+
 void schedule_reconnect(const std::uint32_t delay_ms, const bool restart_from_first = true) {
     if (g_paired_address_count == 0) {
         g_reconnect_deadline_ms = 0;
@@ -140,14 +159,23 @@ bool contains_name(const std::uint8_t* name, std::size_t length, const char* nee
 }
 
 bool name_is_dualsense(const std::uint8_t* name, std::size_t length) {
+    const auto controller_mode = configured_controller_mode();
+    if (controller_mode == 1) return contains_name(name, length, "dualsense edge");
+    if (controller_mode == 0) return contains_name(name, length, "dualsense")
+        && !contains_name(name, length, "edge");
     return contains_name(name, length, "dualsense") || contains_name(name, length, "wireless controller");
 }
 
 bool inquiry_result_is_dualsense(const std::uint8_t* packet) {
+    const auto controller_mode = configured_controller_mode();
     if (gap_event_inquiry_result_get_device_id_available(packet)) {
         const auto vendor = gap_event_inquiry_result_get_device_id_vendor_id(packet);
         const auto product = gap_event_inquiry_result_get_device_id_product_id(packet);
-        if (vendor == kSonyVendorId && (product == kDualSenseProductId || product == dualsense::kDualSenseEdgeProductId)) return true;
+        if (vendor == kSonyVendorId) {
+            if (controller_mode == 0) return product == kDualSenseProductId;
+            if (controller_mode == 1) return product == dualsense::kDualSenseEdgeProductId;
+            return product == kDualSenseProductId || product == dualsense::kDualSenseEdgeProductId;
+        }
     }
     // Some controller revisions expose an incomplete device-id during
     // inquiry. A matching local name is a valid pairing hint; the complete
@@ -672,6 +700,20 @@ void init() {
     hci_power_control(HCI_POWER_ON);
 }
 
+void apply_config(const Config& config) {
+    const auto haptic_gain_q8_8 = static_cast<std::uint16_t>(std::clamp<std::int32_t>(
+        static_cast<std::int32_t>(config.haptics_gain * 256.0f), 256, 512));
+    if (!g_initialized) {
+        g_haptic_gain_q8_8 = haptic_gain_q8_8;
+        g_controller_mode = config.controller_mode;
+        return;
+    }
+    critical_section_enter_blocking(&g_state_lock);
+    g_haptic_gain_q8_8 = haptic_gain_q8_8;
+    g_controller_mode = config.controller_mode;
+    critical_section_exit(&g_state_lock);
+}
+
 bool open_pairing_window() {
     if (!g_initialized || !g_hci_working) return false;
     g_pairing_window_deadline_ms = now_ms() + kPairingWindowMs;
@@ -721,10 +763,13 @@ bool open_pairing_window() {
 
 bool send_haptic(const std::uint8_t left_motor, const std::uint8_t right_motor, const std::uint16_t duration_ms) {
     if (duration_ms == 0 || duration_ms > kHapticMaxDurationMs) return false;
+    const auto haptic_gain_q8_8 = configured_haptic_gain_q8_8();
     dualsense::OutputRequest request{};
     request.haptics = true;
-    request.left_motor = left_motor;
-    request.right_motor = right_motor;
+    request.left_motor = static_cast<std::uint8_t>(std::min<std::uint32_t>(255,
+        (static_cast<std::uint32_t>(left_motor) * haptic_gain_q8_8 + 128u) / 256u));
+    request.right_motor = static_cast<std::uint8_t>(std::min<std::uint32_t>(255,
+        (static_cast<std::uint32_t>(right_motor) * haptic_gain_q8_8 + 128u) / 256u));
     if (!queue_output(request)) return false;
     g_haptic_stop_pending = true;
     g_haptic_stop_deadline_ms = now_ms() + duration_ms;

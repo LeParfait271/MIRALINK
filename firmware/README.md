@@ -10,8 +10,10 @@ The current firmware tranche includes the local Bluetooth inquiry/connection
 path for DualSense input, bounded diagnostics, local RAM logs, USB
 reconnection and a confirmation-token recovery command. It also includes a
 local UAC2 four-channel audio ingress, a fixed DualSense audio HID report
-route using locally vendored Opus, and a fixed-size DualSense output adapter. Those paths remain subject to physical
-Pico 2 W and controller validation; a successful build is not a hardware test.
+route using locally vendored Opus, a fixed-size DualSense output adapter and
+opt-in standard USB remote wake from a validated controller input. Those paths
+remain subject to physical Pico 2 W and controller validation; a successful
+build is not a hardware test.
 
 ## Core and hardware builds
 
