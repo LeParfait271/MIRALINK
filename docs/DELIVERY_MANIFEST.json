@@ -1,11 +1,12 @@
 {
   "product": "MiraLink",
-  "version": "2.2.0",
+  "version": "0.22",
+  "firmwareVersion": "2.2.0",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-13",
   "delivery": "local-source-only",
   "application": "app/src",
-  "applicationVersion": "2.2.0",
+  "applicationVersion": "0.22",
   "validatedFirmware": {
     "sourceStatus": "historical-artifact",
     "version": "0.2.0",

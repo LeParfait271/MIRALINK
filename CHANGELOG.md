@@ -1,6 +1,13 @@
 # Changelog
 
-## 2.2.0 - 2026-08-13
+## 0.22 - 2026-08-13
+
+- Corrected the public MiraLink site/application version to `0.22`, with a
+  `0.01` increment policy for future site commits.
+- Kept firmware version `2.2.0` independent; no firmware binary or hardware
+  claim changed in this metadata-only update.
+
+## Firmware 2.2.0 - 2026-08-13
 
 - Replaced the failing USB composite descriptor with a HID-only Pico 2 W
   configuration after Windows reported Code 10 on both the audio and HID

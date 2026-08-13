@@ -1,26 +1,35 @@
 # MiraLink — Versioning rules
 
-MiraLink starts at `0.1.0`.
+MiraLink starts at `0.1.0`. The public site uses a compact two-decimal version
+(`0.10` is the display form of the initial `0.1.0`).
 
-For every commit that changes the project, increase the minor version by `0.1` and update the date in `VERSION.json`:
+For every commit that changes the site or application, increase the public
+version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.6.0 → 0.7.0 → 0.8.0 → 0.9.0 → 1.0.0 → 1.1.0 → 1.2.0 → 1.3.0 → 1.4.0 → 1.5.0 → 1.6.0 → 1.7.0 → 1.8.0 → 1.9.0 → 2.0.0 → 2.1.0 → 2.2.0
+0.10 → 0.11 → 0.12 → … → 0.21 → 0.22
 ```
 
-The same version must be reflected in:
+The public site version must be reflected in:
 
 - `VERSION.json`;
 - the application metadata;
-- firmware metadata when a firmware build is involved;
 - the changelog entry;
 - the local delivery manifest.
 
+`app/package.json` uses the valid npm semver representation `0.22.0`; this is
+packaging metadata for the public site version `0.22`, not a separate product
+release.
+
+Firmware versions are independent. The current firmware source and release
+artifact remain at `2.2.0` and must not be renamed when only the site changes.
+
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current committed product version is `2.2.0`. This commit contains the
-HID-only USB recovery candidate. USB audio is intentionally not exposed until
-the composite descriptor is independently validated on Windows hardware.
+The current committed site version is `0.22`. The current firmware version is
+`2.2.0`, containing the HID-only USB recovery candidate. USB audio is
+intentionally not exposed until the composite descriptor is independently
+validated on Windows hardware.
 
 Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
 `docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is

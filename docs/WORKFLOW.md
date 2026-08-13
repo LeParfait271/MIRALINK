@@ -42,8 +42,10 @@ l’utilisateur.
 
 1. Mettre à jour `MIRALINK_GARDE_FOU.md` et ce workflow si le prompt ajoute une
    règle, une décision, une limite ou une procédure.
-2. Mettre à jour la version et la date dans le même commit lorsque le dépôt est
-   modifié ; augmenter la version de `0.1` à chaque commit.
+2. Mettre à jour la version publique du site et la date dans le même commit
+   lorsque le dépôt est modifié ; augmenter la version du site de `0.01` à
+   chaque commit. La version firmware est indépendante et ne change que lors
+   d'un nouveau build firmware documenté.
 3. Exécuter les contrôles adaptés et conserver les résultats et limites.
 4. Vérifier `git diff --check`, l’état Git et le périmètre des fichiers.
 5. Créer un seul commit local complet avec toutes les modifications du prompt.
@@ -51,6 +53,11 @@ l’utilisateur.
 
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
+
+La version publique actuelle du site est `0.22`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.22.0`, mais l'application, le
+manifeste de livraison et la documentation affichent `0.22`. Le firmware
+actuellement suivi reste `2.2.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
