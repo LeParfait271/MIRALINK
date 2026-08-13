@@ -85,11 +85,12 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.33 exposes a standard UAC2
-headset function beside the HID interface: four playback channels at 48 kHz /
-PCM 16-bit and one local mono capture-monitor channel. The USB packet counter
-therefore tracks accepted local UAC2 playback packets. The capture endpoint is
-not a DualSense microphone transport. No standard A2DP/SBC route is used.
+claim that a controller is connected. Firmware 0.34 exposes a HID-only USB
+configuration so the control bridge can be discovered reliably by WebHID. The
+UAC2 audio source remains source-compatible but is disabled from the active USB
+descriptor until physical Pico 2 W validation is complete; USB audio counters
+therefore remain inactive in this build. The capture endpoint is not a
+DualSense microphone transport. No standard A2DP/SBC route is used.
 `bluetoothStreaming` only means that a bounded audio report was accepted by the
 local Bluetooth queue; it is not proof that a physical controller rendered
 audio. Adaptive-trigger effects are reachable through the bounded output route

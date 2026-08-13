@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.34 - 2026-08-13
+
+- Restored the HID-only Pico USB configuration after the unvalidated UAC2
+  composite caused the bridge to be enumerated but rejected by the WebHID
+  handshake.
+- Kept the MiraLink feature channel, standard gamepad collection, unique report
+  IDs and 65-byte HID control buffer required by the connection path.
+- Added a new local manual-test candidate; Windows enumeration, WebHID and
+  DualSense pairing still require physical validation after manual flashing.
+
 ## 0.33 - 2026-08-13
 
 - Kept the optional `app/assets` directory in the Git checkout so the

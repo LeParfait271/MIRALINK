@@ -55,11 +55,16 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.33`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.33.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.33`.
-La source CMake peut employer `0.33.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.33`.
+La version publique actuelle du site est `0.34`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.34.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.34`.
+La source CMake peut employer `0.34.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.34`.
+
+Le correctif de connexion `0.34` expose uniquement le canal HID MiraLink et la
+collection gamepad standard. Le composite UAC2 reste désactivé jusqu'à une
+validation séparée sur Pico 2 W réel ; un build ou un UF2 ne vaut pas preuve
+d'énumération Windows ou d'échange WebHID.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -188,7 +193,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.33 applique les réglages persistants qui peuvent être
+Le build firmware 0.34 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et

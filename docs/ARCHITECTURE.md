@@ -61,13 +61,13 @@ The firmware also exposes bounded diagnostics and in-memory diagnostic logs;
 these are local state and are never uploaded or persisted as controller input.
 
 The current firmware forwards validated input and exposes bounded routes for
-battery state, UAC2 playback/local-monitor capture, compatible rumble,
-lightbar, microphone mute and fixed controller output. A route in source is
-not a physical-effect claim: Bluetooth audio, haptics, adaptive triggers and
-controller microphone transport still require a distinct Pico 2 W and
-DualSense hardware validation. The direct WebHID path and the Pico bridge path
-are kept distinct so a direct controller connection cannot be presented as a
-Pico hardware test.
+battery state, compatible rumble, lightbar, microphone mute and fixed
+controller output. The USB audio pipeline remains source-only while the active
+USB configuration is HID-only. A route in source is not a physical-effect
+claim: Bluetooth audio, haptics, adaptive triggers and controller microphone
+transport still require a distinct Pico 2 W and DualSense hardware validation.
+The direct WebHID path and the Pico bridge path are kept distinct so a direct
+controller connection cannot be presented as a Pico hardware test.
 
 One adapter failure must not corrupt the state of another device.
 

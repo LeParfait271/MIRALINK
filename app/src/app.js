@@ -29,7 +29,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.32', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '0.34', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);

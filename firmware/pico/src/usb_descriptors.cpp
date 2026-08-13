@@ -1,5 +1,4 @@
 #include "miralink_usb_identity.h"
-#include "miralink_usb_audio.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -34,17 +33,8 @@ constexpr std::uint8_t kReportGamepad = 0x10;
 // identifier (0x02), which is already used by the MiraLink response feature
 // report.
 constexpr std::uint8_t kReportControllerOutput = 0x11;
-constexpr std::uint8_t kInterfaceNumber = miralink::usb_audio::kHidInterface;
-constexpr std::uint8_t kEndpointIn = miralink::usb_audio::kHidEndpointIn;
-constexpr std::size_t kAudioDescriptorBytes = CFG_TUD_AUDIO_FUNC_1_DESC_LEN;
-constexpr std::uint8_t kPlaybackEndpointAttributes = static_cast<std::uint8_t>(
-    static_cast<std::uint8_t>(TUSB_XFER_ISOCHRONOUS)
-    | static_cast<std::uint8_t>(TUSB_ISO_EP_ATT_ADAPTIVE)
-    | static_cast<std::uint8_t>(TUSB_ISO_EP_ATT_DATA));
-constexpr std::uint8_t kCaptureEndpointAttributes = static_cast<std::uint8_t>(
-    static_cast<std::uint8_t>(TUSB_XFER_ISOCHRONOUS)
-    | static_cast<std::uint8_t>(TUSB_ISO_EP_ATT_ASYNCHRONOUS)
-    | static_cast<std::uint8_t>(TUSB_ISO_EP_ATT_DATA));
+constexpr std::uint8_t kInterfaceNumber = 0;
+constexpr std::uint8_t kEndpointIn = 0x81;
 
 #define MIRALINK_FEATURE_REPORT(_id, _usage) \
     HID_REPORT_ID(_id) \
@@ -92,63 +82,6 @@ constexpr std::uint8_t kReportDescriptor[] = {
 #undef MIRALINK_FEATURE_REPORT
 #undef MIRALINK_INPUT_REPORT
 #undef MIRALINK_OUTPUT_REPORT
-
-// Standard UAC2 headset function. The four playback channels are documented
-// as non-positional because the two final channels are consumed by MiraLink's
-// bounded haptic path rather than a conventional surround layout. Capture is
-// a mono local monitor source; the descriptor never claims a controller
-// microphone is available unless that source is independently implemented.
-#define MIRALINK_AUDIO_DESCRIPTOR \
-    TUD_AUDIO_DESC_IAD(miralink::usb_audio::kControlInterface, 0x03, 0x00), \
-    TUD_AUDIO_DESC_STD_AC(miralink::usb_audio::kControlInterface, 0x00, 0x00), \
-    TUD_AUDIO_DESC_CS_AC(0x0200, AUDIO_FUNC_HEADSET, \
-        TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN \
-            + TUD_AUDIO_DESC_FEATURE_UNIT_FOUR_CHANNEL_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN \
-            + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN, \
-        AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS), \
-    TUD_AUDIO_DESC_CLK_SRC(miralink::usb_audio::kClockSourceEntity, AUDIO_CLOCK_SOURCE_ATT_INT_FIX_CLK, \
-        (AUDIO_CTRL_R << AUDIO_CLOCK_SOURCE_CTRL_CLK_FRQ_POS) \
-            | (AUDIO_CTRL_R << AUDIO_CLOCK_SOURCE_CTRL_CLK_VAL_POS), \
-        0x00, 0x00), \
-    TUD_AUDIO_DESC_INPUT_TERM(miralink::usb_audio::kPlaybackInputTerminal, AUDIO_TERM_TYPE_USB_STREAMING, \
-        0x00, miralink::usb_audio::kClockSourceEntity, miralink::usb_audio::kPlaybackChannels, \
-        AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00, 0x0000, 0x00), \
-    TUD_AUDIO_DESC_FEATURE_UNIT_FOUR_CHANNEL(miralink::usb_audio::kPlaybackFeatureUnit, \
-        miralink::usb_audio::kPlaybackInputTerminal, \
-        (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_MUTE_POS) | (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_VOLUME_POS), \
-        (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_MUTE_POS) | (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_VOLUME_POS), \
-        (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_MUTE_POS) | (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_VOLUME_POS), \
-        (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_MUTE_POS) | (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_VOLUME_POS), \
-        (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_MUTE_POS) | (AUDIO_CTRL_RW << AUDIO_FEATURE_UNIT_CTRL_VOLUME_POS), 0x00), \
-    TUD_AUDIO_DESC_OUTPUT_TERM(miralink::usb_audio::kPlaybackOutputTerminal, AUDIO_TERM_TYPE_OUT_HEADPHONES, \
-        0x00, miralink::usb_audio::kPlaybackFeatureUnit, miralink::usb_audio::kClockSourceEntity, 0x0000, 0x00), \
-    TUD_AUDIO_DESC_INPUT_TERM(miralink::usb_audio::kCaptureInputTerminal, AUDIO_TERM_TYPE_IN_GENERIC_MIC, \
-        0x00, miralink::usb_audio::kClockSourceEntity, miralink::usb_audio::kCaptureChannels, \
-        AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00, 0x0000, 0x00), \
-    TUD_AUDIO_DESC_OUTPUT_TERM(miralink::usb_audio::kCaptureOutputTerminal, AUDIO_TERM_TYPE_USB_STREAMING, \
-        0x00, miralink::usb_audio::kCaptureInputTerminal, miralink::usb_audio::kClockSourceEntity, 0x0000, 0x00), \
-    TUD_AUDIO_DESC_STD_AS_INT(miralink::usb_audio::kPlaybackInterface, 0x00, 0x00, 0x00), \
-    TUD_AUDIO_DESC_STD_AS_INT(miralink::usb_audio::kPlaybackInterface, 0x01, 0x01, 0x00), \
-    TUD_AUDIO_DESC_CS_AS_INT(miralink::usb_audio::kPlaybackInputTerminal, AUDIO_CTRL_NONE, AUDIO_FORMAT_TYPE_I, \
-        AUDIO_DATA_FORMAT_TYPE_I_PCM, miralink::usb_audio::kPlaybackChannels, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00), \
-    TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX, \
-        CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX), \
-    TUD_AUDIO_DESC_STD_AS_ISO_EP(miralink::usb_audio::kPlaybackEndpointOut, \
-        kPlaybackEndpointAttributes, \
-        CFG_TUD_AUDIO_FUNC_1_EP_OUT_SZ_MAX, 0x01), \
-    TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
-        AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, 0x0001), \
-    TUD_AUDIO_DESC_STD_AS_INT(miralink::usb_audio::kCaptureInterface, 0x00, 0x00, 0x00), \
-    TUD_AUDIO_DESC_STD_AS_INT(miralink::usb_audio::kCaptureInterface, 0x01, 0x01, 0x00), \
-    TUD_AUDIO_DESC_CS_AS_INT(miralink::usb_audio::kCaptureOutputTerminal, AUDIO_CTRL_NONE, AUDIO_FORMAT_TYPE_I, \
-        AUDIO_DATA_FORMAT_TYPE_I_PCM, miralink::usb_audio::kCaptureChannels, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00), \
-    TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_TX, \
-        CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_TX), \
-    TUD_AUDIO_DESC_STD_AS_ISO_EP(miralink::usb_audio::kCaptureEndpointIn, \
-        kCaptureEndpointAttributes, \
-        CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX, 0x01), \
-    TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
-        AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, 0x0000)
 } // namespace
 
 extern "C" {
@@ -157,13 +90,13 @@ tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0200,
-    .bDeviceClass = TUSB_CLASS_MISC,
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol = MISC_PROTOCOL_IAD,
+    .bDeviceClass = 0x00,
+    .bDeviceSubClass = 0x00,
+    .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor = kMiraLinkUsbVendorId,
     .idProduct = kMiraLinkUsbProductId,
-    .bcdDevice = 0x0204,
+    .bcdDevice = 0x0034,
     .iManufacturer = 0x01,
     .iProduct = 0x02,
     .iSerialNumber = 0x00,
@@ -187,18 +120,17 @@ enum {
     kStringSerial = 3
 };
 
-#define MIRALINK_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + kAudioDescriptorBytes + TUD_HID_DESC_LEN)
+#define MIRALINK_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
 
 uint8_t const desc_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 4, 0, MIRALINK_CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-    MIRALINK_AUDIO_DESCRIPTOR,
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, MIRALINK_CONFIG_TOTAL_LEN, 0x00, 100),
     TUD_HID_DESCRIPTOR(kInterfaceNumber, 0, HID_ITF_PROTOCOL_NONE, sizeof(kReportDescriptor), kEndpointIn, 64, 5)
 };
 
 static_assert(sizeof(desc_configuration) == MIRALINK_CONFIG_TOTAL_LEN,
-    "MiraLink composite configuration descriptor length must remain exact");
+    "MiraLink HID-only configuration descriptor length must remain exact");
 
-#undef MIRALINK_AUDIO_DESCRIPTOR
+#undef MIRALINK_CONFIG_TOTAL_LEN
 
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;

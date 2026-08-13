@@ -6,13 +6,16 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Firmware 0.33 adds the remaining safe runtime wiring for persisted settings:
+Firmware 0.34 adds the remaining safe runtime wiring for persisted settings and
+restores a HID-only USB configuration for reliable WebHID discovery:
 speaker/headset volume, bounded speaker gain, trigger-effect reduction,
 optional unique USB serial exposure, conservative local inactivity suspension
 and a disabled-by-default external status GPIO. It retains the local Bluetooth
 inquiry/connection path for DualSense input, bounded diagnostics, local RAM
-logs, USB reconnection, confirmation-token recovery, UAC2 audio ingress, the
-fixed controller-output adapter and opt-in USB remote wake. These paths remain
+logs, USB reconnection, confirmation-token recovery, the fixed
+controller-output adapter and opt-in USB remote wake. The UAC2 audio source
+remains in the firmware tree but is disabled from the active USB descriptor
+until a physical Pico 2 W validation is complete. These paths remain
 subject to physical Pico 2 W and controller validation; a successful build is
 not a hardware test.
 
