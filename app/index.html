@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,15 +18,16 @@
       <div class="brand-mark" aria-hidden="true"><span></span></div>
       <div><p class="brand-name">MiraLink</p><p class="brand-subtitle" data-i18n="brandSubtitle">Pico 2 W control center</p></div>
     </a>
-    <nav class="topbar-nav" aria-label="Primary navigation">
-      <a href="#signal" data-nav-link>Signal</a>
-      <a href="#capabilities" data-nav-link>Capabilities</a>
-      <a href="#workspace" data-nav-link>Workspace</a>
-      <a href="#system-view" data-nav-link>System</a>
+    <nav class="topbar-nav" aria-label="Navigation principale">
+      <a href="#workspace" data-nav-link data-i18n="navWorkspace">Espace de travail</a>
+      <a href="#system-view" data-nav-link data-i18n="navSystem">Système</a>
+      <a href="#tab-diagnostics" data-nav-link data-open-tab="diagnostics" data-i18n="navDiagnostics">Diagnostics</a>
+      <a href="#tab-firmware" data-nav-link data-open-tab="firmware" data-i18n="navFirmware">Firmware</a>
     </nav>
     <div class="topbar-actions">
-      <label class="language-picker" for="language-select"><span class="sr-only" data-i18n="language">Language</span><select id="language-select" aria-label="Language"></select></label>
-      <span class="version-chip" id="version-chip">v0.25</span>
+      <select id="language-select" class="sr-only" aria-hidden="true" tabindex="-1"></select>
+      <span class="language-chip" aria-label="Français">FR</span>
+      <span class="version-chip" id="version-chip">v0.27</span>
       <span class="status-chip" id="global-status" data-state="idle"><span class="status-dot" aria-hidden="true"></span><span id="global-status-text" data-i18n="statusReady">Ready</span></span>
     </div>
   </header>
@@ -34,7 +35,7 @@
   <div class="page-progress" aria-hidden="true"><span id="page-progress-bar"></span></div>
 
   <main id="main-content" class="shell">
-    <section class="hero-panel" id="top" aria-labelledby="page-title">
+    <section class="hero-panel connection-hero" id="top" aria-labelledby="page-title">
       <div class="hero-media" aria-hidden="true">
         <img class="hero-scene is-active" src="assets/visuals/miralink-hero-cinematic.png" alt="">
         <img class="hero-scene" src="assets/visuals/miralink-hardware-bridge.png" alt="">
@@ -43,114 +44,28 @@
         <span class="hero-media-scanline"></span>
       </div>
       <div class="hero-copy">
-        <div class="hero-kicker-row"><p class="eyebrow" data-i18n="eyebrow">LOCAL / HARDWARE / CONTROL</p><span class="hero-live"><span class="hero-live-dot"></span> LIVE LOCAL SIGNAL</span></div>
-        <h1 id="page-title" data-i18n="title">Make every connection intentional.</h1>
-        <p class="hero-lede" data-i18n="heroLede">A focused workspace for your bridge, controllers and firmware state. Your data stays on this computer.</p>
+        <div class="hero-kicker-row"><p class="eyebrow" data-i18n="heroEyebrow">CONNEXION LOCALE</p><span class="hero-live"><span class="hero-live-dot"></span><span data-i18n="heroLive">PRÊT À CONNECTER</span></span></div>
+        <h1 id="page-title" data-i18n="title">Connectez votre appareil.</h1>
+        <p class="hero-lede" data-i18n="heroLede">Un espace local et clair pour connecter, contrôler et vérifier votre matériel MiraLink.</p>
         <div class="hero-actions">
-          <a class="hero-cta hero-cta-primary" data-magnetic href="#workspace"><span data-i18n="openWorkspace">Open workspace</span><span aria-hidden="true">↗</span></a>
-          <a class="hero-cta hero-cta-secondary" data-magnetic href="#system-view"><span data-i18n="tabOverview">Overview</span><span aria-hidden="true">↓</span></a>
+          <a class="hero-cta hero-cta-primary" data-magnetic href="#workspace"><span data-i18n="connect">Connecter un appareil</span><span aria-hidden="true">↓</span></a>
+          <a class="hero-cta hero-cta-secondary" data-magnetic href="#system-view"><span data-i18n="navSystem">Voir le système</span><span aria-hidden="true">↘</span></a>
         </div>
       </div>
-      <div class="hero-rail" aria-hidden="true"><span>FIELD SYSTEM / 01</span><span class="hero-rail-line"></span><span>LOCAL ONLY</span></div>
-      <div class="hero-scene-index" aria-hidden="true"><span>SCENE</span><strong id="hero-scene-number">01</strong><span>/ 03</span></div>
-      <div class="hero-scroll-cue" aria-hidden="true"><span>SCROLL TO ENTER</span><span class="hero-scroll-line"></span></div>
-      <div class="hero-octagon" aria-hidden="true"><span class="hero-octagon-line"></span><span class="hero-octagon-core">ML</span></div>
+      <div class="connection-surface" id="workspace" aria-labelledby="workspace-title">
+        <div class="connection-surface-heading"><div><p class="section-overline" data-i18n="connectionEyebrow">CONNEXION</p><h2 id="workspace-title" data-i18n="connectionTitle">Votre appareil, ici.</h2></div><span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span></div>
+        <div class="connection-surface-actions"><button class="button primary" id="connect-button" type="button" data-i18n="connect">Connecter un appareil</button><button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh">Actualiser</button></div>
+        <div id="hid-warning" class="notice warning" hidden role="status"><strong data-i18n="webhidMissingTitle">WebHID indisponible.</strong><span data-i18n="webhidMissingBody">Utilisez un navigateur de bureau compatible WebHID.</span></div>
+        <div id="device-list" class="device-list" aria-live="polite"><div class="empty-state" id="empty-devices"><span class="empty-glyph" aria-hidden="true">◇</span><p class="empty-title" data-i18n="noDevices">Aucun appareil connecté</p><p class="empty-copy" data-i18n="noDevicesCopy">Lancez la recherche pour connecter un appareil MiraLink.</p></div></div>
+      </div>
+      <div class="hero-scroll-cue" aria-hidden="true"><span data-i18n="scrollToSystem">ACCÉDER AU SYSTÈME</span><span class="hero-scroll-line"></span></div>
     </section>
 
-    <section class="story-intro reveal-section" id="signal" aria-labelledby="signal-title">
-      <div class="story-intro-index" aria-hidden="true"><span>01</span><span class="story-intro-index-line"></span><span>04</span></div>
-      <div class="story-intro-copy" data-reveal>
-        <p class="section-overline">THE LOCAL CONTROL LAYER</p>
-        <h2 id="signal-title">Hardware should feel <em>legible.</em></h2>
-        <p class="story-intro-lede">MiraLink turns the invisible state between a Pico 2 W, a controller and your desktop into one calm, inspectable surface.</p>
-        <a class="text-link" data-magnetic href="#workspace">Enter the control center <span aria-hidden="true">&#8599;</span></a>
-      </div>
-      <div class="story-intro-diagram" data-reveal data-reveal-delay="140" aria-label="Local signal path diagram">
-        <div class="diagram-orbit diagram-orbit-outer"></div>
-        <div class="diagram-orbit diagram-orbit-inner"></div>
-        <div class="diagram-core"><span>ML</span><small>LOCAL</small></div>
-        <div class="diagram-node diagram-node-bridge"><span>01</span><strong>BRIDGE</strong></div>
-        <div class="diagram-node diagram-node-controller"><span>02</span><strong>INPUT</strong></div>
-        <div class="diagram-node diagram-node-firmware"><span>03</span><strong>FIRMWARE</strong></div>
-        <span class="diagram-crosshair diagram-crosshair-one"></span>
-        <span class="diagram-crosshair diagram-crosshair-two"></span>
-      </div>
-    </section>
-
-    <div class="signal-marquee" aria-label="MiraLink principles">
-      <div class="signal-marquee-track">
-        <span>LOCAL BY DEFAULT</span><i aria-hidden="true">&#9670;</i><span>VISIBLE STATE</span><i aria-hidden="true">&#9670;</i><span>CONFIRM BEFORE WRITE</span><i aria-hidden="true">&#9670;</i><span>NO CLOUD REQUIRED</span><i aria-hidden="true">&#9670;</i>
-        <span>LOCAL BY DEFAULT</span><i aria-hidden="true">&#9670;</i><span>VISIBLE STATE</span><i aria-hidden="true">&#9670;</i><span>CONFIRM BEFORE WRITE</span><i aria-hidden="true">&#9670;</i><span>NO CLOUD REQUIRED</span><i aria-hidden="true">&#9670;</i>
-      </div>
-    </div>
-
-    <section class="capability-split reveal-section" id="capabilities" aria-labelledby="capabilities-title">
-      <div class="capability-visual" data-reveal>
-        <img src="assets/visuals/miralink-hardware-bridge.png" alt="MiraLink hardware bridge on a dark technical surface">
-        <span class="visual-label visual-label-top">PICO 2 W / HARDWARE BRIDGE</span>
-        <span class="visual-label visual-label-bottom">SIGNAL LOCKED <b></b></span>
-        <span class="visual-corner visual-corner-tl"></span><span class="visual-corner visual-corner-br"></span>
-      </div>
-      <div class="capability-copy" data-reveal data-reveal-delay="160">
-        <p class="section-overline">ONE SURFACE / THREE STATES</p>
-        <h2 id="capabilities-title">See the connection before you change it.</h2>
-        <p>From first handshake to firmware recovery, every high-consequence action gets a visible state, a local draft and a clear next step.</p>
-        <div class="capability-list">
-          <a class="capability-row" data-open-tab="bridge" href="#system-view"><span>01</span><strong>Bridge</strong><small>Persistent settings, exposed.</small><b aria-hidden="true">&#8599;</b></a>
-          <a class="capability-row" data-open-tab="controllers" href="#system-view"><span>02</span><strong>Controllers</strong><small>Inputs you can measure.</small><b aria-hidden="true">&#8599;</b></a>
-          <a class="capability-row" data-open-tab="firmware" href="#system-view"><span>03</span><strong>Firmware</strong><small>Files checked before flash.</small><b aria-hidden="true">&#8599;</b></a>
-        </div>
-      </div>
-    </section>
-
-    <section class="system-story reveal-section" aria-labelledby="system-story-title">
-      <div class="system-story-heading" data-reveal>
-        <p class="section-overline">BUILT FOR THE MOMENT AFTER CONNECT</p>
-        <h2 id="system-story-title">The quiet system behind the signal.</h2>
-      </div>
-      <div class="system-story-grid">
-        <article class="story-card story-card-primary" data-reveal>
-          <span class="story-card-number">01</span>
-          <div class="story-card-art story-card-art-bridge" aria-hidden="true"><span></span><i></i><b></b></div>
-          <div><p class="story-card-kicker">CONTROL</p><h3>Make the bridge readable.</h3><p>Transport, state and safety gates stay in view instead of hiding behind a command.</p><a data-open-tab="overview" href="#system-view">View system <span aria-hidden="true">&#8599;</span></a></div>
-        </article>
-        <article class="story-card" data-reveal data-reveal-delay="120">
-          <span class="story-card-number">02</span>
-          <div class="story-card-art story-card-art-input" aria-hidden="true"><span></span><i></i><b></b></div>
-          <div><p class="story-card-kicker">INPUT</p><h3>Measure what your hands do.</h3><p>Calibration, quick tests and history stay local, bounded and recoverable.</p><a data-open-tab="controllers" href="#system-view">Open controller lab <span aria-hidden="true">&#8599;</span></a></div>
-        </article>
-        <article class="story-card" data-reveal data-reveal-delay="240">
-          <span class="story-card-number">03</span>
-          <div class="story-card-art story-card-art-recovery" aria-hidden="true"><span></span><i></i><b></b></div>
-          <div><p class="story-card-kicker">RECOVERY</p><h3>Keep the risky part calm.</h3><p>Firmware and backups are inspected before they are allowed near hardware.</p><a data-open-tab="firmware" href="#system-view">Enter firmware center <span aria-hidden="true">&#8599;</span></a></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="workspace-intro reveal-section" aria-labelledby="workspace-intro-title">
-      <div class="workspace-intro-index">02 <span>/</span> 04</div>
-      <div data-reveal>
-        <p class="section-overline">NOW ENTERING THE WORKSPACE</p>
-        <h2 id="workspace-intro-title">Bring the hardware into focus.</h2>
-      </div>
-      <p data-reveal data-reveal-delay="120">Connect a device, inspect its state and move only when the next action is clear.</p>
-      <a class="workspace-intro-link" href="#workspace" data-magnetic data-reveal data-reveal-delay="180">Scroll to devices <span aria-hidden="true">&#8595;</span></a>
-    </section>
-
-    <section class="device-strip panel" id="workspace" aria-labelledby="devices-title">
-      <div class="section-heading compact"><div><p class="eyebrow" data-i18n="workspace">WORKSPACE</p><h2 id="devices-title" data-i18n="devices">Connected devices</h2></div><div class="action-row"><button class="button primary" id="connect-button" type="button" data-i18n="connect">Connect device</button><button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh">Refresh</button></div></div>
-      <div id="hid-warning" class="notice warning" hidden role="status"><strong data-i18n="webhidMissingTitle">WebHID is unavailable.</strong><span data-i18n="webhidMissingBody">Use a desktop browser with WebHID enabled.</span></div>
-      <div id="device-list" class="device-list" aria-live="polite"><div class="empty-state" id="empty-devices"><span class="empty-glyph" aria-hidden="true">◇</span><p class="empty-title" data-i18n="noDevices">No device connected</p><p class="empty-copy" data-i18n="noDevicesCopy">Connect a MiraLink device to begin.</p></div></div>
-    </section>
-
-    <nav class="tab-nav panel" id="system-view" aria-label="MiraLink sections" role="tablist">
-      <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview" data-i18n="tabOverview">Overview</button>
-      <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-bridge" id="tab-button-bridge" data-tab="bridge" data-i18n="tabBridge">Bridge</button>
-      <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-controllers" id="tab-button-controllers" data-tab="controllers" data-i18n="tabControllers">Controllers</button>
+    <nav class="tab-nav panel" id="system-view" aria-label="Sections MiraLink" role="tablist">
+      <button class="tab-button is-active" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview" data-i18n="tabOverview">Système</button>
+      <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-bridge" id="tab-button-bridge" data-tab="bridge" data-i18n="tabBridge">Configuration</button>
       <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-diagnostics" id="tab-button-diagnostics" data-tab="diagnostics" data-i18n="tabDiagnostics">Diagnostics</button>
       <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-firmware" id="tab-button-firmware" data-tab="firmware" data-i18n="tabFirmware">Firmware</button>
-      <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-backups" id="tab-button-backups" data-tab="backups" data-i18n="tabBackups">Backups</button>
-      <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-logs" id="tab-button-logs" data-tab="logs" data-i18n="tabLogs">Logs</button>
     </nav>
 
     <section class="tab-panel" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-panel="overview">
@@ -175,25 +90,15 @@
 
     <section class="tab-panel" id="tab-diagnostics" role="tabpanel" aria-labelledby="tab-button-diagnostics" data-panel="diagnostics" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="diagnosticEyebrow">OBSERVE / VERIFY / RECOVER</p><h2 data-i18n="diagnosticTitle">Diagnostics</h2></div><button class="button primary" id="run-diagnostics-button" type="button" data-i18n="runDiagnostics">Run diagnostics</button></div><div class="diagnostic-grid"><article class="diagnostic-card"><span data-i18n="diagUsb">USB transport</span><strong data-diagnostic="usb">—</strong></article><article class="diagnostic-card"><span data-i18n="diagRadio">Radio transport</span><strong data-diagnostic="radio">—</strong></article><article class="diagnostic-card"><span data-i18n="diagAudio">Audio path</span><strong data-diagnostic="audio">—</strong></article><article class="diagnostic-card"><span data-i18n="diagStorage">Flash storage</span><strong data-diagnostic="storage">—</strong></article></div><div class="log-preview" id="diagnostic-summary" aria-live="polite" data-i18n="diagnosticIdle">Diagnostics have not run yet.</div></section>
 
-    <section class="tab-panel" id="tab-firmware" role="tabpanel" aria-labelledby="tab-button-firmware" data-panel="firmware" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="firmwareEyebrow">VERIFY / RECOVER / UPDATE</p><h2 data-i18n="firmwareTitle">Firmware center</h2></div><span class="panel-status" data-i18n="manualUpdate">MANUAL UPDATE</span></div><div class="firmware-panel panel-inner"><div class="firmware-current"><span class="metric-label" data-i18n="installedVersion">Installed version</span><strong id="installed-version">—</strong><span id="installed-version-note" data-i18n="connectForVersion">Connect a Pico 2 W to read it.</span></div><label class="file-drop" for="firmware-file"><span class="drop-icon" aria-hidden="true">⇧</span><strong data-i18n="chooseUf2">Choose a UF2 file</strong><span data-i18n="verifyLocal">It will be inspected locally before anything else.</span><input id="firmware-file" type="file" accept=".uf2,application/octet-stream"></label><div id="firmware-result" class="verification-result" hidden aria-live="polite"></div></div></section>
+    <section class="tab-panel" id="tab-firmware" role="tabpanel" aria-labelledby="tab-button-firmware" data-panel="firmware" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="firmwareEyebrow">VÉRIFIER / RÉCUPÉRER / METTRE À JOUR</p><h2 data-i18n="firmwareTitle">Firmware</h2></div><span class="panel-status" data-i18n="manualUpdate">MISE À JOUR MANUELLE</span></div><div class="firmware-panel panel-inner"><div class="firmware-current"><span class="metric-label" data-i18n="installedVersion">Version installée</span><strong id="installed-version">—</strong><span id="installed-version-note" data-i18n="connectForVersion">Connectez un Pico 2 W pour la lire.</span></div><label class="file-drop" for="firmware-file"><span class="drop-icon" aria-hidden="true">⇧</span><strong data-i18n="chooseUf2">Choisir un fichier UF2</strong><span data-i18n="verifyLocal">Il sera vérifié localement avant toute action.</span><input id="firmware-file" type="file" accept=".uf2,application/octet-stream"></label><a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/latest" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a><div id="firmware-result" class="verification-result" hidden aria-live="polite"></div></div></section>
 
     <section class="tab-panel" id="tab-backups" role="tabpanel" aria-labelledby="tab-button-backups" data-panel="backups" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="backupEyebrow">LOCAL / PORTABLE / VERSIONED</p><h2 data-i18n="backupTitle">Backups and profiles</h2></div><span class="panel-status" data-i18n="noCloud">NO CLOUD</span></div><div class="backup-grid"><article class="feature-card"><span class="feature-glyph" aria-hidden="true">↓</span><h3 data-i18n="exportTitle">Export</h3><p data-i18n="exportCopy">Save a versioned configuration file on this computer.</p><button class="button primary" id="export-button" type="button" data-i18n="exportButton">Export backup</button></article><article class="feature-card"><span class="feature-glyph" aria-hidden="true">↑</span><h3 data-i18n="importTitle">Import</h3><p data-i18n="importCopy">Load a local backup into a draft for review.</p><label class="button quiet file-button" for="backup-file"><span data-i18n="chooseBackup">Choose backup</span><input id="backup-file" type="file" accept="application/json,.json"></label></article><article class="feature-card"><span class="feature-glyph" aria-hidden="true">≋</span><h3 data-i18n="profileTitle">Profiles</h3><p data-i18n="profileCopy">Keep named local profiles without changing the Pico 2 W until you confirm.</p><button class="button quiet" id="profiles-button" type="button" data-i18n="manageProfiles">Manage profiles</button></article></div><div class="notice info"><strong data-i18n="backupNoticeTitle">Backups are user-controlled.</strong><span data-i18n="backupNoticeBody">MiraLink does not sync or upload them.</span></div></section>
 
     <section class="tab-panel" id="tab-logs" role="tabpanel" aria-labelledby="tab-button-logs" data-panel="logs" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="logsEyebrow">LOCAL EVENT TRAIL</p><h2 data-i18n="logsTitle">Logs</h2></div><button class="button quiet" id="clear-logs-button" type="button" data-i18n="clearLogs">Clear logs</button></div><div class="log-view" id="log-view" aria-live="polite"></div></section>
 
-    <section class="closing-panel reveal-section" aria-labelledby="closing-title">
-      <div class="closing-panel-mark" aria-hidden="true"><span>03</span><span></span><span>04</span></div>
-      <div class="closing-panel-copy" data-reveal>
-        <p class="section-overline">MIRALINK / DESKTOP CONTROL CENTER</p>
-        <h2 id="closing-title">Your hardware state, <em>in view.</em></h2>
-        <p>Everything stays on this computer. The interface gets out of the way. The important part stays visible.</p>
-        <a class="hero-cta hero-cta-primary" data-magnetic href="#workspace"><span>Return to workspace</span><span aria-hidden="true">&#8593;</span></a>
-      </div>
-      <div class="closing-panel-signal" aria-hidden="true"><span></span><span></span><span></span><b>LOCAL<br>SIGNAL<br>STABLE</b></div>
-    </section>
   </main>
 
-  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.25</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
+  <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.27</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-13</span><span>•</span><span data-i18n="localOnly">LOCAL ONLY</span></footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog" class="dialog-card"><p class="eyebrow" data-i18n="confirmation">CONFIRMATION</p><h2 id="confirm-title" data-i18n="confirmTitle">Confirm action</h2><p id="confirm-message"></p><div class="action-row"><button class="button quiet" value="cancel" data-i18n="cancel">Cancel</button><button class="button danger" id="confirm-submit" value="confirm" data-i18n="confirm">Confirm</button></div></form></dialog>
   <script type="module" src="src/app.js"></script>

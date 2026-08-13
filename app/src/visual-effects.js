@@ -107,7 +107,7 @@ const updateLandingChrome = () => {
   progressBar?.style.setProperty('transform', `scaleY(${progress})`);
   pageHeader?.classList.toggle('is-scrolled', window.scrollY > 38);
 
-  const sections = navLinks.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+  const sections = navLinks.map((link) => document.querySelector(link.getAttribute('href'))).filter((section) => section && !section.hidden && section.getClientRects().length);
   let active = sections[0];
   sections.forEach((section) => {
     if (section.getBoundingClientRect().top <= window.innerHeight * .42) active = section;

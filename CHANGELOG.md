@@ -1,5 +1,11 @@
 # Changelog
 
+# 0.27 - 2026-08-13
+
+- Simplified the desktop interface around the connection workflow: removed the
+  editorial landing sections, kept only the functional system areas, forced a
+  French-only UI and added the latest GitHub release link in Firmware.
+
 # 0.26 - 2026-08-13
 
 - Released firmware `2.3.0` as a local manual-test candidate after correcting

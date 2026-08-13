@@ -15,11 +15,12 @@ import {
   defaultConfig,
   encodeConfig
 } from './protocol.js';
-import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
+import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
 import { applyTranslations, setupLanguage, translate } from './i18n.js';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
+import { analyzeControllerInputs, appendCalibrationRevision, commitCalibrationRestore, createCalibrationRevision, prepareCalibrationRestore } from './controller-lab.js';
 
 const state = {
   devices: new Map(),
@@ -28,7 +29,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.26', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
+  version: { version: '0.27', developer: 'MaruChiwa', lastUpdated: '2026-08-13' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -80,6 +81,14 @@ function renderLogs() {
 
 function activeEntry() {
   return state.activeDeviceId ? state.devices.get(state.activeDeviceId) : null;
+}
+
+function recordControllerSample(entry, sample) {
+  if (!entry || !sample) return;
+  entry.sampleHistory = [...(entry.sampleHistory || []), sample].slice(-600);
+  entry.sampleCount = entry.sampleHistory.length;
+  entry.lastSample = sample;
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample } }));
 }
 
 function renderDevices() {
@@ -231,11 +240,7 @@ async function identify(entry) {
     entry.kindLabel = 'DualSense controller';
     entry.transport = 'usb';
     entry.adapter = createDualSenseAdapter(entry.device, {
-      onSample: (sample) => {
-        entry.sampleCount = (entry.sampleCount || 0) + 1;
-        entry.lastSample = sample;
-        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample } }));
-      },
+      onSample: (sample) => recordControllerSample(entry, sample),
       onError: (error) => addLog('error', `${entry.label} input report rejected: ${error.message}`)
     });
     entry.adapter.start();
@@ -271,11 +276,7 @@ function handleBridgeEvent(entry, event) {
     if (frame.command !== COMMANDS.getControllerState) return;
     const state = decodeControllerStatePayload(frame.payload);
     entry.controllerState = state;
-    if (state.sample) {
-      entry.sampleCount = (entry.sampleCount || 0) + 1;
-      entry.lastSample = state.sample;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample: state.sample } }));
-    }
+    if (state.sample) recordControllerSample(entry, state.sample);
     if (!state.inputAvailable) entry.lastSample = null;
   } catch (error) {
     addLog('error', `${entry.label} controller event rejected: ${error.message}`);
@@ -293,9 +294,7 @@ function startBridgePolling(entry) {
       const controllerState = decodeControllerStatePayload(response.payload);
       entry.controllerState = controllerState;
       if (controllerState.sample) {
-        entry.sampleCount = (entry.sampleCount || 0) + 1;
-        entry.lastSample = controllerState.sample;
-        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample: controllerState.sample } }));
+        recordControllerSample(entry, controllerState.sample);
       } else if (!controllerState.inputAvailable) {
         entry.lastSample = null;
       }
@@ -319,7 +318,7 @@ async function registerDevice(device) {
   const existing = [...state.devices.values()].find((entry) => entry.device === device);
   if (existing) { state.activeDeviceId = existing.id; renderDevices(); return; }
   const id = `device-${Date.now()}-${state.devices.size + 1}`;
-  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null, adapter: null, sampleCount: 0, controllerState: null, lastSample: null, pollTimer: null, transactionTail: Promise.resolve() };
+  const entry = { id, device, label: device.productName || 'MiraLink device', kind: 'unknown', kindLabel: 'Identifying', state: 'opening', config: null, firmwareVersion: null, adapter: null, sampleCount: 0, sampleHistory: [], controllerState: null, lastSample: null, pollTimer: null, transactionTail: Promise.resolve() };
   entry.eventHandler = (event) => handleBridgeEvent(entry, event);
   device.addEventListener('inputreport', entry.eventHandler);
   state.devices.set(id, entry); state.activeDeviceId = id; renderDevices(); setGlobalStatus('Connecting', 'busy');

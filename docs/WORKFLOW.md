@@ -54,9 +54,9 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.26`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.26.0`, mais l'application, le
-manifeste de livraison et la documentation affichent `0.26`. Le firmware
+La version publique actuelle du site est `0.27`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.27.0`, mais l'application, le
+manifeste de livraison et la documentation affichent `0.27`. Le firmware
 actuellement suivi reste `2.3.0`.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
