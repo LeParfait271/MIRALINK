@@ -16,12 +16,12 @@ import {
   encodeConfig
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=35-editorial';
+import { applyTranslations, translate } from './i18n.js?ui=35-control-room3';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, commitCalibrationRestore, createCalibrationRevision, prepareCalibrationRestore } from './controller-lab.js';
-import './site-effects.js';
+import './site-effects.js?ui=35-control-room3';
 
 const state = {
   devices: new Map(),
@@ -69,7 +69,7 @@ function renderLogs() {
   view.replaceChildren();
   if (!state.logs.length) {
     const empty = document.createElement('span');
-    empty.textContent = 'No local events.';
+    empty.textContent = 'Aucun événement local.';
     view.append(empty);
     return;
   }
@@ -100,6 +100,7 @@ function renderDevices() {
   if (!state.devices.size) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
+    empty.id = 'empty-devices';
     const glyph = document.createElement('span'); glyph.className = 'empty-glyph'; glyph.setAttribute('aria-hidden', 'true'); glyph.textContent = '◇';
     const title = document.createElement('p'); title.className = 'empty-title'; title.textContent = translate('noDevices');
     const copy = document.createElement('p'); copy.className = 'empty-copy'; copy.textContent = translate('noDevicesCopy');
@@ -196,7 +197,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=35-control-room3', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -435,12 +436,12 @@ async function importBackup(event) {
 
 async function runDiagnostics() {
   const entry = activeEntry();
-  for (const node of $$('[data-diagnostic]')) node.textContent = entry ? '…' : 'No device';
-  if (!entry) { $('#diagnostic-summary').textContent = 'Connect a device before running diagnostics.'; return; }
+  for (const node of $$('[data-diagnostic]')) node.textContent = entry ? '…' : translate('notConnected');
+  if (!entry) { $('#diagnostic-summary').textContent = translate('noDevicesCopy'); return; }
   if (entry.kind !== 'bridge') {
-    for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';
-    $('#diagnostic-summary').textContent = 'Direct controller input is available, but MiraLink bridge diagnostics require a connected Pico 2 W.';
-    addLog('info', 'Diagnostics unavailable for a direct controller connection.');
+    for (const node of $$('[data-diagnostic]')) node.textContent = 'Indisponible';
+    $('#diagnostic-summary').textContent = 'Les entrées de la manette sont disponibles, mais les diagnostics du bridge nécessitent un Pico 2 W connecté.';
+    addLog('info', 'Diagnostics indisponibles pour une connexion manette directe.');
     return;
   }
   try {
@@ -658,7 +659,7 @@ function openCalibrationHistory() {
     const restore = document.createElement('button');
     restore.className = 'button quiet';
     restore.type = 'button';
-    restore.textContent = 'Restore locally';
+    restore.textContent = 'Restaurer localement';
     restore.addEventListener('click', async () => {
       dialog.close('restore');
       const preview = prepareCalibrationRestore(history, revision.id);
@@ -688,9 +689,9 @@ function init() {
   const initialHidStatus = webHidStatus();
   if (!initialHidStatus.available) addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=35-editorial').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=35-control-room3').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
-  addLog('info', 'MiraLink started in local-only mode.');
+  addLog('info', 'MiraLink démarré en mode local uniquement.');
 }
 
 init();

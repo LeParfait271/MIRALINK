@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#061d2d">
-  <meta name="description" content="MiraLink local control center">
+  <meta name="description" content="MiraLink, centre de contrôle local pour Pico 2 W">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
   <title>MiraLink</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=35-editorial">
+  <link rel="stylesheet" href="styles.css?ui=35-control-room3">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Skip to content</a>
@@ -17,7 +17,7 @@
     <header class="site-chrome" aria-label="Navigation principale MiraLink">
       <a class="site-brand" href="#top" aria-label="MiraLink — retour en haut">
         <span class="site-brand-mark"><img src="assets/visuals/miralink-icon-option-06.png" alt=""></span>
-        <span class="site-brand-copy"><strong>MIRALINK</strong><small>LOCAL CONTROL SYSTEM</small></span>
+        <span class="site-brand-copy"><strong>MIRALINK</strong><small>CENTRE DE CONTRÔLE LOCAL</small></span>
       </a>
       <nav class="site-nav" aria-label="Sections MiraLink" role="tablist">
         <button class="tab-button site-nav-item is-active" role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview" data-i18n="tabOverview">Système</button>
@@ -25,20 +25,22 @@
         <button class="tab-button site-nav-item" role="tab" aria-selected="false" aria-controls="tab-controllers" id="tab-button-controllers" data-tab="controllers" data-i18n="tabControllers">Manettes</button>
         <button class="tab-button site-nav-item" role="tab" aria-selected="false" aria-controls="tab-diagnostics" id="tab-button-diagnostics" data-tab="diagnostics" data-i18n="tabDiagnostics">Diagnostics</button>
         <button class="tab-button site-nav-item" role="tab" aria-selected="false" aria-controls="tab-firmware" id="tab-button-firmware" data-tab="firmware" data-i18n="tabFirmware">Firmware</button>
+        <button class="tab-button site-nav-item" role="tab" aria-selected="false" aria-controls="tab-backups" id="tab-button-backups" data-tab="backups" data-i18n="tabBackups">Sauvegardes</button>
+        <button class="tab-button site-nav-item" role="tab" aria-selected="false" aria-controls="tab-logs" id="tab-button-logs" data-tab="logs" data-i18n="tabLogs">Journaux</button>
       </nav>
-      <div class="site-chrome-meta"><span class="chrome-meta-label">LOCAL / DESKTOP</span><span class="version-chip" id="version-chip">v0.35</span><span class="status-chip" id="global-status" data-state="ready"><span class="status-dot"></span><span id="global-status-text" data-i18n="statusReady">Prêt</span></span></div>
+      <div class="site-chrome-meta"><span class="chrome-meta-label">LOCAL / ORDINATEUR</span><span class="version-chip" id="version-chip">v0.35</span><span class="status-chip" id="global-status" data-state="ready"><span class="status-dot"></span><span id="global-status-text" data-i18n="statusReady">Prêt</span></span></div>
     </header>
 
     <section class="hero-panel connection-hero" id="top" aria-labelledby="page-title">
-      <div class="hero-visual" aria-hidden="true"><img src="assets/visuals/banners/miralink-hero-connection.png" alt=""><span class="hero-visual-caption">PICO 2 W / SIGNAL MAP</span></div>
+      <div class="hero-visual" aria-hidden="true"><img src="assets/visuals/banners/miralink-hero-connection.png" alt=""><span class="hero-visual-caption">PICO 2 W / CARTE DU SIGNAL</span></div>
       <div class="hero-index" aria-hidden="true"><span>01</span><i></i><span>LOCAL SIGNAL</span></div>
       <div class="hero-gridline" aria-hidden="true"></div>
       <div class="hero-copy">
-        <div class="hero-system-label">MIRALINK / PICO 2 W CONTROL CENTER</div>
+        <div class="hero-system-label">MIRALINK / CENTRE DE CONTRÔLE PICO 2 W</div>
         <div class="hero-kicker-row"><p class="eyebrow" data-i18n="heroEyebrow">CONNEXION LOCALE</p><span class="hero-live"><span class="hero-live-dot"></span><span data-i18n="heroLive">PRÊT À CONNECTER</span></span></div>
         <h1 id="page-title" data-i18n="title">Connectez votre appareil.</h1>
         <p class="hero-lede" data-i18n="heroLede">Un espace local et clair pour connecter, contrôler et vérifier votre matériel MiraLink.</p>
-        <div class="hero-route"><a href="#workspace">Entrer dans le signal <span aria-hidden="true">↘</span></a><span>100% LOCAL / 0% CLOUD</span></div>
+        <div class="hero-route"><a href="#workspace">Entrer dans le signal <span aria-hidden="true">↘</span></a><span>100% LOCAL / 0% DISTANT</span></div>
       </div>
       <div class="connection-surface" id="workspace" aria-labelledby="workspace-title">
         <div class="connection-surface-heading"><div><p class="section-overline" data-i18n="connectionEyebrow">CONNEXION</p><h2 id="workspace-title" data-i18n="connectionTitle">Votre appareil, ici.</h2></div><span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span></div>
@@ -46,17 +48,31 @@
         <div id="hid-warning" class="notice warning" hidden role="status"><strong data-i18n="webhidMissingTitle">WebHID indisponible.</strong><span data-i18n="webhidMissingBody">Utilisez un navigateur de bureau compatible WebHID.</span></div>
         <div id="device-list" class="device-list" aria-live="polite"><div class="empty-state" id="empty-devices"><span class="empty-glyph" aria-hidden="true">◇</span><p class="empty-title" data-i18n="noDevices">Aucun appareil connecté</p><p class="empty-copy" data-i18n="noDevicesCopy">Lancez la recherche pour connecter un appareil MiraLink.</p></div></div>
       </div>
-      <div class="hero-footer-band" aria-hidden="true"><span>HID / WEB</span><i></i><span>PRIVATE BY DEFAULT</span><i></i><span>2026 / 01</span><span class="hero-scroll-cue">SCROLL TO ENTER <b>↓</b></span></div>
+      <div class="hero-footer-band" aria-hidden="true"><span>HID / WEB</span><i></i><span>PRIVÉ PAR DÉFAUT</span><i></i><span>2026 / 01</span><span class="hero-scroll-cue">FAITES DÉFILER POUR ENTRER <b>↓</b></span></div>
     </section>
 
-    <section class="signal-strip" aria-label="Principes MiraLink">
-      <div class="signal-strip-lead"><span class="strip-index">02</span><p class="eyebrow">READ THE SIGNAL</p><h2>Un poste de contrôle,<br><em>pas un tableau de bord.</em></h2></div>
-      <p class="signal-strip-copy">Chaque état reste lisible. Chaque action reste sur cet ordinateur. MiraLink transforme la connexion matérielle en un geste simple, précis et réversible.</p>
-      <div class="signal-stat"><strong>0</strong><span>DONNÉE<br>À DISTANCE</span></div>
-      <div class="signal-stat"><strong>1</strong><span>SOURCE<br>DE VÉRITÉ</span></div>
+    <section class="route-intro" aria-labelledby="route-title">
+      <div class="route-intro-head"><div><span class="chapter-index">02 / DÉMARRAGE RAPIDE</span><p class="eyebrow">CHOISISSEZ VOTRE PROCHAINE ACTION</p><h2 id="route-title">Un geste clair.<br><em>Un système qui suit.</em></h2></div><p>Commencez par le problème réel : relier le matériel, régler le bridge ou vérifier un état. MiraLink ouvre directement le bon espace, sans détour.</p></div>
+      <div class="route-grid">
+        <button class="route-card route-card-primary" type="button" data-sequence-tab="overview" data-route-target="#workspace"><span class="route-card-number">01</span><span class="route-card-label">CONNEXION</span><strong>Relier un appareil</strong><span class="route-card-copy">Détecter le Pico 2 W et établir le premier signal local.</span><span class="route-card-arrow" aria-hidden="true">↘</span></button>
+        <button class="route-card" type="button" data-sequence-tab="bridge" data-route-target="#tab-bridge"><span class="route-card-number">02</span><span class="route-card-label">CONFIGURATION</span><strong>Régler le bridge</strong><span class="route-card-copy">Lire, comparer et enregistrer les réglages persistants.</span><span class="route-card-arrow" aria-hidden="true">↘</span></button>
+        <button class="route-card" type="button" data-sequence-tab="diagnostics" data-route-target="#tab-diagnostics"><span class="route-card-number">03</span><span class="route-card-label">OBSERVATION</span><strong>Vérifier le système</strong><span class="route-card-copy">Lancer un diagnostic local et retrouver le point de blocage.</span><span class="route-card-arrow" aria-hidden="true">↘</span></button>
+      </div>
     </section>
 
-    <div class="system-rail" aria-label="Repères de la page"><span><b>03</b> ÉTAT DU SYSTÈME</span><span><b>04</b> CONFIGURATION</span><span><b>05</b> OBSERVATION</span><span class="system-rail-live"><i></i>FLUX LOCAL ACTIF</span></div>
+    <section class="narrative-sequence" id="experience" aria-labelledby="sequence-title">
+      <div class="sequence-sticky">
+        <div class="sequence-topline"><span id="sequence-title">MIRALINK / SYSTÈME LOCAL</span><span class="sequence-progress-label" id="sequence-progress-label">01 / RELIER</span></div>
+        <div class="sequence-frames">
+          <article class="sequence-frame is-active" data-sequence-frame="0"><div class="sequence-frame-media"><img src="assets/visuals/banners/miralink-hero-connection.png" alt="" loading="lazy"><span>01 / ACQUISITION DU SIGNAL</span></div><div class="sequence-frame-copy"><p class="eyebrow">01 / RELIER</p><h2>Le premier signal<br><em>doit être évident.</em></h2><p>Un appareil apparaît, son état se lit, puis seulement l’action devient possible. La connexion n’est pas une étape cachée : c’est le début de l’expérience.</p><button class="sequence-action" type="button" data-sequence-tab="overview" data-route-target="#workspace">Ouvrir l’espace de connexion <span aria-hidden="true">↘</span></button></div></article>
+          <article class="sequence-frame" data-sequence-frame="1"><div class="sequence-frame-media"><img src="assets/visuals/banners/miralink-banner-protocol-flow.png" alt="" loading="lazy"><span>02 / SURFACE DE CONTRÔLE</span></div><div class="sequence-frame-copy"><p class="eyebrow">02 / CONFIGURER</p><h2>Régler sans<br><em>perdre le fil.</em></h2><p>Les réglages sont présentés comme un chemin : retour haptique, performance, énergie et compatibilité. Chaque changement reste un brouillon local jusqu’à confirmation.</p><button class="sequence-action" type="button" data-sequence-tab="bridge" data-route-target="#tab-bridge">Voir la configuration <span aria-hidden="true">↘</span></button></div></article>
+          <article class="sequence-frame" data-sequence-frame="2"><div class="sequence-frame-media"><img src="assets/visuals/banners/miralink-banner-observability.png" alt="" loading="lazy"><span>03 / RÉPONSE SYSTÈME</span></div><div class="sequence-frame-copy"><p class="eyebrow">03 / OBSERVER</p><h2>Comprendre avant<br><em>de récupérer.</em></h2><p>Un diagnostic ne promet pas ce qu’il ne peut pas prouver. Il montre le transport, la radio, l’audio et la flash avec leurs limites réelles.</p><button class="sequence-action" type="button" data-sequence-tab="diagnostics" data-route-target="#tab-diagnostics">Lancer les diagnostics <span aria-hidden="true">↘</span></button></div></article>
+        </div>
+        <div class="sequence-progress" aria-hidden="true"><span class="sequence-progress-line"><i></i></span><span>FAITES DÉFILER POUR PARCOURIR LE SYSTÈME</span><span>03</span></div>
+      </div>
+    </section>
+
+    <div class="system-rail" aria-label="Repères de la page"><span><b>04</b> ÉTAT DU SYSTÈME</span><span><b>05</b> CONFIGURATION</span><span><b>06</b> OBSERVATION</span><span class="system-rail-live"><i></i>FLUX LOCAL ACTIF</span></div>
 
     <section class="tab-panel" id="tab-overview" role="tabpanel" aria-labelledby="tab-button-overview" data-panel="overview">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="overviewEyebrow">SYSTEM VIEW</p><h2 data-i18n="overviewTitle">Everything in one place.</h2></div><span class="panel-status" data-i18n="localOnly">LOCAL ONLY</span></div>
@@ -92,6 +108,6 @@
   <footer class="footer"><span>MiraLink</span><span>•</span><span id="footer-version">v0.35</span><span>•</span><span>MaruChiwa</span><span>•</span><span id="footer-updated">2026-08-14</span><span>•</span><span data-i18n="localOnly">LOCAL UNIQUEMENT</span></footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog" class="dialog-card"><p class="eyebrow" data-i18n="confirmation">CONFIRMATION</p><h2 id="confirm-title" data-i18n="confirmTitle">Confirm action</h2><p id="confirm-message"></p><div class="action-row"><button class="button quiet" value="cancel" data-i18n="cancel">Cancel</button><button class="button danger" id="confirm-submit" value="confirm" data-i18n="confirm">Confirm</button></div></form></dialog>
-  <script type="module" src="src/app.js?ui=35-editorial"></script>
+  <script type="module" src="src/app.js?ui=35-control-room3"></script>
 </body>
 </html>
