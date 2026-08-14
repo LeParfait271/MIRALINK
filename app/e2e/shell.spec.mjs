@@ -202,11 +202,28 @@ test('loads an operational shell and keeps WebHID warnings contextual', async ({
 
   await expect(page).toHaveTitle(/MiraLink/);
   await expect(page.locator('#connect-button')).toBeVisible();
+  await expect(page.locator('#connect-button')).toBeEnabled();
+  await expect(page.locator('#refresh-devices-button')).toBeEnabled();
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   await revealSection(page, '#tab-diagnostics');
   await expect(page.locator('#run-diagnostics-button')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('blocks connection actions when WebHID is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      delete navigator.hid;
+    } catch {
+      // The test only needs to model a browser without WebHID.
+    }
+  });
+  await page.goto('/');
+
+  await expect(page.locator('#hid-warning')).toBeVisible();
+  await expect(page.locator('#connect-button')).toBeDisabled();
+  await expect(page.locator('#refresh-devices-button')).toBeDisabled();
 });
 
 test('never forces horizontal page overflow', async ({ page }) => {

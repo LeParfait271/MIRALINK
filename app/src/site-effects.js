@@ -175,12 +175,18 @@ document.querySelectorAll('[data-sequence-tab][data-route-target]').forEach((act
   });
 });
 
-window.addEventListener('popstate', () => {
-  if (window.location.hash) scrollToRouteTarget(window.location.hash, { behavior: 'auto' });
-});
-window.addEventListener('hashchange', () => {
-  if (window.location.hash) scrollToRouteTarget(window.location.hash, { behavior: 'auto' });
-});
+function restoreNavigationFromLocation() {
+  navigationLock = null;
+  if (navigationLockTimer) {
+    window.clearTimeout(navigationLockTimer);
+    navigationLockTimer = 0;
+  }
+  scrollToRouteTarget(window.location.hash || '#top', { behavior: 'auto' });
+  updateActiveNavigation();
+}
+
+window.addEventListener('popstate', restoreNavigationFromLocation);
+window.addEventListener('hashchange', restoreNavigationFromLocation);
 window.addEventListener('pointermove', setPointer, { passive: true });
 window.addEventListener('scroll', setScrollState, { passive: true });
 window.addEventListener('resize', setScrollState, { passive: true });

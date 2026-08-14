@@ -9,7 +9,7 @@
   <title>MiraLink — Centre de contrôle local</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=40-webhid-queue">
+  <link rel="stylesheet" href="styles.css?ui=41-hid-action-state">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Aller au contenu</a>
@@ -21,7 +21,7 @@
         <span class="site-brand-copy"><strong>MIRALINK</strong><small>PICO 2 W / LOCAL CONTROL</small></span>
       </a>
       <div class="site-chrome-meta">
-        <span class="version-chip" id="version-chip">v0.42</span>
+        <span class="version-chip" id="version-chip">v0.43</span>
         <span class="status-chip" id="global-status" data-state="ready">
           <span class="status-dot" aria-hidden="true"></span>
           <span id="global-status-text" data-i18n="statusReady">Prêt</span>
@@ -74,8 +74,8 @@
           </div>
           <p class="connection-copy">Autorisez ce navigateur à communiquer avec le Pico 2 W. Aucune donnée du périphérique n’est téléversée.</p>
           <div class="connection-surface-actions">
-            <button class="button primary" id="connect-button" type="button" data-i18n="connect">Connecter un appareil</button>
-            <button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh">Actualiser</button>
+            <button class="button primary" id="connect-button" type="button" data-i18n="connect" disabled>Connecter un appareil</button>
+            <button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh" disabled>Actualiser</button>
             <button class="button quiet" id="open-pairing-button" type="button" disabled data-i18n="openPairing">Ouvrir l’appairage</button>
           </div>
           <div id="hid-warning" class="notice warning" hidden role="status">
@@ -361,7 +361,7 @@
   </main>
 
   <footer class="footer">
-    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.42</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-14</span>
+    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.43</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-15</span>
   </footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title">
@@ -373,6 +373,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="src/app.js?ui=40-webhid-queue"></script>
+  <script type="module" src="src/app.js?ui=41-hid-action-state"></script>
 </body>
 </html>
