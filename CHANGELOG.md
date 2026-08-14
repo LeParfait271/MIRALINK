@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.38 - 2026-08-14
+
+- Recorded the manual `0.37` Windows result: exactly one `DualSense` entry
+  remained after restart, partially validating the single-root USB topology,
+  but buttons and sticks produced no input.
+- Fixed the source-level Bluetooth activation lock found after that result.
+  After the HID descriptor, the `0.38` candidate advances a bounded
+  asynchronous Feature sequence `0x05` → `0x09` → `0x20`, with
+  transient-state handling and a bounded neutral-output fallback.
+- Treated minimal Bluetooth report `0x01` as liveness only. A controller becomes
+  connected and a provisional address becomes trusted only after a complete,
+  strict-length, CRC-valid enhanced report `0x31`.
+- Kept CYW43/BTstack on the polling execution path and serialized the relevant
+  output/BTstack calls in the compiled candidate through a build-generated
+  source patch. Physical `0.38` behavior remains unvalidated.
+- Routed persistent configuration erase/program through the Pico SDK flash-safe
+  executor, moved uptime deadlines to the 64-bit boot clock, cleared stale
+  input when HCI turns off and kept USB diagnostics safe if CYW43 init fails.
+- Rebuilt the application as an original high-tech control deck with explicit
+  WebHID availability and identity handling, actionable diagnostics, local
+  profiles, local UF2 inspection and offline recovery.
+- Made local UF2 inspection understand Picotool's exact RP2350-E10 sentinel
+  while retaining strict per-family numbering, duplicate and completeness
+  checks; the final `0.38` UF2 now validates against the same parser exposed in
+  the site.
+- Prevented an identified MiraLink bridge from silently falling back to direct
+  controller mode after a failed HELLO exchange, and added reconnect/poll-error
+  recovery with clear next actions.
+- Added desktop and mobile browser automation, a synthetic full bridge
+  exchange, offline reload coverage and automated accessibility checks. The
+  final `0.38` baseline passes 98 unit tests and 20 end-to-end scenarios;
+  these remain software-only evidence.
+- Copied the required Clang runtime DLLs beside the Windows host-test binary at
+  build time so native tests no longer launch with missing `libc++.dll` or
+  `libunwind.dll` dialogs.
+- Removed the unused legacy image pack from the generated static bundle while
+  preserving source assets, reducing the deployed shell to a compact local
+  control application.
+- Aligned the site, firmware, protocol and package metadata to `0.38` / `0.38.0`.
+
 ## 0.37 - 2026-08-14
 
 - Corrected the Windows duplicate-controller failure observed after the first
@@ -16,9 +56,10 @@
   polling so BTstack callbacks and foreground Bluetooth calls cannot race.
 - Filtered every handled HID subevent from a stale CID being torn down, not
   only its final close, so a late report cannot resurrect a false link state.
-- Preserved all native input/output and host-probe report IDs and sizes. The
-  0.37 correction still requires a fresh Windows enumeration, WebHID and
-  Bluetooth hardware test before it can be called functional.
+- Preserved all native input/output and host-probe report IDs and sizes. A
+  subsequent manual Windows test showed one controller child, but no usable
+  input: the USB topology correction was partially validated while Bluetooth
+  activation and controller functionality were not.
 - Aligned the site, firmware, protocol and package metadata to `0.37` / `0.37.0`.
 
 ## 0.36 - 2026-08-14

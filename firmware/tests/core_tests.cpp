@@ -1,4 +1,5 @@
 #include "miralink_config.h"
+#include "miralink_bluetooth_bootstrap.h"
 #include "miralink_config_store.h"
 #include "miralink_dualsense.h"
 #include "miralink_protocol.h"
@@ -287,6 +288,109 @@ void test_dualsense_bluetooth_report_parser() {
     assert(miralink::dualsense::parse_bluetooth_input_report(report).error == miralink::dualsense::InputReportError::InvalidCrc);
 }
 
+void test_dualsense_bluetooth_bootstrap_report_classification() {
+    using miralink::bluetooth::bootstrap::InputReportKind;
+    using miralink::bluetooth::bootstrap::classify_input_report;
+
+    const std::array<std::uint8_t, 10> simple{0x01};
+    const std::array<std::uint8_t, 11> simple_hidp{0xa1, 0x01};
+    const std::array<std::uint8_t, 78> enhanced{0x31};
+    const std::array<std::uint8_t, 79> enhanced_hidp{0xa1, 0x31};
+    const std::array<std::uint8_t, 2> other{0xa1, 0x02};
+    const std::array<std::uint8_t, 1> truncated_hidp{0xa1};
+    const std::array<std::uint8_t, 1> truncated_simple{0x01};
+    const std::array<std::uint8_t, 11> oversized_simple{0x01};
+    const std::array<std::uint8_t, 10> truncated_simple_hidp{0xa1, 0x01};
+    const std::array<std::uint8_t, 77> truncated_enhanced{0x31};
+    const std::array<std::uint8_t, 78> truncated_enhanced_hidp{0xa1, 0x31};
+
+    assert(classify_input_report(simple.data(), simple.size()) == InputReportKind::Simple);
+    assert(classify_input_report(simple_hidp.data(), simple_hidp.size()) == InputReportKind::Simple);
+    assert(classify_input_report(enhanced.data(), enhanced.size()) == InputReportKind::Enhanced);
+    assert(classify_input_report(enhanced_hidp.data(), enhanced_hidp.size()) == InputReportKind::Enhanced);
+    assert(classify_input_report(other.data(), other.size()) == InputReportKind::Other);
+    assert(classify_input_report(truncated_hidp.data(), truncated_hidp.size()) == InputReportKind::Other);
+    assert(classify_input_report(truncated_simple.data(), truncated_simple.size()) == InputReportKind::Other);
+    assert(classify_input_report(oversized_simple.data(), oversized_simple.size()) == InputReportKind::Other);
+    assert(classify_input_report(truncated_simple_hidp.data(), truncated_simple_hidp.size()) == InputReportKind::Other);
+    assert(classify_input_report(truncated_enhanced.data(), truncated_enhanced.size()) == InputReportKind::Other);
+    assert(classify_input_report(truncated_enhanced_hidp.data(), truncated_enhanced_hidp.size()) == InputReportKind::Other);
+    assert(classify_input_report(nullptr, 0) == InputReportKind::Other);
+}
+
+void test_dualsense_bluetooth_feature_bootstrap_sequence() {
+    namespace bootstrap = miralink::bluetooth::bootstrap;
+    const std::array<std::uint8_t, 41> calibration{0x05};
+    const std::array<std::uint8_t, 20> pairing{0x09};
+    const std::array<std::uint8_t, 64> firmware{0x20};
+    const std::array<std::uint8_t, 40> short_calibration{0x05};
+    const std::array<std::uint8_t, 41> wrong_calibration_id{0x09};
+
+    assert(bootstrap::valid_feature_response(0x05, calibration.data(), calibration.size()));
+    assert(bootstrap::valid_feature_response(0x09, pairing.data(), pairing.size()));
+    assert(bootstrap::valid_feature_response(0x20, firmware.data(), firmware.size()));
+    assert(!bootstrap::valid_feature_response(0x05, short_calibration.data(), short_calibration.size()));
+    assert(!bootstrap::valid_feature_response(0x05, wrong_calibration_id.data(), wrong_calibration_id.size()));
+    assert(!bootstrap::valid_feature_response(0x06, calibration.data(), calibration.size()));
+
+    bootstrap::State state{};
+    bootstrap::begin(state);
+    assert(state.phase == bootstrap::Phase::FeatureRequestReady);
+    assert(bootstrap::feature_report_id(state) == 0x05);
+
+    assert(bootstrap::feature_request_sent(state, 0x05));
+    assert(state.phase == bootstrap::Phase::FeatureResponsePending);
+    assert(bootstrap::feature_response_received(state, 0x05, true));
+    assert(state.phase == bootstrap::Phase::WaitingForEnhancedInput);
+    assert(!bootstrap::output_safe(state));
+
+    // A controller which acknowledges a feature request but stays in compact
+    // mode is tried with the next public Sony feature report.
+    assert(bootstrap::enhanced_input_timed_out(state));
+    assert(bootstrap::feature_report_id(state) == 0x09);
+    assert(bootstrap::feature_request_sent(state, 0x09));
+    assert(bootstrap::feature_response_received(state, 0x09, false));
+    assert(bootstrap::feature_report_id(state) == 0x20);
+    assert(bootstrap::feature_request_sent(state, 0x20));
+    assert(bootstrap::feature_response_received(state, 0x20, false));
+    assert(bootstrap::fallback_output_ready(state));
+    assert(bootstrap::fallback_output_sent(state));
+    assert(state.phase == bootstrap::Phase::WaitingForEnhancedInput);
+    assert(bootstrap::enhanced_input_timed_out(state));
+    assert(state.phase == bootstrap::Phase::Failed);
+}
+
+void test_dualsense_bluetooth_feature_bootstrap_races() {
+    namespace bootstrap = miralink::bluetooth::bootstrap;
+    bootstrap::State state{};
+    bootstrap::begin(state);
+    assert(bootstrap::feature_request_sent(state, 0x05));
+
+    // Full input may race the GET_REPORT response. It proves the controller is
+    // usable, but output stays gated until BTstack finishes its one control
+    // transaction.
+    bootstrap::enhanced_input_received(state);
+    assert(state.phase == bootstrap::Phase::FeatureResponsePending);
+    assert(!bootstrap::output_safe(state));
+    assert(bootstrap::feature_response_received(state, 0x05, false));
+    assert(state.phase == bootstrap::Phase::Complete);
+    assert(bootstrap::output_safe(state));
+
+    bootstrap::reset(state);
+    bootstrap::begin(state);
+    assert(bootstrap::feature_request_sent(state, 0x05));
+    assert(bootstrap::retry_feature_request(state, 0x05));
+    assert(state.phase == bootstrap::Phase::FeatureRequestReady);
+    assert(bootstrap::feature_report_id(state) == 0x05);
+
+    // A transport timeout is mapped to an unsuccessful response after the
+    // build-time BTstack helper releases its single GET_REPORT transaction.
+    assert(bootstrap::feature_request_sent(state, 0x05));
+    assert(bootstrap::feature_response_received(state, 0x05, false));
+    assert(state.phase == bootstrap::Phase::FeatureRequestReady);
+    assert(bootstrap::feature_report_id(state) == 0x09);
+}
+
 void test_dualsense_bluetooth_output_builder() {
     miralink::dualsense::OutputRequest request{};
     request.haptics = true;
@@ -448,6 +552,6 @@ void test_dualsense_audio_report_validation() {
 }
 
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_bootstrap_report_classification(); test_dualsense_bluetooth_feature_bootstrap_sequence(); test_dualsense_bluetooth_feature_bootstrap_races(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }

@@ -25,7 +25,7 @@ l’utilisateur.
 - Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
   fonctionnalité et tester la lecture explicite des réponses avec
   `receiveFeatureReport`.
-- Pour la persona native `0.37`, vérifier qu'il existe exactement une interface
+- Pour la persona native `0.38`, vérifier qu'il existe exactement une interface
   HID contenant une seule collection Application racine Gamepad et une
   collection vendor MiraLink imbriquée.
   Inspecter les rapports `0x01`, `0x02`, `0x05`, `0x09`, `0x20`, `0x70` et
@@ -66,19 +66,19 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.37`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.37.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.37`.
-La source CMake peut employer `0.37.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.37`.
+La version publique actuelle du site est `0.38`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.38.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.38`.
+La source CMake peut employer `0.38.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.38`.
 
-La release `0.37` conserve l'ouverture automatique pendant cinq minutes de la
+La release `0.38` conserve l'ouverture automatique pendant cinq minutes de la
 fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore
 aucune manette. Le premier appairage peut donc se faire après flash en mettant
 la DualSense en mode association, sans connecter le Pico au site. Une manette
 déjà mémorisée conserve la reconnexion directe par clé BTstack.
 
-La release `0.37` expose une persona USB DualSense-family expérimentale sous le
+La release `0.38` expose une persona USB DualSense-family expérimentale sous le
 VID Sony `0x054c`, avec PID standard/Auto `0x0ce6` ou Edge `0x0df2`. Cette
 compatibilité explicitement autorisée est une implémentation clean-room et ne
 constitue ni un firmware Sony, ni une approbation, ni une affiliation. Une
@@ -92,15 +92,39 @@ de flash ou de fonctionnement sur matériel réel.
 
 Le test Windows de la `0.36` a affiché deux entrées `DualSense` dans `joy.cpl`;
 les deux ont disparu au débranchement du Pico. Cette preuve invalide la
-topologie à deux collections Application racines. La `0.37` garde une seule
-racine Gamepad et imbrique les Features MiraLink. Le clignotement de la fenêtre
-Bluetooth a expiré après environ cinq minutes sans rapport valide : ni
-l'appairage ni les entrées ne sont validés par cette tentative.
+topologie à deux collections Application racines. Le test manuel suivant de la
+`0.37` a affiché exactement une entrée, y compris après redémarrage : la
+correction de topologie USB est donc partiellement validée sur Windows.
+Cependant aucun bouton ni joystick n'a réagi dans les propriétés du contrôleur.
+Aucun paquet Bluetooth n'a été capturé pendant ce test. L'analyse source a
+identifié un verrou compatible avec le résultat : MiraLink n'acceptait que le
+rapport enrichi `0x31`, une DualSense peut commencer par le rapport minimal
+`0x01`, et le pont ne lançait pas la séquence Feature d'activation. L'entrée,
+les sorties et la reconnexion ne sont donc pas validées par le test `0.37`.
 
 La `0.37` remplace aussi le contexte CYW43 `threadsafe_background` par le
 contexte polling du SDK. La boucle principale exécute `tud_task()`, puis
 `cyw43_arch_poll()`, puis les machines d'état audio/Bluetooth ; aucun appel
 BTstack de premier plan ne doit concurrencer un callback BTstack en IRQ.
+
+La `0.38` ajoute, après validation du descripteur HID Bluetooth, un amorçage
+asynchrone borné des Feature reports `0x05` → `0x09` → `0x20`, puis un
+fallback de sortie neutre borné si le flux enrichi ne démarre pas. Un seul
+échange est en vol et les états busy/not-ready ou timeouts restent pilotés
+par la machine d'état. Le rapport simple `0x01` ne prouve que la vivacité de la
+liaison; seul un rapport `0x31` complet, de longueur stricte et CRC valide peut
+déclarer `Connected`, alimenter les entrées et mémoriser une nouvelle manette.
+Le candidat compilé sérialise aussi les appels de sortie/BTstack concernés via
+un patch source généré au build. Chaque propriété reste à vérifier par un flash
+manuel `0.38` et une observation physique.
+
+L'application `0.38` regroupe connexion WebHID, état suivant, diagnostics,
+profils locaux, inspection UF2 et reprise hors ligne dans une interface
+high-tech originale. Avant livraison, tester au minimum les parcours desktop
+et mobile, la navigation par onglets, l'accessibilité, un bridge WebHID simulé
+et un rechargement hors ligne à froid. Les 98 tests unitaires et 20 scénarios
+end-to-end de la passe initiale constituent une preuve logicielle, jamais un
+test du Pico réel.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -232,7 +256,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.37 applique les réglages persistants qui peuvent être
+Le build firmware 0.38 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et

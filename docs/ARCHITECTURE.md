@@ -18,6 +18,12 @@ The application is a local static web application with no runtime dependency on 
 - firmware file inspection;
 - local logs and redaction.
 
+The `0.38` interface presents those functions as one original high-tech control
+deck. Device state and the next safe action remain visible before decorative
+content. WebHID availability and bridge identity are checked explicitly;
+profiles, diagnostics and UF2 inspection remain local, and the static shell is
+usable offline after it has been cached.
+
 ### Firmware
 
 The firmware owns:
@@ -58,6 +64,19 @@ Application collection of the same HID interface;
 the app polls typed controller state so management traffic does not compete
 with game input. A fresh Pico with no remembered key opens a bounded local
 pairing window automatically; it can also be reopened by a confirmed command.
+
+The `0.37` hardware run proved the single Windows controller child but captured
+no Bluetooth packets and delivered no input. Source analysis found an
+activation lock consistent with that result: the bridge accepted only enhanced
+report `0x31`, a DualSense can begin with minimal report `0x01`, and the bridge
+did not initiate the enabling Feature sequence. The `0.38` candidate therefore
+models activation as an explicit bounded sub-state. After descriptor
+validation it requests Feature reports `0x05` → `0x09` → `0x20`, optionally
+uses a neutral-output fallback, and treats `0x01` as liveness only. Trust,
+`Connected` and game-input forwarding remain gated on a complete, CRC-valid
+`0x31`. The build also serializes the relevant BTstack output calls with the
+polling execution path. None of these software properties is a physical
+`0.38` hardware result.
 
 During that explicit window the Pico performs a bounded Bluetooth inquiry and
 filters Sony DualSense identities before attempting a Classic HID connection.
@@ -102,6 +121,8 @@ The UI must expose the state and the reason for an error. A device cannot receiv
 - configuration validation tests;
 - malformed-packet tests;
 - application DOM and keyboard tests;
+- desktop/mobile browser journeys, offline reload and automated accessibility
+  checks;
 - firmware host-side tests for pure logic;
 - build reproducibility checks;
 - hardware tests with a real Pico 2 W and real controllers.

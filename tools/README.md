@@ -11,6 +11,12 @@ Downloaded from official upstream distributors on 2026-08-12:
 - Ninja `1.13.2`, Windows;
 - Raspberry Pi `picotool 2.3.0`, Windows x64.
 - LLVM-MinGW `20260616`, used only for native build helpers and C++ tests, never in the firmware or application runtime.
+  Its executable/runtime directory is
+  `tools/llvm-mingw/llvm-mingw-20260616-ucrt-x86_64/bin`; the parent
+  `tools/llvm-mingw/bin` path does not exist. The host-test CMake target copies
+  `libc++.dll` and `libunwind.dll` beside `miralink-core-tests.exe` so the test
+  does not depend on a transient shell `PATH` and cannot trigger a missing-DLL
+  dialog.
 - GitHub CLI `2.97.0`, portable Windows x64, used for authenticated release
   publication. Its official ZIP SHA-256 is
   `35D7FE05C4DD1411FFDA1E73DFC7C6F44B75C936CA51FA6595C657FDC0350CEC`.

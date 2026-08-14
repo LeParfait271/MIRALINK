@@ -1,4 +1,5 @@
 #include "miralink_bluetooth.h"
+#include "miralink_bluetooth_bootstrap.h"
 #include "miralink_config.h"
 
 #include "btstack.h"
@@ -12,6 +13,8 @@
 #include <cstdint>
 #include <cstring>
 
+extern "C" std::uint8_t miralink_btstack_hid_host_abort_get_report(std::uint16_t hid_cid);
+
 namespace miralink::bluetooth {
 bool open_pairing_window();
 
@@ -23,8 +26,6 @@ namespace {
 constexpr std::size_t kHidDescriptorStorageBytes = 2048;
 constexpr std::uint32_t kPairingWindowMs = 300000;
 constexpr std::uint8_t kInquiryDuration = 8;
-constexpr std::uint8_t kBluetoothHidInputHeader = 0xa1;
-constexpr std::uint8_t kDualSenseBluetoothReportId = dualsense::kBluetoothInputReportId;
 constexpr std::uint16_t kSonyVendorId = dualsense::kSonyVendorId;
 constexpr std::uint16_t kDualSenseProductId = dualsense::kDualSenseProductId;
 constexpr std::size_t kMaxRememberedControllers = 4;
@@ -32,6 +33,11 @@ constexpr std::uint16_t kHapticMaxDurationMs = 3000;
 constexpr std::uint32_t kReconnectDelayMs = 250;
 constexpr std::uint32_t kReconnectRetryDelayMs = 2000;
 constexpr std::uint32_t kConnectionHandshakeTimeoutMs = 10000;
+constexpr std::uint32_t kFeatureResponseTimeoutMs = 1500;
+constexpr std::uint32_t kFeatureRetryDelayMs = 25;
+constexpr std::uint32_t kFeatureActivationTimeoutMs = 500;
+constexpr std::uint32_t kFallbackActivationTimeoutMs = 1000;
+constexpr std::uint8_t kFeatureMaxAttempts = 4;
 constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 constexpr std::uint32_t kInquiryRetryDelayMs = 1000;
 constexpr std::uint32_t kOutputFlightGuardMs = 4;
@@ -69,6 +75,15 @@ struct ActiveControllerAttempt {
 ActiveControllerAttempt g_active_controller_attempt{};
 std::uint64_t g_reconnect_deadline_ms = 0;
 std::uint64_t g_connection_deadline_ms = 0;
+bootstrap::State g_feature_bootstrap{};
+std::uint64_t g_feature_retry_deadline_ms = 0;
+std::uint64_t g_feature_response_deadline_ms = 0;
+std::uint64_t g_feature_activation_deadline_ms = 0;
+std::uint8_t g_feature_attempt_count = 0;
+std::uint8_t g_last_feature_status = 0;
+bool g_protocol_handshake_pending = false;
+std::array<std::uint8_t, dualsense::kBluetoothOutputReportBytes> g_bootstrap_output_packet{};
+std::uint64_t g_bootstrap_output_flight_deadline_ms = 0;
 std::uint64_t g_inquiry_retry_deadline_ms = 0;
 std::uint64_t g_output_flight_deadline_ms = 0;
 bool g_connection_failure_recorded = false;
@@ -106,6 +121,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
 std::uint64_t now_ms();
 void try_next_paired_controller();
 void try_send_output();
+void service_feature_bootstrap();
+void set_connection_closed();
 
 void record_connection_attempt(const bool reconnect) {
     g_connection_failure_recorded = false;
@@ -125,7 +142,18 @@ void record_connection_failure(const ConnectionError error, const std::uint8_t s
 }
 
 std::uint64_t now_ms() {
-    return to_ms_since_boot(get_absolute_time());
+    return to_us_since_boot(get_absolute_time()) / 1000u;
+}
+
+void reset_feature_bootstrap() {
+    bootstrap::reset(g_feature_bootstrap);
+    g_feature_retry_deadline_ms = 0;
+    g_feature_response_deadline_ms = 0;
+    g_feature_activation_deadline_ms = 0;
+    g_feature_attempt_count = 0;
+    g_last_feature_status = 0;
+    g_bootstrap_output_packet.fill(0);
+    g_bootstrap_output_flight_deadline_ms = 0;
 }
 
 void clear_ignored_hid_teardown() {
@@ -392,6 +420,8 @@ bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false)
     stop_inquiry();
     bd_addr_t mutable_address;
     std::memcpy(mutable_address, address, sizeof(mutable_address));
+    reset_feature_bootstrap();
+    g_protocol_handshake_pending = false;
     g_hid_cid = 0;
     record_connection_attempt(reconnect);
     const auto status = hid_host_connect(mutable_address, HID_PROTOCOL_MODE_REPORT, &g_hid_cid);
@@ -457,11 +487,136 @@ void clear_output_queue() {
 }
 
 bool output_link_ready() {
+    if (!g_initialized) return false;
     critical_section_enter_blocking(&g_state_lock);
     const bool ready = g_hid_cid != 0 && g_snapshot.descriptor_available
-        && g_snapshot.state == LinkState::Connected;
+        && g_snapshot.state == LinkState::Connected
+        && !g_protocol_handshake_pending
+        && bootstrap::output_safe(g_feature_bootstrap)
+        && (g_bootstrap_output_flight_deadline_ms == 0
+            || now_ms() >= g_bootstrap_output_flight_deadline_ms);
     critical_section_exit(&g_state_lock);
     return ready;
+}
+
+void disconnect_after_bootstrap_failure(const ConnectionError error,
+    const std::uint8_t status) {
+    if (!g_connection_failure_recorded) record_connection_failure(error, status);
+    const auto failed_cid = g_hid_cid;
+    reset_feature_bootstrap();
+    if (failed_cid != 0) hid_host_disconnect(failed_cid);
+}
+
+void service_feature_bootstrap() {
+    if (g_hid_cid == 0 || g_protocol_handshake_pending) return;
+    const auto current_ms = now_ms();
+
+    if (g_feature_bootstrap.phase == bootstrap::Phase::FeatureResponsePending) {
+        if (g_feature_response_deadline_ms != 0
+            && current_ms >= g_feature_response_deadline_ms) {
+            const auto report_id = g_feature_bootstrap.pending_report_id;
+            const auto abort_status = miralink_btstack_hid_host_abort_get_report(g_hid_cid);
+            if (abort_status == ERROR_CODE_SUCCESS) {
+                g_feature_response_deadline_ms = 0;
+                g_last_feature_status = ERROR_CODE_CONNECTION_TIMEOUT;
+                bootstrap::feature_response_received(g_feature_bootstrap, report_id, false);
+                g_feature_attempt_count = 0;
+                g_feature_retry_deadline_ms = current_ms + kFeatureRetryDelayMs;
+            } else if (abort_status == ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER) {
+                record_connection_failure(ConnectionError::ProtocolHandshake, abort_status);
+                set_connection_closed();
+            } else {
+                disconnect_after_bootstrap_failure(ConnectionError::Timeout, report_id);
+            }
+        }
+        return;
+    }
+
+    if (g_feature_bootstrap.phase == bootstrap::Phase::WaitingForEnhancedInput) {
+        if (g_feature_activation_deadline_ms == 0
+            || current_ms < g_feature_activation_deadline_ms) return;
+        g_feature_activation_deadline_ms = 0;
+        bootstrap::enhanced_input_timed_out(g_feature_bootstrap);
+        g_feature_attempt_count = 0;
+        if (g_feature_bootstrap.phase == bootstrap::Phase::Failed) {
+            disconnect_after_bootstrap_failure(ConnectionError::ProtocolHandshake,
+                g_last_feature_status);
+        } else {
+            g_feature_retry_deadline_ms = current_ms;
+        }
+        return;
+    }
+
+    if (g_feature_bootstrap.phase == bootstrap::Phase::FeatureRequestReady) {
+        if (g_feature_retry_deadline_ms != 0
+            && current_ms < g_feature_retry_deadline_ms) return;
+        const auto report_id = bootstrap::feature_report_id(g_feature_bootstrap);
+        if (report_id == 0) return;
+
+        ++g_feature_attempt_count;
+        const auto status = hid_host_send_get_report(g_hid_cid,
+            HID_REPORT_TYPE_FEATURE, report_id);
+        if (status == ERROR_CODE_SUCCESS) {
+            bootstrap::feature_request_sent(g_feature_bootstrap, report_id);
+            g_feature_retry_deadline_ms = 0;
+            g_feature_response_deadline_ms = current_ms + kFeatureResponseTimeoutMs;
+            return;
+        }
+
+        g_last_feature_status = status;
+        if (status == ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER) {
+            record_connection_failure(ConnectionError::ProtocolHandshake, status);
+            set_connection_closed();
+            return;
+        }
+        if (status == ERROR_CODE_COMMAND_DISALLOWED
+            && g_feature_attempt_count < kFeatureMaxAttempts) {
+            g_feature_retry_deadline_ms = current_ms + kFeatureRetryDelayMs;
+            return;
+        }
+        bootstrap::feature_request_failed(g_feature_bootstrap, report_id);
+        g_feature_attempt_count = 0;
+        g_feature_retry_deadline_ms = current_ms + kFeatureRetryDelayMs;
+        return;
+    }
+
+    if (g_feature_bootstrap.phase == bootstrap::Phase::FallbackOutputReady) {
+        if (g_feature_retry_deadline_ms != 0
+            && current_ms < g_feature_retry_deadline_ms) return;
+        if (g_feature_attempt_count == 0) {
+            const dualsense::OutputRequest request{};
+            g_bootstrap_output_packet = dualsense::build_bluetooth_output_report(
+                request, g_output_sequence++ & 0x0fu);
+        }
+
+        ++g_feature_attempt_count;
+        const auto status = hid_host_send_report(g_hid_cid,
+            dualsense::kBluetoothOutputReportId,
+            g_bootstrap_output_packet.data() + 1,
+            static_cast<std::uint16_t>(g_bootstrap_output_packet.size() - 1));
+        if (status == ERROR_CODE_SUCCESS) {
+            bootstrap::fallback_output_sent(g_feature_bootstrap);
+            g_feature_attempt_count = 0;
+            g_feature_retry_deadline_ms = 0;
+            g_feature_activation_deadline_ms = current_ms + kFallbackActivationTimeoutMs;
+            g_bootstrap_output_flight_deadline_ms = current_ms + kOutputFlightGuardMs;
+            return;
+        }
+
+        g_last_feature_status = status;
+        if (status == ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER) {
+            record_connection_failure(ConnectionError::ProtocolHandshake, status);
+            set_connection_closed();
+            return;
+        }
+        if (status == ERROR_CODE_COMMAND_DISALLOWED
+            && g_feature_attempt_count < kFeatureMaxAttempts) {
+            g_feature_retry_deadline_ms = current_ms + kFeatureRetryDelayMs;
+            return;
+        }
+        bootstrap::fallback_output_failed(g_feature_bootstrap);
+        disconnect_after_bootstrap_failure(ConnectionError::ProtocolHandshake, status);
+    }
 }
 
 int output_free_slot() {
@@ -491,28 +646,29 @@ bool queue_output(const dualsense::OutputRequest& request) {
     if (request.haptics || request.lightbar || request.player_leds || request.microphone_mute) {
         std::copy(report.begin() + 3, report.begin() + 3 + g_controller_state.size(), g_controller_state.begin());
     }
-    try_send_output();
     return true;
 }
 
 void try_send_output() {
     if (g_output_queued < 0 || !output_link_ready()) return;
 
-    // BTstack exposes no completion event for an interrupt output report.
-    // Keep one accepted packet protected for a short bounded interval so a
-    // fast audio poll or a second command cannot overwrite BTstack's pending
-    // report before its CAN_SEND_NOW callback has consumed it.
+    // The build-time BTstack overlay only accepts a new interrupt report once
+    // the previous CAN_SEND_NOW callback has copied its payload. Keep both the
+    // old in-flight slot and the replacement queued until that SUCCESS proves
+    // the old caller-owned buffer is no longer referenced by BTstack.
     if (g_output_in_flight >= 0) {
         if (now_ms() < g_output_flight_deadline_ms) return;
-        g_output_packets[g_output_in_flight].occupied = false;
-        g_output_in_flight = -1;
-        g_output_flight_deadline_ms = 0;
     }
 
     const auto slot = g_output_queued;
     const auto status = hid_host_send_report(g_hid_cid, g_output_packets[slot].report_id,
         g_output_packets[slot].bytes.data() + 1,
         static_cast<std::uint16_t>(g_output_packets[slot].length - 1));
+    if (status == ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER) {
+        record_connection_failure(ConnectionError::ProtocolHandshake, status);
+        set_connection_closed();
+        return;
+    }
     if (status != ERROR_CODE_SUCCESS) return;
 
     if (g_output_in_flight >= 0) {
@@ -536,6 +692,8 @@ void set_connection_closed() {
     g_connection_pending = false;
     g_reconnect_deadline_ms = 0;
     g_connection_deadline_ms = 0;
+    reset_feature_bootstrap();
+    g_protocol_handshake_pending = false;
     clear_output_queue();
     critical_section_enter_blocking(&g_state_lock);
     g_hid_cid = 0;
@@ -554,8 +712,19 @@ void set_connection_closed() {
 void handle_report(const std::uint8_t* report, const std::uint16_t length) {
     if (report == nullptr || length == 0) return;
 
-    const std::uint8_t report_id = report[0] == kBluetoothHidInputHeader && length > 1 ? report[1] : report[0];
-    if (report_id != kDualSenseBluetoothReportId) return;
+    const auto report_kind = bootstrap::classify_input_report(report, length);
+    if (report_kind == bootstrap::InputReportKind::Simple) {
+        // A compact 0x01 packet proves that the HID interrupt channel and the
+        // controller are alive, but it lacks the state required by the USB
+        // bridge. Count it in the existing diagnostics without promoting the
+        // link to Connected or extending the bounded handshake deadline.
+        note_activity();
+        critical_section_enter_blocking(&g_state_lock);
+        ++g_snapshot.rejected_report_count;
+        critical_section_exit(&g_state_lock);
+        return;
+    }
+    if (report_kind != bootstrap::InputReportKind::Enhanced) return;
 
     const auto parsed = dualsense::parse_bluetooth_input_report(report, length);
     if (parsed && g_active_controller_attempt.address_valid
@@ -565,6 +734,8 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
     }
     critical_section_enter_blocking(&g_state_lock);
     if (parsed) {
+        bootstrap::enhanced_input_received(g_feature_bootstrap);
+        g_feature_activation_deadline_ms = 0;
         note_activity();
         g_snapshot.input = parsed.state;
         g_snapshot.input_available = true;
@@ -576,7 +747,48 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
         g_snapshot.rejected_report_count += 1;
     }
     critical_section_exit(&g_state_lock);
-    try_send_output();
+}
+
+void handle_feature_response(const std::uint8_t* packet) {
+    if (packet == nullptr
+        || hid_subevent_get_report_response_get_hid_cid(packet) != g_hid_cid
+        || g_feature_bootstrap.phase != bootstrap::Phase::FeatureResponsePending) return;
+
+    const auto report_id = g_feature_bootstrap.pending_report_id;
+    const auto status = hid_subevent_get_report_response_get_handshake_status(packet);
+    g_feature_response_deadline_ms = 0;
+
+    if (status == HID_HANDSHAKE_PARAM_TYPE_NOT_READY
+        && !g_feature_bootstrap.enhanced_input_seen
+        && g_feature_attempt_count < kFeatureMaxAttempts) {
+        bootstrap::retry_feature_request(g_feature_bootstrap, report_id);
+        g_feature_retry_deadline_ms = now_ms() + kFeatureRetryDelayMs;
+        return;
+    }
+
+    const auto report_length = hid_subevent_get_report_response_get_report_len(packet);
+    const auto* report = hid_subevent_get_report_response_get_report(packet);
+    const bool successful = status == HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL
+        && bootstrap::valid_feature_response(report_id, report, report_length);
+    if (!successful) {
+        g_last_feature_status = status == HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL
+            ? static_cast<std::uint8_t>(HID_HANDSHAKE_PARAM_TYPE_ERR_INVALID_REPORT_ID)
+            : status;
+    }
+    bootstrap::feature_response_received(g_feature_bootstrap, report_id, successful);
+    g_feature_attempt_count = 0;
+
+    if (g_feature_bootstrap.phase == bootstrap::Phase::Complete) {
+        g_feature_activation_deadline_ms = 0;
+    } else if (successful) {
+        g_last_feature_status = 0;
+        g_feature_activation_deadline_ms = now_ms() + kFeatureActivationTimeoutMs;
+    } else {
+        // BTstack restores HID_HOST_CONNECTION_ESTABLISHED after this callback
+        // returns. Defer the next GET_REPORT to poll() instead of colliding
+        // with the control transaction which is still being finalized.
+        g_feature_retry_deadline_ms = now_ms() + kFeatureRetryDelayMs;
+    }
 }
 
 void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_t* packet, std::uint16_t size) {
@@ -589,11 +801,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
         case BTSTACK_EVENT_STATE:
             if (btstack_event_state_get_state(packet) == HCI_STATE_WORKING) {
                 g_hci_working = true;
+                g_inquiry_active = false;
                 g_pairing_window_deadline_ms = 0;
                 g_pairing_requested = false;
                 g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
+                reset_feature_bootstrap();
+                g_protocol_handshake_pending = false;
                 g_idle_suspended = false;
                 g_last_activity_ms = now_ms();
                 clear_ignored_hid_teardown();
@@ -626,6 +841,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 }
             } else if (btstack_event_state_get_state(packet) == HCI_STATE_OFF) {
                 g_hci_working = false;
+                g_inquiry_active = false;
                 g_pairing_window_deadline_ms = 0;
                 g_pairing_requested = false;
                 g_connection_pending = false;
@@ -634,7 +850,9 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
-                clear_controller_attempt();
+                reset_feature_bootstrap();
+                g_protocol_handshake_pending = false;
+                discard_unvalidated_controller_attempt();
                 clear_output_queue();
                 clear_candidate();
                 critical_section_enter_blocking(&g_state_lock);
@@ -642,6 +860,10 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_snapshot.pairing_window_open = false;
                 g_snapshot.inquiry_active = false;
                 g_snapshot.connection_pending = false;
+                g_snapshot.descriptor_available = false;
+                g_snapshot.input_available = false;
+                g_snapshot.audio_link_available = false;
+                g_snapshot.audio_streaming = false;
                 g_snapshot.state = LinkState::Unavailable;
                 critical_section_exit(&g_state_lock);
             }
@@ -734,6 +956,9 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 case HID_SUBEVENT_SET_PROTOCOL_RESPONSE:
                     event_cid = hid_subevent_set_protocol_response_get_hid_cid(packet);
                     break;
+                case HID_SUBEVENT_GET_REPORT_RESPONSE:
+                    event_cid = hid_subevent_get_report_response_get_hid_cid(packet);
+                    break;
                 case HID_SUBEVENT_DESCRIPTOR_AVAILABLE:
                     event_cid = hid_subevent_descriptor_available_get_hid_cid(packet);
                     break;
@@ -782,11 +1007,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         record_connection_attempt(false);
                         g_hid_cid = cid;
                         g_connection_pending = true;
+                        reset_feature_bootstrap();
+                        g_protocol_handshake_pending = false;
                         critical_section_enter_blocking(&g_state_lock);
                         g_snapshot.connection_pending = true;
                         critical_section_exit(&g_state_lock);
                         const auto accept_status = hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
                         if (accept_status == ERROR_CODE_SUCCESS) {
+                            g_protocol_handshake_pending = true;
                             g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
                             set_link_state(LinkState::Starting);
                         } else {
@@ -818,6 +1046,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         g_snapshot.state = LinkState::Starting;
                         critical_section_exit(&g_state_lock);
                         clear_output_queue();
+                        reset_feature_bootstrap();
                     } else {
                         record_connection_failure(ConnectionError::ConnectionOpen,
                             hid_subevent_connection_opened_get_status(packet));
@@ -826,6 +1055,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     break;
 
                 case HID_SUBEVENT_SET_PROTOCOL_RESPONSE:
+                    g_protocol_handshake_pending = false;
                     if (hid_subevent_set_protocol_response_get_handshake_status(packet)
                         != HID_HANDSHAKE_PARAM_TYPE_SUCCESSFUL && g_hid_cid != 0) {
                         record_connection_failure(ConnectionError::ProtocolHandshake,
@@ -834,18 +1064,31 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         // valid DualSense stream. Close it and let the normal
                         // bounded reconnect path try again.
                         hid_host_disconnect(g_hid_cid);
+                    } else {
+                        // Defer feature traffic until BTstack has returned the
+                        // control channel to its established state.
+                        g_feature_retry_deadline_ms = now_ms() + kFeatureRetryDelayMs;
                     }
                     break;
 
-                case HID_SUBEVENT_DESCRIPTOR_AVAILABLE:
-                    if (hid_subevent_descriptor_available_get_status(packet) != ERROR_CODE_SUCCESS) {
+                case HID_SUBEVENT_DESCRIPTOR_AVAILABLE: {
+                    const auto descriptor_status = hid_subevent_descriptor_available_get_status(packet);
+                    if (descriptor_status != ERROR_CODE_SUCCESS) {
                         record_connection_failure(ConnectionError::Descriptor,
-                            hid_subevent_descriptor_available_get_status(packet));
+                            descriptor_status);
                     }
                     critical_section_enter_blocking(&g_state_lock);
-                    g_snapshot.descriptor_available = hid_subevent_descriptor_available_get_status(packet) == ERROR_CODE_SUCCESS;
+                    g_snapshot.descriptor_available = descriptor_status == ERROR_CODE_SUCCESS;
                     critical_section_exit(&g_state_lock);
-                    try_send_output();
+                    if (descriptor_status == ERROR_CODE_SUCCESS) {
+                        bootstrap::begin(g_feature_bootstrap);
+                        g_feature_retry_deadline_ms = now_ms();
+                    }
+                    break;
+                }
+
+                case HID_SUBEVENT_GET_REPORT_RESPONSE:
+                    handle_feature_response(packet);
                     break;
 
                 case HID_SUBEVENT_REPORT:
@@ -951,6 +1194,8 @@ bool open_pairing_window() {
         g_hid_cid = 0;
         g_connection_pending = false;
         g_connection_deadline_ms = 0;
+        reset_feature_bootstrap();
+        g_protocol_handshake_pending = false;
         clear_output_queue();
         critical_section_enter_blocking(&g_state_lock);
         g_snapshot.connection_pending = false;
@@ -1027,13 +1272,13 @@ bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t len
     g_output_packets[slot].length = length;
     g_output_packets[slot].occupied = true;
     g_output_queued = slot;
-    try_send_output();
-    return g_output_queued != slot;
+    return true;
 }
 
 void poll() {
     if (!g_initialized) return;
     service_ignored_hid_disconnect();
+    service_feature_bootstrap();
     const auto inactive_minutes = configured_inactive_minutes();
     if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {
         const auto current = snapshot();
@@ -1094,6 +1339,10 @@ void poll() {
 }
 
 Snapshot snapshot() {
+    // cyw43_arch_init() can fail before the state lock exists. Preserve a
+    // usable USB/diagnostic degraded mode instead of entering an uninitialized
+    // critical section.
+    if (!g_initialized) return {};
     critical_section_enter_blocking(&g_state_lock);
     Snapshot value = g_snapshot;
     const auto last_audio_packet_ms = g_audio_last_packet_ms;

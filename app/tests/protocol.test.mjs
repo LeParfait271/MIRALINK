@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMMANDS,
+  HID_USAGE_PAGE,
   MIRALINK_PRODUCT_ID,
   MIRALINK_USB_FILTER,
   MIRALINK_VENDOR_ID,
@@ -24,9 +25,16 @@ import {
   encodeControllerOutputRequest,
   encodeFrame,
   getHidIdentificationOrder,
-  hasMiraLinkVendorCollection
+  hasMiraLinkVendorCollection,
+  inspectMiraLinkHidIdentity
 } from '../src/protocol.js';
-import { inspectWebHidAvailability, transactFeatureReport } from '../src/hid-transport.js';
+import {
+  describeWebHidError,
+  inspectWebHidAvailability,
+  isHidRequestCancellation,
+  setWebHidWarningVisibility,
+  transactFeatureReport
+} from '../src/hid-transport.js';
 
 test('WebHID availability identifies a blocked permissions policy locally', () => {
   const status = inspectWebHidAvailability({
@@ -51,6 +59,77 @@ test('WebHID availability identifies an insecure local context', () => {
   assert.deepEqual(status, { available: false, isSecureContext: false, permissionsPolicy: null, reason: 'insecure-context' });
 });
 
+test('WebHID availability requires its callable API in a secure allowed context', () => {
+  const hid = { requestDevice() {}, getDevices() {} };
+  assert.deepEqual(inspectWebHidAvailability({ navigator: { hid }, isSecureContext: true }), {
+    available: true,
+    isSecureContext: true,
+    permissionsPolicy: null,
+    reason: 'available'
+  });
+  assert.equal(inspectWebHidAvailability({ navigator: { hid: {} }, isSecureContext: true }).reason, 'browser-or-context');
+  assert.equal(inspectWebHidAvailability({ navigator: { hid }, isSecureContext: false }).reason, 'insecure-context');
+});
+
+test('WebHID availability supports the legacy feature-policy accessor', () => {
+  const hid = { requestDevice() {}, getDevices() {} };
+  const status = inspectWebHidAvailability({
+    navigator: { hid },
+    isSecureContext: true,
+    document: { featurePolicy: { allowsFeature: () => false } }
+  });
+  assert.equal(status.available, false);
+  assert.equal(status.reason, 'permissions-policy');
+});
+
+test('WebHID warning visibility defeats author CSS while preserving semantics', () => {
+  const properties = new Map();
+  const attributes = new Map();
+  const warning = {
+    hidden: false,
+    style: {
+      setProperty: (name, value, priority) => properties.set(name, { value, priority }),
+      removeProperty: (name) => properties.delete(name)
+    },
+    setAttribute: (name, value) => attributes.set(name, value),
+    removeAttribute: (name) => attributes.delete(name)
+  };
+  assert.equal(setWebHidWarningVisibility(warning, false), false);
+  assert.equal(warning.hidden, true);
+  assert.deepEqual(properties.get('display'), { value: 'none', priority: 'important' });
+  assert.equal(attributes.get('aria-hidden'), 'true');
+  assert.equal(setWebHidWarningVisibility(warning, true), true);
+  assert.equal(warning.hidden, false);
+  assert.equal(properties.has('display'), false);
+  assert.equal(attributes.has('aria-hidden'), false);
+  assert.equal(setWebHidWarningVisibility(null, true), false);
+});
+
+test('WebHID request cancellation is distinct from connection failures', () => {
+  assert.equal(isHidRequestCancellation({ name: 'NotFoundError' }), true);
+  assert.equal(isHidRequestCancellation({ name: 'AbortError' }), true);
+  assert.equal(isHidRequestCancellation({ name: 'NetworkError' }), false);
+});
+
+test('WebHID error guidance keeps an identified bridge and gives a next action', () => {
+  const timeout = describeWebHidError(new ProtocolError('no response', 'timeout'), { bridgeIdentified: true, operation: 'hello' });
+  assert.match(timeout.summary, /HELLO 0x70\/0x71/);
+  assert.match(timeout.nextAction, /Diagnostics/);
+  assert.equal(timeout.retryable, true);
+
+  const permission = describeWebHidError(Object.assign(new Error('denied'), { name: 'NotAllowedError' }), { bridgeIdentified: true });
+  assert.match(permission.summary, /refusé/);
+  assert.match(permission.nextAction, /Chrome ou Edge/);
+
+  const unsupported = describeWebHidError(new ProtocolError('missing', 'feature_report_unavailable'), { bridgeIdentified: true });
+  assert.equal(unsupported.retryable, false);
+  assert.match(unsupported.nextAction, /ordinateur/);
+
+  const disconnected = describeWebHidError(Object.assign(new Error('gone'), { name: 'NetworkError' }), { bridgeIdentified: true });
+  assert.match(disconnected.summary, /interrompue/);
+  assert.match(disconnected.nextAction, /Actualiser/);
+});
+
 test('MiraLink bridge WebHID filter uses the deployed USB identity', () => {
   assert.deepEqual(MIRALINK_USB_FILTER, {
     vendorId: MIRALINK_VENDOR_ID,
@@ -73,12 +152,122 @@ test('MiraLink vendor collection detection handles missing, direct and nested co
   assert.equal(hasMiraLinkVendorCollection({ collections: [{ usagePage: 0x0001, children: [{ usagePage: 0xff00 }] }] }), true);
 });
 
-test('Sony identification probes MiraLink first only when its vendor collection is present', () => {
-  const directDualSense = { vendorId: 0x054c, productId: 0x0ce6, collections: [{ usagePage: 0x0001 }] };
-  const MiraLinkDualSense = { ...directDualSense, collections: [{ usagePage: 0x0001, children: [{ usagePage: 0xff00 }] }] };
+test('MiraLink identity detects nested and flattened management reports', () => {
+  const flattened = {
+    vendorId: MIRALINK_VENDOR_ID,
+    productId: MIRALINK_PRODUCT_ID,
+    collections: [{
+      usagePage: 0x0001,
+      featureReports: [{ reportId: REPORT_IDS.command }, { reportId: REPORT_IDS.response }, { reportId: 0x05 }]
+    }]
+  };
+  assert.deepEqual(inspectMiraLinkHidIdentity(flattened), {
+    usbIdentityMatches: true,
+    vendorCollection: false,
+    commandReport: true,
+    responseReport: true,
+    completeManagementChannel: true,
+    bridgeCandidate: true,
+    featureReportIds: [0x05, REPORT_IDS.command, REPORT_IDS.response]
+  });
+
+  const nested = {
+    vendorId: MIRALINK_VENDOR_ID,
+    productId: MIRALINK_PRODUCT_ID,
+    collections: [{
+      usagePage: 0x0001,
+      children: [{
+        usagePage: 0xff00,
+        featureReports: [{ reportId: REPORT_IDS.command }, { reportId: REPORT_IDS.response }]
+      }]
+    }]
+  };
+  assert.deepEqual(inspectMiraLinkHidIdentity(nested), {
+    usbIdentityMatches: true,
+    vendorCollection: true,
+    commandReport: true,
+    responseReport: true,
+    completeManagementChannel: true,
+    bridgeCandidate: true,
+    featureReportIds: [REPORT_IDS.command, REPORT_IDS.response]
+  });
+});
+
+test('MiraLink identity rejects non-Sony FF00 devices and incomplete Sony channels', () => {
+  const nonSonyFf00 = {
+    vendorId: 0xcafe,
+    productId: 0x0ce6,
+    collections: [{
+      usagePage: HID_USAGE_PAGE,
+      featureReports: [{ reportId: REPORT_IDS.command }, { reportId: REPORT_IDS.response }]
+    }]
+  };
+  const nonSonyIdentity = inspectMiraLinkHidIdentity(nonSonyFf00);
+  assert.equal(nonSonyIdentity.usbIdentityMatches, false);
+  assert.equal(nonSonyIdentity.vendorCollection, true);
+  assert.equal(nonSonyIdentity.completeManagementChannel, true);
+  assert.equal(nonSonyIdentity.bridgeCandidate, false);
+
+  const sonyWithoutManagementChannel = {
+    vendorId: MIRALINK_VENDOR_ID,
+    productId: MIRALINK_PRODUCT_ID,
+    collections: [{ usagePage: HID_USAGE_PAGE, featureReports: [{ reportId: 0x05 }] }]
+  };
+  const sonyIdentity = inspectMiraLinkHidIdentity(sonyWithoutManagementChannel);
+  assert.equal(sonyIdentity.usbIdentityMatches, true);
+  assert.equal(sonyIdentity.vendorCollection, true);
+  assert.equal(sonyIdentity.completeManagementChannel, false);
+  assert.equal(sonyIdentity.bridgeCandidate, false);
+
+  const sonyWithOnlyCommand = {
+    ...sonyWithoutManagementChannel,
+    collections: [{ usagePage: HID_USAGE_PAGE, featureReports: [{ reportId: REPORT_IDS.command }] }]
+  };
+  assert.equal(inspectMiraLinkHidIdentity(sonyWithOnlyCommand).bridgeCandidate, false);
+});
+
+test('MiraLink identity traversal is bounded when collection objects repeat', () => {
+  const collection = { usagePage: 0x0001, featureReports: [] };
+  collection.children = [collection];
+  assert.equal(inspectMiraLinkHidIdentity({ collections: [collection] }).bridgeCandidate, false);
+});
+
+test('Sony identification never hides a bridge HELLO failure behind controller fallback', () => {
+  const directDualSense = { vendorId: MIRALINK_VENDOR_ID, productId: MIRALINK_PRODUCT_ID, collections: [{ usagePage: 0x0001 }] };
+  const MiraLinkNested = {
+    ...directDualSense,
+    collections: [{ usagePage: 0x0001, children: [{ usagePage: HID_USAGE_PAGE, featureReports: [{ reportId: 0x70 }, { reportId: 0x71 }] }] }]
+  };
+  const MiraLinkFlattened = { ...directDualSense, collections: [{ usagePage: 0x0001, featureReports: [{ reportId: 0x70 }, { reportId: 0x71 }] }] };
+  const nonSonyFf00 = {
+    vendorId: 0xcafe,
+    productId: MIRALINK_PRODUCT_ID,
+    collections: [{ usagePage: HID_USAGE_PAGE, featureReports: [{ reportId: 0x70 }, { reportId: 0x71 }] }]
+  };
   assert.deepEqual(getHidIdentificationOrder(directDualSense, true), ['controller']);
-  assert.deepEqual(getHidIdentificationOrder(MiraLinkDualSense, true), ['bridge', 'controller']);
-  assert.deepEqual(getHidIdentificationOrder({ vendorId: 0xcafe, collections: [] }, false), ['bridge']);
+  assert.deepEqual(getHidIdentificationOrder(MiraLinkNested, true), ['bridge']);
+  assert.deepEqual(getHidIdentificationOrder(MiraLinkFlattened, true), ['bridge']);
+  assert.deepEqual(getHidIdentificationOrder({ ...directDualSense, productId: 0x0df2 }, true), ['controller']);
+  assert.deepEqual(getHidIdentificationOrder(directDualSense, false), []);
+  assert.deepEqual(getHidIdentificationOrder(nonSonyFf00, false), []);
+  assert.deepEqual(getHidIdentificationOrder(nonSonyFf00, true), []);
+  assert.deepEqual(getHidIdentificationOrder({ ...directDualSense, productId: 0xffff }, true), []);
+  assert.deepEqual(getHidIdentificationOrder({ ...directDualSense, productId: 0x0df2, collections: MiraLinkFlattened.collections }, true), ['bridge']);
+});
+
+test('MiraLink Edge persona remains a bridge when its complete management channel is present', () => {
+  const edgeBridge = {
+    vendorId: MIRALINK_VENDOR_ID,
+    productId: 0x0df2,
+    collections: [{
+      usagePage: HID_USAGE_PAGE,
+      featureReports: [{ reportId: REPORT_IDS.command }, { reportId: REPORT_IDS.response }]
+    }]
+  };
+  const identity = inspectMiraLinkHidIdentity(edgeBridge);
+  assert.equal(identity.usbIdentityMatches, true);
+  assert.equal(identity.bridgeCandidate, true);
+  assert.deepEqual(getHidIdentificationOrder(edgeBridge, true), ['bridge']);
 });
 
 test('GET_INFO exposes the real compact firmware version', () => {
@@ -169,6 +358,46 @@ test('HID bridge command errors remain typed', async () => {
   await assert.rejects(
     transactFeatureReport(device, { sequence: 8, command: COMMANDS.hello, timeoutMs: 50 }),
     (error) => error instanceof ProtocolError && error.code === 'device_error' && /Bluetooth/.test(error.message)
+  );
+});
+
+test('HID bridge rejects missing feature-report methods before sending', async () => {
+  await assert.rejects(
+    transactFeatureReport({}, { sequence: 1, command: COMMANDS.hello }),
+    (error) => error instanceof ProtocolError && error.code === 'feature_report_unavailable'
+  );
+});
+
+test('HID bridge reports stale commands instead of accepting the wrong response', async () => {
+  const device = {
+    opened: true,
+    async sendFeatureReport() {},
+    async receiveFeatureReport() {
+      return encodeFrame({ sequence: 10, command: COMMANDS.getInfo, flags: 1 });
+    }
+  };
+  await assert.rejects(
+    transactFeatureReport(device, { sequence: 10, command: COMMANDS.hello, timeoutMs: 5, pollIntervalMs: 1 }),
+    (error) => error instanceof ProtocolError && error.code === 'timeout' && /command does not match/.test(error.message)
+  );
+});
+
+test('HID bridge surfaces fatal browser I/O errors without waiting for timeout', async () => {
+  const networkError = Object.assign(new Error('device gone'), { name: 'NetworkError' });
+  const device = {
+    opened: true,
+    async sendFeatureReport() {},
+    async receiveFeatureReport() { throw networkError; }
+  };
+  await assert.rejects(
+    transactFeatureReport(device, { sequence: 11, command: COMMANDS.hello, timeoutMs: 1000 }),
+    (error) => error === networkError
+  );
+
+  device.opened = false;
+  await assert.rejects(
+    transactFeatureReport(device, { sequence: 12, command: COMMANDS.hello, timeoutMs: 1000 }),
+    (error) => error instanceof ProtocolError && error.code === 'device_disconnected'
   );
 });
 

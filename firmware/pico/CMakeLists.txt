@@ -6,7 +6,7 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(miralink_pico_firmware VERSION 0.37.0 LANGUAGES C CXX ASM)
+project(miralink_pico_firmware VERSION 0.38.0 LANGUAGES C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -16,6 +16,93 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
 pico_sdk_init()
+
+# BTstack 075a078 queues HID interrupt reports asynchronously while retaining
+# the caller's buffer pointer. Its public API otherwise accepts another report
+# while the first one is still waiting for L2CAP_EVENT_CAN_SEND_NOW, which can
+# replace that pointer before it is consumed. Keep the SDK checkout pristine
+# and replace only hid_host.c in the interface target with a verified build-dir
+# copy whose send-report entry point accepts the established state exclusively.
+set(MIRALINK_BTSTACK_HID_HOST_SOURCE
+    "${PICO_BTSTACK_PATH}/src/classic/hid_host.c")
+set(MIRALINK_BTSTACK_HID_HOST_SHA256
+    "696d1481221359d42f71e57910409f5a646458e5f8a84b104f6cbbff4a78af7c")
+file(READ "${MIRALINK_BTSTACK_HID_HOST_SOURCE}"
+    MIRALINK_BTSTACK_HID_HOST_CONTENT)
+# Hash normalized LF content so the same upstream Git blob is accepted on
+# Windows and Unix checkouts without weakening the source-version lock.
+string(REPLACE "\r\n" "\n" MIRALINK_BTSTACK_HID_HOST_CONTENT
+    "${MIRALINK_BTSTACK_HID_HOST_CONTENT}")
+string(SHA256 MIRALINK_BTSTACK_HID_HOST_ACTUAL_SHA256
+    "${MIRALINK_BTSTACK_HID_HOST_CONTENT}")
+if (NOT MIRALINK_BTSTACK_HID_HOST_ACTUAL_SHA256 STREQUAL
+    MIRALINK_BTSTACK_HID_HOST_SHA256)
+    message(FATAL_ERROR
+        "Unsupported BTstack hid_host.c SHA-256: "
+        "${MIRALINK_BTSTACK_HID_HOST_ACTUAL_SHA256}; expected Pico SDK 2.3.0 "
+        "BTstack 075a078 source ${MIRALINK_BTSTACK_HID_HOST_SHA256}")
+endif()
+set(MIRALINK_BTSTACK_SEND_GUARD_OLD
+    "connection->state < HID_HOST_CONNECTION_ESTABLISHED")
+set(MIRALINK_BTSTACK_SEND_GUARD_NEW
+    "connection->state != HID_HOST_CONNECTION_ESTABLISHED")
+string(REGEX MATCHALL "${MIRALINK_BTSTACK_SEND_GUARD_OLD}"
+    MIRALINK_BTSTACK_SEND_GUARD_MATCHES
+    "${MIRALINK_BTSTACK_HID_HOST_CONTENT}")
+list(LENGTH MIRALINK_BTSTACK_SEND_GUARD_MATCHES
+    MIRALINK_BTSTACK_SEND_GUARD_MATCH_COUNT)
+if (NOT MIRALINK_BTSTACK_SEND_GUARD_MATCH_COUNT EQUAL 1)
+    message(FATAL_ERROR
+        "Unsupported BTstack hid_host.c: expected exactly one asynchronous "
+        "send-report state guard, found ${MIRALINK_BTSTACK_SEND_GUARD_MATCH_COUNT}")
+endif()
+string(REPLACE "${MIRALINK_BTSTACK_SEND_GUARD_OLD}"
+    "${MIRALINK_BTSTACK_SEND_GUARD_NEW}"
+    MIRALINK_BTSTACK_HID_HOST_PATCHED
+    "${MIRALINK_BTSTACK_HID_HOST_CONTENT}")
+string(APPEND MIRALINK_BTSTACK_HID_HOST_PATCHED [=[
+
+/* MiraLink extension for recovering a bounded GET_REPORT timeout. */
+uint8_t miralink_btstack_hid_host_abort_get_report(uint16_t hid_cid){
+    hid_host_connection_t * connection = hid_host_get_connection_for_hid_cid(hid_cid);
+    if (!connection || !connection->control_cid){
+        return ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER;
+    }
+    if (connection->state != HID_HOST_W2_SEND_GET_REPORT
+        && connection->state != HID_HOST_W4_GET_REPORT_RESPONSE){
+        return ERROR_CODE_COMMAND_DISALLOWED;
+    }
+    connection->state = HID_HOST_CONNECTION_ESTABLISHED;
+    return ERROR_CODE_SUCCESS;
+}
+]=])
+set(MIRALINK_BTSTACK_PATCH_DIR
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/btstack")
+set(MIRALINK_BTSTACK_HID_HOST_PATCHED_SOURCE
+    "${MIRALINK_BTSTACK_PATCH_DIR}/hid_host.c")
+file(MAKE_DIRECTORY "${MIRALINK_BTSTACK_PATCH_DIR}")
+file(WRITE "${MIRALINK_BTSTACK_HID_HOST_PATCHED_SOURCE}"
+    "${MIRALINK_BTSTACK_HID_HOST_PATCHED}")
+
+get_target_property(MIRALINK_BTSTACK_CLASSIC_SOURCES
+    pico_btstack_classic INTERFACE_SOURCES)
+list(LENGTH MIRALINK_BTSTACK_CLASSIC_SOURCES
+    MIRALINK_BTSTACK_CLASSIC_SOURCE_COUNT_BEFORE)
+list(REMOVE_ITEM MIRALINK_BTSTACK_CLASSIC_SOURCES
+    "${MIRALINK_BTSTACK_HID_HOST_SOURCE}")
+list(LENGTH MIRALINK_BTSTACK_CLASSIC_SOURCES
+    MIRALINK_BTSTACK_CLASSIC_SOURCE_COUNT_AFTER)
+math(EXPR MIRALINK_BTSTACK_HID_HOST_REMOVED_COUNT
+    "${MIRALINK_BTSTACK_CLASSIC_SOURCE_COUNT_BEFORE} - ${MIRALINK_BTSTACK_CLASSIC_SOURCE_COUNT_AFTER}")
+if (NOT MIRALINK_BTSTACK_HID_HOST_REMOVED_COUNT EQUAL 1)
+    message(FATAL_ERROR
+        "Unable to replace BTstack hid_host.c in pico_btstack_classic; "
+        "removed ${MIRALINK_BTSTACK_HID_HOST_REMOVED_COUNT} source entries")
+endif()
+set_property(TARGET pico_btstack_classic PROPERTY INTERFACE_SOURCES
+    "${MIRALINK_BTSTACK_CLASSIC_SOURCES}")
+target_sources(pico_btstack_classic INTERFACE
+    "${MIRALINK_BTSTACK_HID_HOST_PATCHED_SOURCE}")
 
 # MiraLink uses the standard Opus encoder for the DualSense audio HID packet.
 # The codec is vendored under firmware/third_party so a clean local checkout
@@ -69,6 +156,7 @@ target_link_libraries(miralink_pico_firmware PRIVATE
     pico_stdlib
     pico_unique_id
     pico_rand
+    pico_flash
     tinyusb_device
     tinyusb_board
     pico_cyw43_arch_poll
@@ -78,7 +166,7 @@ target_link_libraries(miralink_pico_firmware PRIVATE
 )
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
-pico_set_program_version(miralink_pico_firmware "0.37")
+pico_set_program_version(miralink_pico_firmware "0.38")
 pico_enable_stdio_uart(miralink_pico_firmware 0)
 pico_enable_stdio_usb(miralink_pico_firmware 0)
 pico_add_extra_outputs(miralink_pico_firmware)

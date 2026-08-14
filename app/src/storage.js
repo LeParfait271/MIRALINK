@@ -1,5 +1,5 @@
 const PREFIX = 'miralink:';
-const KEYS = Object.freeze({ language: `${PREFIX}language`, logs: `${PREFIX}logs`, drafts: `${PREFIX}drafts`, backups: `${PREFIX}backups`, calibrationHistory: `${PREFIX}calibration-history` });
+const KEYS = Object.freeze({ language: `${PREFIX}language`, logs: `${PREFIX}logs`, drafts: `${PREFIX}drafts`, backups: `${PREFIX}backups` });
 
 function storageAvailable() {
   try {
@@ -41,24 +41,51 @@ export const drafts = {
   clear: (deviceId) => { if (available) localStorage.removeItem(`${KEYS.drafts}:${deviceId}`); }
 };
 
-export const calibrationHistory = {
-  get: (deviceId) => {
-    if (typeof deviceId !== 'string' || !deviceId.trim()) return [];
-    return read(`${KEYS.calibrationHistory}:${deviceId}`, []).filter((entry) => entry && typeof entry.id === 'string').slice(-20);
-  },
-  set: (deviceId, value) => {
-    if (typeof deviceId !== 'string' || !deviceId.trim() || !Array.isArray(value)) return false;
-    return write(`${KEYS.calibrationHistory}:${deviceId}`, value.slice(-20));
-  },
-  clear: (deviceId) => { if (available && typeof deviceId === 'string' && deviceId.trim()) localStorage.removeItem(`${KEYS.calibrationHistory}:${deviceId}`); }
-};
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.keys(value).sort().reduce((result, key) => {
+    if (value[key] !== undefined) result[key] = canonicalValue(value[key]);
+    return result;
+  }, {});
+}
+
+export function canonicalBackupJson(value) {
+  return JSON.stringify(canonicalValue(value));
+}
+
+function crc32(input) {
+  let crc = 0xffffffff;
+  for (const byte of input) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function backupChecksum(value) {
+  const bytes = new TextEncoder().encode(canonicalBackupJson(value));
+  return crc32(bytes).toString(16).padStart(8, '0');
+}
 
 export function createBackup({ config, device = {}, version = '2.0.0' }) {
-  return { format: 'miralink-backup', formatVersion: 1, product: 'MiraLink', version, exportedAt: new Date().toISOString(), device: { type: device.type || 'unknown', label: device.label || 'MiraLink device' }, config };
+  const payload = {
+    format: 'miralink-backup',
+    formatVersion: 2,
+    product: 'MiraLink',
+    version,
+    exportedAt: new Date().toISOString(),
+    device: { type: device.kind || device.type || 'unknown', label: device.label || 'MiraLink device' },
+    config
+  };
+  return { ...payload, checksum: { algorithm: 'CRC32', value: backupChecksum(payload) } };
 }
 
 export function validateBackup(value) {
-  if (!value || value.format !== 'miralink-backup' || value.formatVersion !== 1 || !value.config) throw new Error('Unsupported MiraLink backup file');
+  if (!value || value.format !== 'miralink-backup' || value.formatVersion !== 2 || !value.config) throw new Error('Unsupported MiraLink backup file');
+  if (value.checksum?.algorithm !== 'CRC32' || !/^[0-9a-f]{8}$/i.test(value.checksum?.value || '')) throw new Error('MiraLink backup checksum is missing or unsupported');
+  const { checksum, ...payload } = value;
+  if (backupChecksum(payload) !== checksum.value.toLowerCase()) throw new Error('MiraLink backup checksum does not match its contents');
   return value;
 }
 

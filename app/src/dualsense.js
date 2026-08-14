@@ -5,7 +5,8 @@ export const DUALSENSE_PRODUCT_ID = 0x0ce6;
 export const DUALSENSE_EDGE_PRODUCT_ID = 0x0df2;
 export const DUALSENSE_USB_REPORT_ID = 0x01;
 
-const MIN_INPUT_PAYLOAD_BYTES = 10;
+const INPUT_PAYLOAD_BYTES = 63;
+const WIRE_REPORT_BYTES = INPUT_PAYLOAD_BYTES + 1;
 
 function bytesOf(input) {
   if (input instanceof Uint8Array) return input;
@@ -59,16 +60,16 @@ export function parseDualSenseInputReport(input, { reportId = null, timestamp = 
   const bytes = bytesOf(input);
   let id = reportId === null || reportId === undefined ? null : Number(reportId);
   let offset = 0;
-  if (id === null && bytes.length >= 64 && bytes[0] === DUALSENSE_USB_REPORT_ID) {
-    id = bytes[0];
+  if (bytes.length === WIRE_REPORT_BYTES) {
+    if (bytes[0] !== DUALSENSE_USB_REPORT_ID) throw new ProtocolError('DualSense wire report must start with report ID 0x01', 'invalid_dualsense_report');
+    if (id === null) id = bytes[0];
     offset = 1;
-  } else if (id === null && bytes.length === 63) {
-    id = DUALSENSE_USB_REPORT_ID;
-  } else if (id === DUALSENSE_USB_REPORT_ID && bytes[0] === DUALSENSE_USB_REPORT_ID && bytes.length >= 64) {
-    offset = 1;
+  } else if (bytes.length === INPUT_PAYLOAD_BYTES) {
+    if (id === null) id = DUALSENSE_USB_REPORT_ID;
+  } else {
+    throw new ProtocolError('DualSense input payload must contain exactly 63 bytes, or 64 bytes including report ID 0x01', 'invalid_dualsense_report_length');
   }
   if (id !== DUALSENSE_USB_REPORT_ID) throw new ProtocolError('Only the wired DualSense input report is supported in this adapter', 'unsupported_dualsense_report');
-  if (bytes.length < offset + MIN_INPUT_PAYLOAD_BYTES) throw new ProtocolError('DualSense input report is too short', 'short_dualsense_report');
 
   const dpadFace = bytes[offset + 7];
   const shoulder = bytes[offset + 8];
@@ -135,14 +136,14 @@ export function createDualSenseAdapter(device, { onSample = () => {}, onError = 
     capabilities: Object.freeze({ input: 'supported', battery: 'unavailable', haptics: 'not-implemented', adaptiveTriggers: 'not-implemented' }),
     start() {
       if (!listening) { device.addEventListener('inputreport', handleInputReport); listening = true; }
-      return { state: 'listening', source: 'hardware', hardwareTested: true };
+      return { state: 'listening', source: 'hardware', hardwareTested: sampleCount > 0 };
     },
     stop() {
       if (listening) { device.removeEventListener('inputreport', handleInputReport); listening = false; }
-      return { state: 'stopped', source: 'hardware', hardwareTested: true };
+      return { state: 'stopped', source: 'hardware', hardwareTested: sampleCount > 0 };
     },
     snapshot() {
-      return Object.freeze({ state: listening ? 'listening' : 'stopped', sampleCount, lastSample, source: 'hardware', hardwareTested: true });
+      return Object.freeze({ state: listening ? 'listening' : 'stopped', sampleCount, lastSample, source: 'hardware', hardwareTested: sampleCount > 0 });
     }
   });
 }

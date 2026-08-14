@@ -1,10 +1,10 @@
-const CACHE = 'miralink-shell-0.37-single-hid-root';
+const CACHE = 'miralink-shell-0.38-control-deck';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
+  './src/profiles.js', './src/profile-store.js', './src/ui-state.js',
   './src/compatibility.js', './src/diagnostics.js', './src/action-guard.js', './src/session-recorder.js',
-  './src/health-analysis.js', './manifest.webmanifest', './icon.svg', './assets/visuals/miralink-icon-option-06.png',
-  './assets/visuals/banners/miralink-hero-connection.png', './assets/visuals/banners/miralink-banner-observability.png'
+  './src/health-analysis.js', './manifest.webmanifest', './icon.svg', './build-info.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -14,7 +14,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys
+        .filter((key) => key.startsWith('miralink-shell-') && key !== CACHE)
+        .map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

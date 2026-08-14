@@ -7,10 +7,10 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.35 → 0.36 → 0.37
+0.10 → 0.11 → 0.12 → … → 0.36 → 0.37 → 0.38
 ```
 
-The current sequence continues through public version `0.37`.
+The current sequence continues through public version `0.38`.
 
 The public site version must be reflected in:
 
@@ -19,25 +19,28 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.37.0`; this is
-packaging metadata for the public site version `0.37`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.38.0`; this is
+packaging metadata for the public site version `0.38`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest currently use `0.37`. CMake uses
-the technical form `0.37.0` only because it requires three numeric segments;
-the firmware reported by the device remains exactly `0.37`.
+UF2 metadata, release folder and manifest currently use `0.38`. CMake uses
+the technical form `0.38.0` only because it requires three numeric segments;
+the firmware reported by the device remains exactly `0.38`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current site and firmware version is `0.37`. It contains the clean-room,
+The current site and firmware version is `0.38`. It contains the clean-room,
 experimental DualSense-family USB persona with one HID interface, one root
-Gamepad Application collection and nested MiraLink Feature management. The
-topology corrects the duplicate Windows controller children observed during
-the 0.36 hardware test. Sony VID/PID compatibility does not imply Sony
-firmware, endorsement or affiliation. USB audio remains source-only and the
-0.37 correction has not yet been flashed or validated on physical hardware.
+Gamepad Application collection and nested MiraLink Feature management. A
+manual `0.37` Windows test showed exactly one controller entry, partially
+validating that topology, but no controller input. Version `0.38` adds a
+bounded Feature bootstrap for the enhanced Bluetooth `0x31` stream and keeps
+`Connected` false until a complete report passes strict validation. Sony
+VID/PID compatibility does not imply Sony firmware, endorsement or
+affiliation. USB audio remains source-only, and the `0.38` Bluetooth correction
+has not yet been validated on physical hardware.
 
 Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
 `docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is

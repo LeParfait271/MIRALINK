@@ -15,14 +15,6 @@ for (const name of ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js',
 await cp(path.join(appRoot, 'src'), path.join(dist, 'src'), { recursive: true });
 await cp(path.join(appRoot, 'assets'), path.join(dist, 'assets'), { recursive: true });
 
-const visualSource = path.join(projectRoot, 'Images', 'site-pack-v2');
-const visualTarget = path.join(dist, 'assets', 'visuals');
-await mkdir(visualTarget, { recursive: true });
-for (const name of ['banners', 'cards', 'mobile', 'social', 'textures']) {
-  await cp(path.join(visualSource, name), path.join(visualTarget, name), { recursive: true });
-}
-await cp(path.join(projectRoot, 'Images', 'miralink-icon-option-06.png'), path.join(visualTarget, 'miralink-icon-option-06.png'));
-
 const version = JSON.parse(await readFile(path.join(projectRoot, 'VERSION.json'), 'utf8'));
 await writeFile(path.join(dist, 'build-info.json'), `${JSON.stringify(version, null, 2)}\n`);
 

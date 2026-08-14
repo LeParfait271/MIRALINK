@@ -6,13 +6,24 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Firmware 0.37 corrects the experimental DualSense-family USB persona after the
-0.36 hardware test exposed two controller children in Windows. The single HID
-interface now has one root Gamepad Application collection and nests MiraLink
-Feature management inside it. It also keeps new Bluetooth addresses provisional
-until a complete DualSense input report validates the link and runs CYW43/
-BTstack by explicit main-loop polling instead of a competing background IRQ.
-These fixes retain the safe
+The manual Windows test of firmware 0.37 showed exactly one controller child,
+partially validating the corrected single-root USB topology, but Windows
+received no usable controller input. No Bluetooth packet was captured. Source
+analysis found an activation lock consistent with that result: 0.37 accepted
+only enhanced report `0x31`, a DualSense can begin with minimal report `0x01`,
+and the bridge did not initiate the Feature sequence that enables the enhanced
+stream.
+
+Firmware 0.38 keeps the one-root experimental DualSense-family USB persona and
+adds a bounded asynchronous Feature bootstrap (`0x05` → `0x09` → `0x20`)
+after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
+only as link liveness. Only a complete, strictly validated enhanced `0x31`
+report can mark the controller connected and make a new Bluetooth address
+trusted. The compiled candidate also keeps CYW43/BTstack work in the explicit
+polling path and serializes the relevant output/BTstack calls at build time.
+Configuration erase/program now uses the Pico SDK flash-safe executor, all
+deadlines use the 64-bit boot clock, and failed radio startup leaves USB
+diagnostics available without accessing an uninitialized lock. These changes retain the safe
 runtime wiring for persisted settings and automatic first-pair Bluetooth:
 speaker/headset volume, bounded speaker gain, trigger-effect reduction,
 optional unique USB serial exposure, conservative local inactivity suspension
@@ -21,9 +32,9 @@ inquiry/connection path for DualSense input, bounded diagnostics, local RAM
 logs, USB reconnection, confirmation-token recovery, native-size DualSense
 input/output bridging and opt-in USB remote wake. The UAC2 audio source
 remains in the firmware tree but is disabled from the active USB descriptor
-until a physical Pico 2 W validation is complete. These paths remain
-subject to physical Pico 2 W and controller validation; a successful build is
-not a hardware test.
+until a physical Pico 2 W validation is complete. The `0.38` Bluetooth
+correction remains a compiled software candidate; a successful build and host
+tests are not a physical Pico 2 W/controller validation.
 
 ## Core and hardware builds
 

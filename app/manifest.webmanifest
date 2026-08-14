@@ -1,14 +1,14 @@
 {
   "name": "MiraLink",
   "short_name": "MiraLink",
-  "description": "Local crystalline HUD control center for the MiraLink Pico 2 W system.",
-  "lang": "en",
+  "description": "Centre de contrôle local haute technologie pour le bridge MiraLink Pico 2 W.",
+  "lang": "fr",
   "dir": "ltr",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#020a12",
-  "theme_color": "#061d2d",
+  "background_color": "#080c09",
+  "theme_color": "#c7ff38",
   "icons": [
     {
       "src": "icon.svg",

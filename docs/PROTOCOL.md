@@ -6,7 +6,7 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 
 The first transport is a vendor-defined USB HID Feature-report collection
 inside the single root Gamepad Application collection of MiraLink's
-experimental DualSense-family interface. Firmware 0.37 uses
+experimental DualSense-family interface. Firmware 0.38 uses
 Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
 not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
@@ -115,7 +115,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.37 exposes one HID-only USB
+claim that a controller is connected. Firmware 0.38 exposes one HID-only USB
 interface with one root Gamepad Application collection and a nested MiraLink
 vendor collection. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
@@ -131,7 +131,7 @@ validated DualSense input report has been received.
 
 ### 3.2 Pico controller state payload
 
-`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.37
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.38
 does not declare or emit an asynchronous management Input report under the
 Sony persona; the application polls this command every 40 ms. It still accepts
 the historical 16-byte schema `1`:
@@ -218,6 +218,27 @@ adapter for software verification; it is not the Pico bridge path. The Pico
 host accepts the Bluetooth input report ID `0x31` only after length and CRC
 validation. Direct WebHID controller mode remains input-only; the output
 commands above are bridge-only.
+
+### 3.6 Bluetooth enhanced-report bootstrap
+
+The physical DualSense can begin a Bluetooth HID session by emitting its
+minimal input report `0x01`. That report proves only that traffic is arriving:
+it does not carry the complete state expected by MiraLink and cannot set the
+`connected` or `input-valid` controller flags.
+
+After accepting a valid Bluetooth HID descriptor, firmware `0.38` advances a
+bounded asynchronous bootstrap through controller Feature reports `0x05`,
+`0x09` and `0x20`. At most one request is outstanding. Transient busy/not-ready
+results and response timeouts stay inside the Bluetooth state machine instead
+of blocking a callback. If the Feature path does not produce the enhanced
+stream, the firmware may send one bounded neutral enhanced-output fallback.
+
+Only a complete Bluetooth input report `0x31` with the strict expected length
+and a valid CRC can complete the handshake, expose controller input or make a
+provisional address trusted. The bootstrap is internal to the Pico-to-controller
+transport; it does not change the USB report table or MiraLink frame format.
+Its `0.38` implementation is software-validated but still requires a manual
+Pico 2 W and DualSense hardware test.
 
 ## 4. Configuration record
 

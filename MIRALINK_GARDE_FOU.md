@@ -8,8 +8,8 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier actif vérifié : `C:\Users\MC\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.37`
-- Version firmware alignée au site : `0.37`
+- Version publique actuelle du site : `0.38`
+- Version firmware alignée au site : `0.38`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
 
@@ -35,7 +35,9 @@
 - Thème sombre uniquement.
 - Design original, sobre, futuriste, octogonal, vert émeraude et néon maîtrisé.
 - Inspiration HUD de combat VR uniquement ; aucune copie de ressources protégées.
-- Anglais par défaut et couverture des langues européennes prévue dans l'architecture.
+- L'interface `0.38` est livrée en français ; l'anglais par défaut et la
+  couverture des langues européennes restent une cible d'architecture future,
+  pas une capacité actuellement annoncée.
 - Sauvegardes locales exportables/importables, comparaison avant écriture et restauration.
 - Confirmations pour les opérations dangereuses.
 - Journaux lisibles, diagnostics guidés et validation locale des fichiers firmware.
@@ -58,7 +60,7 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
-Le lot `0.37` vise à atteindre puis dépasser les capacités observables de
+Le lot `0.38` vise à atteindre puis dépasser les capacités observables de
 DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
 expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
 standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
@@ -76,8 +78,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.36` → `0.37`. La version technique du paquet npm utilise `0.37.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.37`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.37.0`, mais le firmware affiché et livré reste `0.37`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.37` → `0.38`. La version technique du paquet npm utilise `0.38.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.38`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.38.0`, mais le firmware affiché et livré reste `0.38`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -182,3 +184,7 @@ automatique.
 - `2026-08-14` — Après chaque lot qui modifie le firmware, fournir un petit tableau comparatif avec DS5Dongle `v0.7.2-hotfix` fixé à `100 %`. Le tableau donne les principaux scores fonctionnels et un score global pondéré, explicite la méthode et pénalise les fonctions non validées sur matériel. Un score MiraLink peut dépasser `100 %` seulement pour une capacité démontrée au-delà de la référence. Le ratio de taille UF2 est affiché séparément et ne constitue jamais un score de qualité.
 - `2026-08-14` — Le test matériel Windows de la `0.36` a affiché deux entrées `DualSense` dans `joy.cpl`, toutes deux supprimées par le débranchement du Pico. La `0.37` impose donc une seule collection Application racine Gamepad et imbrique la collection vendor MiraLink ; ce correctif reste non validé jusqu'au prochain flash manuel. Une nouvelle adresse Bluetooth ne devient connue qu'après un premier rapport DualSense valide, et seule une clé nouvelle non validée peut être supprimée après un échec.
 - `2026-08-14` — La `0.37` sérialise CYW43 et BTstack par polling dans la boucle principale, après la tâche USB et avant la machine d'état Bluetooth. Le worker IRQ `threadsafe_background` n'est plus lié au firmware afin d'éviter les appels BTstack concurrents.
+- `2026-08-14` — La présente passe est explicitement autorisée à modifier `app/index.html`, `app/styles.css`, `app/icon.svg` et le build statique afin de rendre toute l'application réellement utilisable. La direction visuelle demandée est high-tech et peut s'inspirer des principes éditoriaux, de grille et de mouvement de Terminal Industries, sans copier son code, ses textes, ses ressources, sa marque ni sa composition exacte ; les parcours WebHID, diagnostics et récupération restent prioritaires sur l'effet décoratif.
+- `2026-08-14` — Le test matériel Windows de la `0.37` a montré exactement une entrée `DualSense`, y compris après redémarrage : la topologie USB à une racine est donc partiellement validée. Aucun bouton ni joystick n'a réagi et aucun paquet Bluetooth n'a été capturé. L'analyse source a identifié un verrou compatible avec ce résultat : la `0.37` n'acceptait que le rapport enrichi `0x31`, une DualSense peut commencer par le rapport simple `0x01`, et le pont ne lançait pas la séquence Feature d'activation. Cette observation invalide toute affirmation de fonctionnement des entrées en `0.37`.
+- `2026-08-14` — Le candidat `0.38` amorce le mode Bluetooth enrichi par une séquence asynchrone bornée `0x05` → `0x09` → `0x20` et un fallback de sortie neutre borné. Le rapport simple `0x01` ne peut ni déclarer `Connected`, ni alimenter les entrées, ni rendre persistante une nouvelle adresse; seul un rapport `0x31` complet, de longueur stricte et CRC valide le peut. Le build et les tests logiciels ne remplacent pas un flash manuel et une validation Pico 2 W/DualSense réelle.
+- `2026-08-14` — L'interface `0.38` doit garder ses fonctions avant la décoration : détection WebHID explicite, état et prochaine action visibles, diagnostics accessibles, profils locaux, inspection UF2 sans flash et reprise hors ligne. La validation navigateur couvre desktop, mobile, clavier et accessibilité; elle ne vaut jamais preuve matérielle.

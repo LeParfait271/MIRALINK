@@ -17,6 +17,7 @@
 #include "pico/bootrom.h"
 #include "pico/btstack_flash_bank.h"
 #include "pico/cyw43_arch.h"
+#include "pico/flash.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
 
@@ -61,9 +62,23 @@ public:
         std::fill(page.begin(), page.end(), 0xff);
         std::memcpy(page.data(), record.data(), record.size());
         const auto offset = kFlashStorageOffset + static_cast<std::uint32_t>(slot * FLASH_SECTOR_SIZE);
-        flash_range_erase(offset, FLASH_SECTOR_SIZE);
-        flash_range_program(offset, page.data(), FLASH_PAGE_SIZE);
-        return true;
+        FlashWrite operation{offset, page.data()};
+        // USB, CYW43 and BTstack use interrupt handlers stored in XIP flash.
+        // The SDK wrapper disables those interrupts while erase/program makes
+        // XIP unavailable. MiraLink runs on core 0 only.
+        return flash_safe_execute(program_slot, &operation, 1000) == PICO_OK;
+    }
+
+private:
+    struct FlashWrite {
+        std::uint32_t offset;
+        const std::uint8_t* page;
+    };
+
+    static void program_slot(void* context) {
+        const auto* operation = static_cast<const FlashWrite*>(context);
+        flash_range_erase(operation->offset, FLASH_SECTOR_SIZE);
+        flash_range_program(operation->offset, operation->page, FLASH_PAGE_SIZE);
     }
 };
 
@@ -101,8 +116,8 @@ std::array<LogRecord, kLogCapacity> g_log_records{};
 std::size_t g_log_next = 0;
 std::size_t g_log_count = 0;
 
-std::uint32_t now_ms() {
-    return to_ms_since_boot(get_absolute_time());
+std::uint64_t now_ms() {
+    return to_us_since_boot(get_absolute_time()) / 1000u;
 }
 
 void write_status_gpio(const bool active) {

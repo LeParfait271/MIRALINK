@@ -43,7 +43,7 @@ the main loop; that loop remains non-blocking.
 | Pico 2 W Release build | Passed with Arm GNU 15.2.1 and Pico SDK 2.3.0 |
 | UF2 metadata inspection | Passed: MiraLink Pico 2 W `0.37`, `pico2_w`, RP2350 ARM Secure, SDK 2.3.0 |
 | UF2 family | Passed: `rp2350-arm-s` |
-| Flash or 0.37 hardware test | Not performed |
+| Flash or 0.37 hardware test | Performed post-release: one Windows controller child, no input response |
 
 Picotool reports binary range `0x10000000..0x100abbb4` and `extra security:
 not enabled`. `ARM Secure` therefore does not claim that the image is signed
@@ -58,14 +58,20 @@ or encrypted.
 | `firmware/releases/0.37/miralink_pico_firmware.bin` | 703,412 | `1FD35D7D4717DC2D59FF118EA4912FB3126F4C24733E4C41753136BFA31D7988` |
 | `firmware/releases/0.37/miralink_pico_firmware.hex` | 1,978,595 | `F9D944CFEB52E25880F93ECE6E85CFA6D589FB895626EB92BD3CB8AF96881AEC` |
 
-## Hardware validation still required
+## Post-release hardware observation and remaining validation
 
 The 0.37 descriptor statically prevents the two-root topology that produced
-two Windows controller children in 0.36. This correction is not considered
-validated until a manual 0.37 flash shows exactly one entry in `joy.cpl`.
-Then test WebHID `0x70`/`0x71`, first Bluetooth pairing, remembered reconnect,
-inputs, motion, rumble, adaptive triggers, standard/Edge mode and
-suspend/explicit wake. USB audio remains disabled and is outside this lot.
+two Windows controller children in 0.36. The subsequent manual 0.37 flash did
+show exactly one entry in `joy.cpl`, including after restart, so that narrow
+topology correction is partially validated. However, buttons and sticks never
+moved, and no Bluetooth packet was captured. Source analysis later found an
+activation lock consistent with the result: 0.37 accepted only enhanced report
+`0x31`, a DualSense can begin with minimal report `0x01`, and the bridge did
+not initiate the enabling Feature sequence. WebHID management, full input,
+motion, rumble, adaptive triggers, standard/Edge mode, reconnect and
+suspend/explicit wake therefore remain unvalidated. Firmware 0.38 supersedes
+this candidate with a bounded enhanced-report bootstrap. USB audio remains
+disabled.
 
 An old partial link key created by 0.36 cannot be distinguished safely from a
 valid stored key. Version 0.37 deliberately preserves such pre-existing keys;
@@ -74,10 +80,10 @@ manual bond reset.
 
 ## DS5Dongle baseline
 
-| Indicator | DS5Dongle v0.7.2-hotfix | MiraLink 0.36 observed | MiraLink 0.37 candidate |
+| Indicator | DS5Dongle v0.7.2-hotfix | MiraLink 0.36 observed | MiraLink 0.37 observed |
 | --- | ---: | ---: | ---: |
 | Functional coverage before proof penalty | 100% | 76% | 76% |
-| **Weighted proven score** | **100%** | **39%** | **43%** |
+| **Weighted proven score** | **100%** | **39%** | **44.0%** |
 | UF2 relative size, not a quality score | 100% | 92.3% | 92.3% |
 
 The score was revised downward after the 0.36 hardware failure; a compiled

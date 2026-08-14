@@ -6,6 +6,9 @@ export const MAX_PAYLOAD = HID_REPORT_BYTES - FRAME_OVERHEAD_BYTES - 3;
 export const HID_USAGE_PAGE = 0xff00;
 export const MIRALINK_VENDOR_ID = 0x054c;
 export const MIRALINK_PRODUCT_ID = 0x0ce6;
+const DUALSENSE_EDGE_PRODUCT_ID = 0x0df2;
+const DIRECT_DUALSENSE_PRODUCT_IDS = Object.freeze([MIRALINK_PRODUCT_ID, DUALSENSE_EDGE_PRODUCT_ID]);
+const MIRALINK_PRODUCT_IDS = DIRECT_DUALSENSE_PRODUCT_IDS;
 export const MIRALINK_USB_FILTER = Object.freeze({
   vendorId: MIRALINK_VENDOR_ID,
   productId: MIRALINK_PRODUCT_ID
@@ -67,21 +70,69 @@ export class ProtocolError extends Error {
   }
 }
 
-export function hasMiraLinkVendorCollection(device) {
+function inspectHidCollections(device) {
   const pending = Array.isArray(device?.collections) ? [...device.collections] : [];
+  const visited = new Set();
+  const featureReportIds = new Set();
+  let vendorCollection = false;
+
   while (pending.length) {
     const collection = pending.shift();
-    if (collection?.usagePage === HID_USAGE_PAGE) return true;
-    if (Array.isArray(collection?.children)) pending.push(...collection.children);
+    if (!collection || typeof collection !== 'object' || visited.has(collection)) continue;
+    visited.add(collection);
+    if (Number(collection.usagePage) === HID_USAGE_PAGE) vendorCollection = true;
+    if (Array.isArray(collection.featureReports)) {
+      for (const report of collection.featureReports) {
+        const reportId = Number(report?.reportId);
+        if (Number.isInteger(reportId) && reportId >= 0 && reportId <= 0xff) featureReportIds.add(reportId);
+      }
+    }
+    if (Array.isArray(collection.children)) pending.push(...collection.children);
   }
-  return false;
+
+  return { vendorCollection, featureReportIds };
+}
+
+/**
+ * Inspect the WebHID descriptor without assuming where Chromium exposes a
+ * nested collection's feature reports. The WebHID model may expose them on
+ * the child collection, in the top-level flattened report list, or both.
+ */
+export function inspectMiraLinkHidIdentity(device) {
+  const { vendorCollection, featureReportIds } = inspectHidCollections(device);
+  const usbIdentityMatches = device?.vendorId === MIRALINK_VENDOR_ID
+    && MIRALINK_PRODUCT_IDS.includes(device?.productId);
+  const commandReport = featureReportIds.has(REPORT_IDS.command);
+  const responseReport = featureReportIds.has(REPORT_IDS.response);
+  const completeManagementChannel = commandReport && responseReport;
+  const bridgeCandidate = usbIdentityMatches && completeManagementChannel;
+
+  return Object.freeze({
+    usbIdentityMatches,
+    vendorCollection,
+    commandReport,
+    responseReport,
+    completeManagementChannel,
+    bridgeCandidate,
+    featureReportIds: Object.freeze([...featureReportIds].sort((left, right) => left - right))
+  });
+}
+
+export function hasMiraLinkVendorCollection(device) {
+  return inspectMiraLinkHidIdentity(device).vendorCollection;
 }
 
 export function getHidIdentificationOrder(device, directDualSense = false) {
-  if (!directDualSense) return Object.freeze(['bridge']);
-  return hasMiraLinkVendorCollection(device)
-    ? Object.freeze(['bridge', 'controller'])
-    : Object.freeze(['controller']);
+  // A MiraLink bridge and a real wired DualSense share the deployed Sony USB
+  // identity. Only the complete 0x70/0x71 feature channel distinguishes the
+  // bridge; a bare FF00 collection must never authorize bridge traffic.
+  const identity = inspectMiraLinkHidIdentity(device);
+  if (identity.bridgeCandidate) return Object.freeze(['bridge']);
+  const directControllerIdentity = directDualSense
+    && device?.vendorId === MIRALINK_VENDOR_ID
+    && DIRECT_DUALSENSE_PRODUCT_IDS.includes(device?.productId);
+  if (directControllerIdentity && !identity.completeManagementChannel) return Object.freeze(['controller']);
+  return Object.freeze([]);
 }
 
 export function decodeInfoPayload(input) {

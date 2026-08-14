@@ -1,14 +1,15 @@
 # MiraLink — étude des fonctionnalités et roadmap
 
-Document de conception local. Il ne constitue pas une promesse de support matériel.
+Document de conception local. Il ne constitue pas une promesse de support matériel. Les sections 1 à 8 conservent l’étude et les objectifs de long terme rédigés le 2026-08-12 ; l’état candidat actuel et ses limites sont résumés dans la section 9.
 
 - Produit : MiraLink
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
-- Politique : local uniquement, sans télémétrie, cloud, synchronisation ou publication
-- État du document : roadmap active, socle local partiellement implémenté
-- Version produit concernée : 1.6.0
-- Date : 2026-08-12
+- Politique : local-first, sans télémétrie, cloud ni synchronisation ; source et artefacts publiables, opérations matérielles locales
+- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.38
+- Version produit actuelle : 0.38 candidate
+- Étude initiale : 2026-08-12
+- Dernier alignement : 2026-08-14
 
 ## 1. Décisions transversales
 
@@ -48,7 +49,7 @@ Une lecture peut être automatique. Une écriture persistante ne l’est jamais 
 
 Les actions qui peuvent couper une liaison, modifier le firmware, réinitialiser une configuration ou déclencher une vibration nécessitent une confirmation distincte.
 
-### 1.4 Contrat de protocole proposé et tranche 0.6.0
+### 1.4 Contrat de protocole proposé et tranche historique 0.6.0
 
 Les commandes suivantes sont des propositions et ne doivent pas être ajoutées au firmware avant validation du modèle de données :
 
@@ -67,29 +68,30 @@ Les commandes suivantes sont des propositions et ne doivent pas être ajoutées 
 
 Chaque commande doit être bornée en taille, associée à une capacité, protégée par séquence/CRC, rejetée si non supportée et testée contre les paquets malformés. Les commandes de configuration restent distinctes des commandes de test.
 
-La tranche 0.6.0 implémente déjà `GET_CONTROLLER_STATE` et `OPEN_PAIRING_WINDOW`.
-Le Pico 2 W héberge le transport Bluetooth Classic HID DualSense en entrée,
-publie des événements de contrôleur sur USB et garde la découvrabilité fermée
-au démarrage. L’ouverture de la fenêtre d’appairage reste une action locale
-confirmée ; le branchement au bouton visible est laissé à la conversation qui
-travaille sur le visuel.
+La tranche 0.6.0 implémentait déjà `GET_CONTROLLER_STATE` et
+`OPEN_PAIRING_WINDOW`. Le Pico 2 W hébergeait le transport Bluetooth Classic
+HID DualSense en entrée, publiait des événements de contrôleur sur USB et
+gardait la découvrabilité fermée au démarrage. Dans le candidat 0.38,
+l’ouverture confirmée de la fenêtre d’appairage est désormais branchée au
+bouton visible ; voir la section 9 pour l’état actuel.
 
-### 1.5 Tranche firmware 1.1.0
+### 1.5 Tranche firmware historique 1.1.0
 
-La tranche firmware actuelle complete le chemin d'entree DualSense cote Pico
-sans etendre artificiellement les capacites materielles :
+La tranche firmware 1.1.0 complétait alors le chemin d’entrée DualSense côté
+Pico sans étendre artificiellement les capacités matérielles :
 
-- la fenetre d'appairage confirmee lance une recherche Bluetooth bornee ;
-- les resultats sont filtres par identite Sony DualSense/Edge ou nom distant
+- la fenêtre d’appairage confirmée lançait une recherche Bluetooth bornée ;
+- les résultats étaient filtrés par identité Sony DualSense/Edge ou nom distant
   avant toute tentative HID ;
-- les diagnostics exposent l'etat radio, la recherche, la connexion et les
-  compteurs de rapports valides/rejetes ;
-- les journaux restent en RAM, les commandes de reconnexion sont manuelles et
-  la recuperation exige le jeton de confirmation `RCV1` ;
-- l'UF2 1.1.0 est empaquete localement, mais reste non teste sur materiel.
+- les diagnostics exposaient l’état radio, la recherche, la connexion et les
+  compteurs de rapports valides/rejetés ;
+- les journaux restaient en RAM, les commandes de reconnexion étaient manuelles
+  et la récupération exigeait le jeton de confirmation `RCV1` ;
+- l’UF2 1.1.0 était empaqueté localement, sans test matériel.
 
-Cette tranche ne pretend pas fournir batterie, audio, haptique, gachettes
-adaptatives ou identite USB de production.
+Cette tranche ne prétendait pas fournir batterie, audio, haptique, gâchettes
+adaptatives ou identité USB de production. Elle est supersédée par le candidat
+0.38 décrit dans la section 9.
 
 ### 1.6 Limites Pico 2 W
 
@@ -164,7 +166,7 @@ Le classement peut changer après les premiers essais avec un Pico 2 W et une Du
 
 **Protocole.** `GET_PROFILE_LIST`, `GET_PROFILE`, `SET_PROFILE_DRAFT`, `APPLY_PROFILE`, éventuellement `COMMIT_CONFIG` existant pour le bridge.
 
-**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels. Le moteur de profils local est en place ; son intégration à l’interface reste à faire.
+**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels. Le gestionnaire de profils bridge est visible et relié aux brouillons dans le candidat 0.38 ; les profils individuels de manette restent un objectif futur.
 
 **Risques.** Écrasement d’un réglage ou application à la mauvaise manette. La cible, le diff et la confirmation sont obligatoires ; les profils non compatibles sont refusés.
 
@@ -607,7 +609,7 @@ Objectif : offrir un produit utile immédiatement sans matériel.
 
 **Sortie.** Tous les parcours de découverte, comparaison, confirmation, annulation et restauration fonctionnent sans WebHID et ne produisent aucune déclaration de test matériel.
 
-**État vérifié.** Les contrats locaux de simulation, profils, aperçu, confirmation, basculement batterie et stockage versionné sont testés. Le sélecteur de simulation, le bandeau permanent et les écrans de profils restent à intégrer dans l’application.
+**État vérifié.** Les contrats locaux de simulation, profils, aperçu, confirmation, basculement batterie et stockage versionné sont testés. Le gestionnaire visible des profils et leur diff avant brouillon sont câblés dans le candidat 0.38 ; le sélecteur de simulation et son bandeau permanent restent à intégrer.
 
 ### Lot 2 — Controller Lab
 
@@ -622,7 +624,7 @@ Objectif : valider les données d’entrée avant d’afficher des mesures avanc
 
 **Dépendance de sortie.** Aucun réglage n’est marqué supporté sans rapport réel décodé et capacité négociée.
 
-**État vérifié.** Le moteur d’analyse local et l’historique de calibration sont testés avec des échantillons synthétiques. L’adapter WebHID, l’affichage et les tests avec matériel réel restent à faire ; aucun test matériel n’est déclaré.
+**État vérifié.** Le moteur d’analyse local et l’adaptateur WebHID alimentent le Controller Lab visible dans le candidat 0.38. Les instantanés sont éphémères, comparatifs et non appliqués ; la validation des entrées 0.38 avec matériel réel reste à faire.
 
 ### Lot 3 — Cockpit et carte de connexions
 
@@ -634,11 +636,11 @@ Objectif : rendre l’état opérationnel lisible en direct.
 - distinction mesure réelle, indisponible et simulée ;
 - tampon mémoire borné.
 
-**État vérifié.** Le benchmark local, son score explicable et la détection bornée des anomalies sont implémentés et testés. Les mesures réelles et l'affichage restent à intégrer.
+**État vérifié.** Le benchmark local, son score explicable et la détection bornée des anomalies sont implémentés et testés. Le résumé système 0.38 affiche les états essentiels, mais les mesures réelles avancées et le cockpit graphique complet restent à intégrer.
 
 **Sortie.** Pas de flux externe, pas de rétention permanente par défaut, pas de métrique inventée.
 
-**État vérifié.** Le modèle local de métriques bornées, statuts de capacité, historique mémoire limité et carte ordinateur → Pico 2 W → manette est en place et testé. Le cockpit visuel, les sources WebHID/radio réelles et les graphiques restent à intégrer.
+**État vérifié.** Le modèle local de métriques bornées, statuts de capacité, historique mémoire limité et chemin ordinateur → Pico 2 W → manette est en place et testé. Le candidat 0.38 rend ce chemin et les états principaux visibles ; les métriques radio avancées et les graphiques restent à intégrer.
 
 ### Lot 4 — Diagnostics guidés
 
@@ -650,7 +652,7 @@ Objectif : transformer les états du cockpit en parcours de résolution.
 - actions de récupération confirmées ;
 - rapport local anonymisé.
 
-**État vérifié.** Le plan d'étapes, les quatre états, la séparation preuve/cause/solution et l'export anonymisé sont implémentés et testés. Le parcours visuel et l'exécution des commandes sur matériel restent à faire.
+**État vérifié.** Le candidat 0.38 expose un panneau de diagnostics visible et exécute les commandes partielles du pont. L’assistant guidé complet, le rapport anonymisé visible et la validation de ces commandes sur matériel restent à faire.
 
 ### Lot 5 — Studio haptique et gâchettes avancées
 
@@ -736,69 +738,43 @@ Ces demandes complètent les lots précédents. Elles restent soumises au même 
 
 Le mode urgence doit rester disponible depuis Overview et Diagnostics, mais il ne doit jamais contourner le mode verrouillage, la confirmation ou la relecture après écriture.
 
-## 9. Liste de suivi vérifiée — 2026-08-12
+## 9. État d’implémentation
 
-Cette liste sépare les éléments réellement contrôlés dans le dépôt des intégrations encore nécessaires. Les cases cochées ne signifient pas qu’un matériel réel a été testé.
+### 9.1 Snapshot historique — 2026-08-12, supersédé
 
-### Terminé dans le socle local
+La liste de suivi qui figurait ici décrivait plusieurs moteurs locaux et tranches intermédiaires (`0.6.0`, `1.1.0`, `1.5.0`) avant leur intégration à l’interface actuelle. Elle est conservée par l’historique Git, mais ne doit plus être utilisée pour déterminer les capacités livrées. Les objectifs des sections 1 à 8 restent une roadmap, pas un état matériel acquis.
 
-- [x] Contrat de trois profils intégrés : Compétitif, Basique, Économie.
-- [x] Profil Compétitif protégé contre le basculement automatique sur batterie faible.
-- [x] Basculement Basique → Économie uniquement sous 10 %, avec confirmation d’écriture conservée.
-- [x] Aperçu différentiel, ciblage bridge/manette et refus d’une mauvaise cible.
-- [x] Scénarios de simulation : connexion, erreur, déconnexion, batterie faible, pertes de paquets et configuration invalide.
-- [x] Marqueur permanent de simulation dans les données (`MODE SIMULATION`, `hardwareTested: false`, `not-tested`).
-- [x] Analyse Controller Lab : dérive, zone morte configurée, amplitude, circularité, asymétrie et gâchettes.
-- [x] Historique de calibration borné, comparaison et restauration soumise à confirmation.
-- [x] Stockage local de profils versionné avec détection des entrées corrompues.
-- [x] Modèle local du cockpit et de la carte des connexions avec statuts `supporté`, `partiel`, `indisponible` et `non testé`.
-- [x] Métriques bornées, historique mémoire limité et absence d'identifiants sensibles dans la carte des connexions.
-- [x] Contrat de remappage local des boutons avec diff, cible et confirmation.
-- [x] Recherche Bluetooth DualSense bornee, filtre d'identite/nom, diagnostics structures, journaux RAM et commandes de reconnexion/recuperation confirmation-gated.
-- [x] Rebuild ARM du firmware 1.1.0 et candidat UF2 local avec SHA-256 ; flash manuel et test materiel restent a faire.
-- [x] Mode urgence vers le profil Basique avec aperçu, confirmation et aucune persistance implicite.
-- [x] Matrice locale de compatibilité firmware/manettes avec état `not-tested` par défaut.
-- [x] Plan de diagnostics guidés et rapport local anonymisé sans identifiants sensibles.
-- [x] Garde d'actions local avec lecture seule, verrouillage et confirmations.
-- [x] Enregistrement temporaire de sessions avec rétention bornée et export contrôlé.
-- [x] Benchmark local de latence avec score explicable et gestion des composantes absentes.
-- [x] Détection locale de dérive et de batterie anormale avec statut de preuve.
-- [x] 50 tests logiciels passants et vérification syntaxique de tous les modules applicatifs.
-- [x] Parseur indépendant des rapports USB filaires DualSense et adaptateur WebHID local ; les capacités non implémentées restent signalées.
-- [x] Parseur Bluetooth DualSense `0x31` avec CRC, hôte Bluetooth Classic HID Pico 2 W et relais d’événements USB compilés.
-- [x] Appairage fermé au démarrage, commande locale de fenêtre de cinq minutes et séparation des secteurs flash MiraLink/BTstack.
-- [x] Rebuild ARM du firmware 0.6.0 et test C++ natif du cœur protocole/parseurs validés.
-- [x] Candidat UF2 0.6.0 empaqueté localement avec picotool 2.3.0 et SHA-256 ; flash manuel et test matériel restent à faire.
-- [x] Recherche de liens externes et de références aux anciens projets : aucun résultat dans les nouveaux modules.
+### 9.2 Candidat 0.38 — 2026-08-14
 
-### Tranche firmware 1.5.0 verifiee
+#### Câblé dans l’application et vérifié par les tests logiciels
 
-- [x] Rapport DualSense Bluetooth complet decode avec sequence, boutons, mouvement, tactile et batterie.
-- [x] Etat controleur schema 2 et negotiation locale des capacites apres rapport valide.
-- [x] Sorties typees et bornees pour vibration compatible, barre lumineuse/LEDs joueur et mute micro.
-- [x] File de sortie locale bornee, CRC de sortie et arret neutre automatique des vibrations.
-- [x] Audio streaming et gachettes adaptatives conserves en `indisponible` tant qu'ils ne sont pas implementes et valides.
-- [x] Candidat UF2 1.5.0 reconstruit pour Pico 2 W/RP2350 avec manifeste SHA-256.
+- [x] Nouvelle interface responsive noire et vert lime : grille éditoriale, cartes techniques, navigation clavier et états visibles.
+- [x] Connexion, reconnexion, résumé système et diagnostics accessibles dès le haut de la page.
+- [x] Identification WebHID bornée au pont MiraLink attendu et aux DualSense explicitement reconnues ; aucun `HELLO` envoyé à un HID inconnu.
+- [x] Bouton visible d’ouverture de la fenêtre d’appairage, avec confirmation et commande locale vers le pont.
+- [x] Parcours de configuration branché : lecture obligatoire, brouillon local, diff, confirmation, écriture du brouillon puis commit.
+- [x] Galerie visible des profils Compétitif, Basique et Économie, plus création, import et export de profils locaux ; l’application d’un profil prépare un brouillon sans écriture implicite.
+- [x] Sauvegarde JSON locale et import vers un brouillon contrôlable.
+- [x] Controller Lab branché aux échantillons reçus pour l’analyse et le test des entrées.
+- [x] Instantanés et comparaisons d’analyse locaux ; aucune calibration n’est appliquée à la manette ou au firmware.
+- [x] Diagnostics partiels du pont pour USB, flash, radio, connexion et disponibilité des entrées ; les états absents restent `non testé` ou `indisponible`.
+- [x] Lecture de la version installée lorsque le firmware répond.
+- [x] Inspecteur UF2 local limité à la structure et au SHA-256 ; aucune validation d’identité, de cible ou d’authenticité et aucun flash automatique.
+- [x] `dist/` régénéré après les dernières corrections, puis validé par les tests navigateur desktop/mobile, le contrôle d’accessibilité automatisé et la vérification du fonctionnement hors ligne ; cet artefact généré reste ignoré par Git.
+- [x] Firmware Pico 2 W 0.38 construit avec une séquence Bluetooth DualSense bornée, validation stricte des rapports et file d’envoi sérialisée.
+- [x] Tests C++ natifs exécutables sous Windows avec les DLL LLVM copiées à côté du binaire de test.
 
-### Prochaines tâches, dans l’ordre
+#### Limites et prochaines validations
 
-- [ ] Brancher les moteurs simulation/profils au parcours visible de l’application.
-- [ ] Ajouter le sélecteur de scénario, le bandeau `MODE SIMULATION` et les états accessibles dans l’interface.
-- [ ] Ajouter la galerie des trois profils, l’aperçu des changements, la confirmation et le résultat d’application.
-- [ ] Connecter la batterie réelle lorsqu’une capacité fiable est négociée ; sinon afficher `indisponible` ou `non testé`.
-- [ ] Ajouter la règle d’automatisation locale Basique → Économie avec préférence désactivable et journal lisible.
-- [ ] Brancher Controller Lab aux rapports réels des manettes, sans transformer les échantillons synthétiques en test matériel.
-- [ ] Brancher l’événement d’échantillon DualSense au parcours visible du Controller Lab, sans modifier le statut matériel.
-- [ ] Brancher le bouton visible de fenêtre d’appairage à l’événement `miralink:open-pairing-window`, avec confirmation déjà imposée par le cœur applicatif.
-- [ ] Construire la carte ordinateur → Pico 2 W → manette avec transport, reconnexion et erreurs.
-- [ ] Construire le cockpit local avec métriques sourcées, statuts de capacité et graphiques bornés.
-- [ ] Construire l'interface de l'assistant de diagnostic guidé et ses rapports locaux anonymisés.
-- [ ] Ajouter studio haptique, gâchettes avancées, centre firmware sécurisé, historique visuel, maintenance et automatisations restantes.
-- [ ] Après stabilisation des autres conversations : reconstruire `dist/`, effectuer le test navigateur/accessibilité, mettre à jour la version puis préparer un commit local.
+- [ ] Flasher manuellement l’UF2 0.38 sur un Pico 2 W puis confirmer le démarrage, l’appairage et la reconnexion avec une DualSense réelle.
+- [ ] Confirmer sous Windows qu’une seule manette logique est exposée et que boutons, sticks et gâchettes produisent des entrées après le bootstrap Bluetooth 0.38.
+- [ ] Valider séparément les sorties haptiques, lumineuses et audio ; elles restent non testées ou indisponibles selon le chemin.
+- [ ] Valider séparément DualSense Edge, DualShock 4 et PlayStation VR2 Sense avant de leur attribuer un état supporté.
+- [ ] Concevoir une vraie calibration persistante avec cible stable, aperçu et restauration ; les instantanés 0.38 sont uniquement analytiques.
+- [ ] Ajouter une vérification signée de provenance et de compatibilité UF2 avant de parler d’authenticité.
+- [ ] Étendre et relire le catalogue de langues ; l’interface 0.38 est française.
+- [ ] Poursuivre le cockpit de métriques sourcées, les diagnostics guidés complets, le studio haptique, les gâchettes avancées et les automatisations sans présenter ces objectifs comme livrés.
 
-### Limites de cette vérification
+#### Preuve matérielle disponible
 
-- Aucun Pico 2 W ni aucune manette réelle n'était connecté ; aucun résultat matériel n'est revendiqué.
-- Le build de `dist/` n'a pas été lancé pour ne pas écraser le travail visuel parallèle.
-- Les fichiers visuels `app/index.html`, `app/styles.css`, `app/icon.svg` et `app/dist` sont volontairement laissés à l'autre conversation qui travaille sur le visuel.
-- Aucun test matériel n'a été effectué et aucun push n'est autorisé par ce lot.
+Le test physique de la 0.37 a confirmé l’énumération d’une seule manette logique après nettoyage des périphériques, mais aucune entrée exploitable. Cette observation motive le bootstrap Bluetooth du candidat 0.38 ; elle ne valide pas son comportement. Aucun résultat matériel 0.38 n’est revendiqué avant le nouveau flash et le test manuel.
