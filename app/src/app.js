@@ -49,7 +49,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.40', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
+  version: { version: '0.41', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
 };
 
 const CONTROLLER_POLL_INTERVAL_MS = 100;

@@ -62,6 +62,7 @@ bool g_hci_working = false;
 bool g_pairing_requested = false;
 bool g_inquiry_active = false;
 bool g_connection_pending = false;
+bool g_page_scan_rearm_pending = false;
 std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
 std::size_t g_paired_address_count = 0;
 struct ActiveControllerAttempt {
@@ -117,6 +118,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
 std::uint64_t now_ms();
 void try_send_output();
 void service_feature_bootstrap();
+void service_page_scan_rearm();
 void set_connection_closed();
 
 void record_connection_attempt(const bool reconnect) {
@@ -676,12 +678,27 @@ void set_connection_closed() {
     critical_section_exit(&g_state_lock);
     clear_candidate();
     g_connection_failure_recorded = false;
-    if (!g_hci_working) return;
+    g_page_scan_rearm_pending = g_hci_working;
+}
 
-    // A completed ACL connection disables page scanning on the controller.
-    // Re-arm it after every close so a remembered DualSense can page the Pico
-    // again when its PS button is pressed. Discovery remains limited to an
-    // explicit pairing window.
+void service_page_scan_rearm() {
+    if (!g_page_scan_rearm_pending) return;
+    const bool hid_link_active = g_hid_cid != 0 || g_connection_pending;
+    if (!reconnect::should_rearm_page_scan(g_hci_working, g_idle_suspended, hid_link_active)) {
+        if (hid_link_active || !g_hci_working || g_idle_suspended) {
+            g_page_scan_rearm_pending = false;
+        }
+        return;
+    }
+
+    g_page_scan_rearm_pending = false;
+    // BTstack's cached connectable flag can remain true after the controller
+    // disables page scan when an ACL link closes. Reapply the scan parameters
+    // and force a 0 -> 1 transition outside the HID callback so the controller
+    // receives a fresh page-scan enable command for passive PS reconnect.
+    gap_set_page_scan_activity(kPageScanInterval, kPageScanWindow);
+    gap_set_page_scan_type(PAGE_SCAN_MODE_INTERLACED);
+    gap_connectable_control(0);
     gap_connectable_control(1);
     if (current_radio_action() == reconnect::RadioAction::ExplicitPairingInquiry) {
         gap_discoverable_control(1);
@@ -810,6 +827,10 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 gap_set_page_scan_activity(kPageScanInterval, kPageScanWindow);
                 gap_set_page_scan_type(PAGE_SCAN_MODE_INTERLACED);
                 gap_connectable_control(1);
+                // Reapply the controller scan state from the foreground poll
+                // as well; this covers a BTstack reset where its cached
+                // connectable flag survives the radio transition.
+                g_page_scan_rearm_pending = true;
                 gap_discoverable_control(0);
                 gap_set_local_name("MiraLink Pico 2 W");
                 gap_set_class_of_device(0x2508);
@@ -845,6 +866,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 reset_feature_bootstrap();
                 g_protocol_handshake_pending = false;
                 discard_unvalidated_controller_attempt();
+                g_page_scan_rearm_pending = false;
                 clear_output_queue();
                 clear_candidate();
                 critical_section_enter_blocking(&g_state_lock);
@@ -1269,6 +1291,7 @@ bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t len
 void poll() {
     if (!g_initialized) return;
     service_ignored_hid_disconnect();
+    service_page_scan_rearm();
     service_feature_bootstrap();
     const auto inactive_minutes = configured_inactive_minutes();
     if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.41 - 2026-08-14
+
+- Recorded the manual `0.40` result: after a Pico restart, WebHID recovered
+  the bridge and diagnostics reported USB and radio `PASS`, but the known
+  DualSense remained offline without a new pairing window. Remembered passive
+  reconnect therefore remains unproven and failed in the tested power-cycle
+  and controller power-off paths.
+- Identified a likely page-scan rearm hole in BTstack: its cached `connectable`
+  flag can remain true after the controller disables page scan, making a later
+  `gap_connectable_control(1)` call a no-op.
+- Deferred passive page-scan rearming to the foreground poll, reapplied the
+  configured page-scan parameters and forced a `0` to `1` connectable transition
+  after HCI startup and HID link close.
+- Added pure policy coverage for rearming only when HCI is working, the bridge
+  is not idle-suspended and no HID link is active.
+- Kept the binary protocol at version `1`, the desktop-only scope and the
+  manual-flash boundary. Firmware `0.41` remains a hardware-test candidate.
+
 ## 0.40 - 2026-08-14
 
 - Recorded the physical `0.39` result: initial pairing, a live quick-test

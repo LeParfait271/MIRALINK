@@ -7,10 +7,10 @@ l’utilisateur.
 ## Avant chaque prompt de travail
 
 1. Relire entièrement `MIRALINK_GARDE_FOU.md`.
-2. Vérifier que le dépôt actif est exactement `C:\Users\MC\MIRALINK`. Les
-   anciennes mentions de `C:\MIRALINK\MIRALINK` sont historiques ; le dossier
-   OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` reste hors
-   périmètre.
+2. Vérifier que le dépôt actif est exactement `C:\MIRALINK\MIRALINK` sur la
+   branche `main`. Le dossier OneDrive
+   `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est un contexte
+   séparé et reste hors périmètre du firmware.
 3. Inspecter l’état Git et repérer les modifications d’une autre conversation.
 4. Définir le périmètre du prompt avant toute écriture.
 5. Préserver les fichiers visuels travaillés dans une autre conversation.
@@ -75,13 +75,13 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.40`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.40.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.40`.
-La source CMake peut employer `0.40.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.40`.
+La version publique actuelle du site est `0.41`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.41.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.41`.
+La source CMake peut employer `0.41.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.41`.
 
-La release `0.40` conserve l'ouverture automatique pendant cinq minutes de la
+La release `0.41` conserve l'ouverture automatique pendant cinq minutes de la
 fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore
 aucune manette. Le premier appairage peut donc se faire après flash en mettant
 la DualSense en mode association, sans connecter le Pico au site. Une manette
@@ -93,7 +93,7 @@ ouverte par l'utilisateur. Le page scan est appliqué seulement après
 `HCI_STATE_WORKING`, la connectabilité est réarmée après fermeture et la
 fenêtre d'appairage se ferme au premier `0x31` complet avec CRC valide.
 
-La release `0.40` expose une persona USB DualSense-family expérimentale sous le
+La release `0.41` expose une persona USB DualSense-family expérimentale sous le
 VID Sony `0x054c`, avec PID standard/Auto `0x0ce6` ou Edge `0x0df2`. Cette
 compatibilité explicitement autorisée est une implémentation clean-room et ne
 constitue ni un firmware Sony, ni une approbation, ni une affiliation. Une
@@ -145,7 +145,7 @@ politique de reconnexion comme décrit ci-dessus, mais cette correction n'est
 pas une preuve matérielle avant flash et cycles réels extinction/rallumage,
 redémarrage Pico et pertes brutales de liaison.
 
-L'application `0.40` regroupe connexion WebHID, état suivant, diagnostics,
+L'application `0.41` regroupe connexion WebHID, état suivant, diagnostics,
 profils locaux, inspection UF2 et reprise hors ligne dans une interface
 high-tech originale en page continue. La barre de sections est une navigation
 d'ancrage réelle : chaque action doit faire défiler vers sa zone visible et
@@ -155,13 +155,24 @@ le parcours desktop, les sept destinations, le clavier, l'accessibilité, un
 bridge WebHID simulé et un rechargement hors ligne à froid. Ces contrôles sont
 une preuve logicielle, jamais un test du Pico réel.
 
-Toutes les transactions WebHID `0.40` passent par une FIFO annulable par
+Toutes les transactions WebHID `0.41` passent par une FIFO annulable par
 périphérique. Une déconnexion annule les opérations obsolètes ; la récupération
 contrôlée referme/réouvre le périphérique puis exige un nouveau `HELLO` strict.
 Un échec de lecture `0x71` peut relire la réponse au plus de façon bornée, sans
 renvoyer la commande. Pour `RECONNECT_USB`, l'application attend la disparition
 USB réelle même si la lecture de l'ACK a échoué ; en l'absence de disparition,
 elle reprend le polling et affiche l'erreur sans réémission.
+
+Le test matériel de la `0.40` a confirmé, après redémarrage du Pico, que le
+bridge pouvait être reconnecté manuellement par WebHID (`USB PASS`) et que la
+radio était prête (`Radio PASS`), mais l'écran signalait `DualSense connue ·
+non connectée` sans nouvelle fenêtre d'appairage. La reconnexion passive échoue
+donc encore après extinction de la manette et après redémarrage du Pico.
+L'inspection de BTstack montre que `gap_connectable_control(1)` peut être un
+no-op lorsque son indicateur logiciel est déjà vrai alors que le contrôleur a
+désactivé le page scan. Le lot `0.41` reporte le réarmement hors callback,
+réapplique les paramètres de page scan et force une transition `0 → 1` ; cette
+correction doit rester non validée jusqu'au prochain flash manuel.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.

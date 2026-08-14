@@ -18,7 +18,7 @@ The application is a local static web application with no runtime dependency on 
 - firmware file inspection;
 - local logs and redaction.
 
-The `0.40` interface presents those functions as one original high-tech,
+The `0.41` interface presents those functions as one original high-tech,
 continuous-page desktop control deck. A compact quick-access bar contains real
 anchors, scrolls to each visible section and tracks the active section; it does
 not hide content as tabs. Device state and the next safe action remain visible
@@ -93,12 +93,12 @@ The `0.38` hardware run confirmed one bridge-owned controller and
 buttons/sticks in `joy.cpl`. The `0.39` run confirmed initial pairing, a live
 quick-test sample, Controller Lab, diagnostics and configuration read, but
 disproved remembered reconnect after controller power-off: re-pairing was required. Candidate
-`0.40` removes automatic remembered-key `hid_host_connect`, applies page scan
-only after `HCI_STATE_WORKING`, rearms connectability after close and ends
-pairing after the first valid enhanced input. The build still serializes the
-relevant BTstack output calls with the polling execution path. The new
-reconnect behavior, motion, touch and output rendering remain unvalidated on
-`0.40` hardware.
+`0.41` keeps the passive remembered-key policy, applies page scan only after
+`HCI_STATE_WORKING`, and defers a forced page-scan rearm after close. The build
+still serializes the relevant BTstack output calls with the polling execution
+path. The manual `0.40` run confirmed WebHID bridge recovery and radio
+readiness after a Pico restart, but the known DualSense remained offline; the
+`0.41` rearm correction remains unvalidated on hardware.
 
 During an active pairing window the Pico performs a bounded Bluetooth inquiry and
 filters Sony DualSense identities before attempting a Classic HID connection.

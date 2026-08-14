@@ -19,25 +19,25 @@ The global result is the weighted mean. Version bumps, documentation and image
 size do not increase functional scores. A later hardware validation may raise
 the proven score without changing raw coverage.
 
-## Current comparison — MiraLink 0.40
+## Current comparison — MiraLink 0.41
 
-| Capability | Weight | DS5Dongle | MiraLink 0.39 observed | MiraLink 0.40 candidate | New evidence |
+| Capability | Weight | DS5Dongle | MiraLink 0.40 observed | MiraLink 0.41 candidate | New evidence |
 | --- | ---: | ---: | ---: | ---: | --- |
-| USB persona / host compatibility | 20% | 100% | 72% | 72% | The 0.38 run showed exactly one Pico-owned Windows controller entry and a working bridge; 0.40 does not alter the descriptor and adds no new hardware proof |
-| Bluetooth pairing / reconnect | 20% | 100% | 55% | 55% | Initial pairing and a live bridge input sample worked on 0.39, but reconnect after controller power-off failed; 0.40 frees the single HID-host slot for passive incoming reconnect, software-tested only |
+| USB persona / host compatibility | 20% | 100% | 72% | 72% | The 0.40 run recovered the bridge after Pico restart with USB `PASS`; no descriptor change or new host proof |
+| Bluetooth pairing / reconnect | 20% | 100% | 55% | 55% | 0.40 hardware showed radio `PASS` but a known DualSense remained offline after restart; 0.41 forces deferred page-scan rearm, software-tested only |
 | Input / motion / touch | 15% | 100% | 77% | 77% | Buttons/sticks worked in `joy.cpl` on 0.38 and Controller Lab received live input on 0.39; motion and touch remain unexercised |
 | Rumble / LEDs / triggers / mute | 15% | 100% | 48% | 48% | Output normalization remains tested in software; no physical effect is validated |
 | USB audio / HD haptics / microphone | 15% | 100% | 5% | 5% | Diagnostics saw an audio link without a stream; the USB Audio class remains disabled |
 | Wake / recovery | 7.5% | 100% | 45% | 45% | Deadline and radio-failure paths are build/static evidence only; suspend/wake and brutal-link-loss recovery remain physically untested |
-| Configuration / diagnostics | 7.5% | 100% | 82% | 82% | A material commit worked on 0.38; diagnostics and configuration read worked on 0.39. Version 0.40 adds retained responses, cancellable FIFO, receive-only retries and verified USB disappearance without new hardware proof |
-| **Weighted proven score** | **100%** | **100%** | **54.4%** | **54.4%** | **0.40 targets the observed reconnect and WebHID lifecycle in software but receives no score increase before a hardware retest** |
+| Configuration / diagnostics | 7.5% | 100% | 82% | 82% | Diagnostics completed after 0.40 restart; 0.41 changes only Bluetooth scan rearm and adds no new hardware proof |
+| **Weighted proven score** | **100%** | **100%** | **54.4%** | **54.4%** | **0.40 failed the passive reconnect gate; 0.41 receives no score increase before a new hardware retest** |
 
-MiraLink 0.40 keeps `76%` raw source coverage. The weighted total is computed
+MiraLink 0.41 keeps `76%` raw source coverage. The weighted total is computed
 directly from the visible weights and equals `54.425%`, displayed as `54.4%`.
-The 0.39 hardware run confirms the initial Bluetooth/input path but explicitly
-fails remembered reconnect after controller power-off. It does not validate
-motion, touch, controller outputs, wake or audio, and the 0.40 reconnect and
-WebHID recovery changes remain discounted until the next manual flash/test.
+The 0.40 hardware run confirms bridge recovery and radio readiness but explicitly
+fails remembered reconnect after controller power-off and Pico restart. It does
+not validate motion, touch, controller outputs, wake or audio, and the 0.41
+page-scan rearm correction remains discounted until the next manual flash/test.
 
 MiraLink's strongest work beyond the baseline remains its typed CRC-framed
 management protocol, diagnostics/logs, local profiles/backups and UF2
@@ -54,9 +54,10 @@ microphone support.
 | MiraLink 0.38 UF2 | 1,414,144 | 92.7% |
 | MiraLink 0.39 UF2 | 1,415,168 | 92.8% |
 | MiraLink 0.40 UF2 | 1,414,656 | 92.7% |
+| MiraLink 0.41 UF2 | 1,415,168 | 92.8% |
 
-MiraLink 0.40 is 110,592 bytes (`7.2508%`) smaller than the reference. Size alone
-says nothing about compatibility, stability, latency or quality and is
+MiraLink 0.41 size is recorded from the frozen release build. Size alone says
+nothing about compatibility, stability, latency or quality and is
 excluded from the functional score.
 
 For every later firmware modification, preserve the weights and publish the

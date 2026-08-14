@@ -14,7 +14,7 @@ reconnect from the remembered key and had to be paired again. No Bluetooth
 packet capture was made, and motion, touch, outputs, wake and audio were not
 exercised.
 
-Firmware 0.40 keeps the one-root experimental DualSense-family USB persona and
+Firmware 0.41 keeps the one-root experimental DualSense-family USB persona and
 the bounded asynchronous Feature bootstrap introduced in 0.38 (`0x05` → `0x09` → `0x20`)
 after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
 only as link liveness. Only a complete, strictly validated enhanced `0x31`
@@ -38,16 +38,19 @@ inquiry/connection path for DualSense input, bounded diagnostics, local RAM
 logs, USB reconnection, confirmation-token recovery, native-size DualSense
 input/output bridging and opt-in USB remote wake. The UAC2 audio source
 remains in the firmware tree but is disabled from the active USB descriptor
-until a physical Pico 2 W validation is complete. Version `0.40` retains the
+until a physical Pico 2 W validation is complete. Version `0.41` retains the
 `0.39` rule that prevents configuration commits from implicitly disconnecting
 USB, reports a separate
 re-enumeration requirement in the commit acknowledgement, and lets pairing
 discovery accept supported standard and Edge controllers independently of the
 selected USB persona. Response Feature report `0x71` remains readable until
 the next MiraLink command report produces a success or error response, enabling bounded receive retries without
-resending a command. These reconnect and transport changes are compiled
-software candidates; their build does not replace a new physical Pico 2 W /
-controller test.
+resending a command. The manual `0.40` run confirmed the bridge and radio
+transport after a Pico restart but showed the known controller still offline.
+Source inspection found that BTstack's cached connectable flag can suppress the
+page-scan rearm after a link close. The `0.41` candidate defers that rearm to
+the foreground poll and forces a fresh page-scan enable transition. This
+remains a software candidate until a new physical Pico 2 W / controller test.
 
 ## Core and hardware builds
 

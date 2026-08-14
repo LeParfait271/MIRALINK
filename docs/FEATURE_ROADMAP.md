@@ -6,8 +6,8 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local-first, sans télémétrie, cloud ni synchronisation ; source et artefacts publiables, opérations matérielles locales
-- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.40
-- Version produit actuelle : 0.40 candidate
+- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.41
+- Version produit actuelle : 0.41 candidate
 - Étude initiale : 2026-08-12
 - Dernier alignement : 2026-08-14
 
@@ -852,3 +852,35 @@ restent des objectifs, pas des capacités livrées.
 
 Le score reste volontairement inchangé avant ces essais : couverture source
 brute `76 %`, score pondéré prouvé `54,4 %`, DS5Dongle fixé à `100 %`.
+
+### 9.5 Candidat 0.41 — 2026-08-14
+
+#### Résultat matériel 0.40 et cause ciblée
+
+- [x] Après redémarrage du Pico, le bridge a été reconnecté manuellement par
+  WebHID ; les diagnostics ont affiché USB `PASS`, radio `PASS`, flash `PASS`
+  et `DualSense connue · non connectée`.
+- [x] La reconnexion passive a donc échoué après extinction de la manette et
+  après redémarrage du Pico, sans nouvelle fenêtre d’appairage dans le second
+  cas.
+- [x] L'inspection du BTstack local a établi une cause probable : son indicateur
+  logiciel `connectable` peut rester vrai alors que le contrôleur a désactivé le
+  page scan, rendant `gap_connectable_control(1)` inopérant.
+
+#### Correction candidate
+
+- [x] Le lot `0.41` reporte le réarmement au polling foreground, réapplique les
+  paramètres de page scan et force une transition connectable `0 → 1`.
+- [x] La politique passive, le protocole binaire `1`, le desktop-only, le flash
+  manuel et le score DS5Dongle `54,4 %` sont conservés.
+
+#### Validation matérielle requise
+
+- [ ] Flasher manuellement `0.41`, confirmer une seule manette Windows et
+  réaliser au moins 20 cycles PS sans mode appairage ni réappairage.
+- [ ] Refaire le même contrôle après redémarrage du Pico, puis vérifier les
+  pertes brutales de liaison et le retour à l'état neutre.
+- [ ] Maintenir Controller Lab/WebHID pendant 30 à 60 minutes sans ouvrir de
+  nouvelle fenêtre d'appairage, puis consigner les statuts et compteurs.
+- [ ] Ne pas augmenter le score avant une preuve matérielle nouvelle et
+  reproductible.

@@ -33,6 +33,11 @@ constexpr bool accepts_incoming_controller(const bool pairing_window_active,
     return pairing_window_active || address_is_remembered;
 }
 
+constexpr bool should_rearm_page_scan(const bool hci_working,
+    const bool idle_suspended, const bool hid_link_active) {
+    return hci_working && !idle_suspended && !hid_link_active;
+}
+
 constexpr bool completes_pairing_window(const bool pairing_window_active,
     const bool first_valid_enhanced_input) {
     return pairing_window_active && first_valid_enhanced_input;
