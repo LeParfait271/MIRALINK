@@ -1,7 +1,7 @@
 # MiraLink — Spécification produit
 
 - Cible actuelle : Raspberry Pi Pico 2 W
-- État décrit : candidat 0.41, après échec matériel de la reconnexion 0.40 et avant validation du correctif
+- État décrit : candidat 0.42, après échec matériel de la reconnexion 0.40 et avant validation des corrections Bluetooth
 - Date d’alignement : 2026-08-14
 
 ## 1. Vision
@@ -23,13 +23,13 @@ La cible normative et l’état effectivement livré ne doivent jamais être con
 - proposer une inspection et une récupération de firmware sans flash automatique ;
 - prendre en charge chaque famille de manette via un adaptateur indépendant et validé.
 
-Le Pico 2 W reste la seule carte ciblée. DualSense, DualSense Edge, DualShock 4 et PlayStation VR2 Sense sont des cibles produit, mais leur présence dans cette liste ne constitue pas une preuve de compatibilité 0.41.
+Le Pico 2 W reste la seule carte ciblée. DualSense, DualSense Edge, DualShock 4 et PlayStation VR2 Sense sont des cibles produit, mais leur présence dans cette liste ne constitue pas une preuve de compatibilité 0.42.
 
-## 3. Capacités livrées dans le candidat 0.41
+## 3. Capacités livrées dans le candidat 0.42
 
 ### 3.1 Interface
 
-Le candidat 0.41 fournit une application web de bureau en page continue. La connexion et le résumé des diagnostics restent visibles en haut de l’espace de travail ; configuration, manettes, diagnostics, firmware, sauvegardes et journaux suivent directement dans le flux. Une barre d’accès rapide contient de vrais liens d’ancrage, fait défiler la page vers la section demandée et indique la section active ; elle ne masque aucun contenu et ne se présente pas comme un faux jeu d’onglets.
+Le candidat 0.42 fournit une application web de bureau en page continue. La connexion et le résumé des diagnostics restent visibles en haut de l’espace de travail ; configuration, manettes, diagnostics, firmware, sauvegardes et journaux suivent directement dans le flux. Une barre d’accès rapide contient de vrais liens d’ancrage, fait défiler la page vers la section demandée et indique la section active ; elle ne masque aucun contenu et ne se présente pas comme un faux jeu d’onglets.
 
 La langue effectivement proposée est le français. L’architecture d’internationalisation existe, mais aucune autre langue ne doit être annoncée comme livrée dans cette version.
 
@@ -43,7 +43,7 @@ La lecture d’état contrôleur utilise un cycle récursif toutes les 100 ms, a
 
 ### 3.3 Configuration du pont
 
-Le parcours 0.41 suit cette séquence :
+Le parcours 0.42 suit cette séquence :
 
 1. lecture de la configuration du Pico 2 W ;
 2. création d’un brouillon local à partir de cette lecture ;
@@ -53,7 +53,7 @@ Le parcours 0.41 suit cette séquence :
 
 Les contrôles d’édition et l’enregistrement restent verrouillés tant qu’une lecture valide n’a pas fourni la base du brouillon. Une sauvegarde importée ou un profil prépare un brouillon ; elle n’écrit jamais seule dans la flash.
 
-Les réglages actifs exposés comprennent le gain haptique, la réduction des gâchettes, le mode d’interrogation, le délai d’inactivité, la LED du Pico, le réveil de l’hôte, la persona USB et le numéro de série USB. Le tampon audio et le raccourci PS restent visibles uniquement pour expliquer et préserver leur valeur persistante : ils sont désactivés dans l’interface 0.41 parce que la classe USB Audio n’est pas exposée et que le firmware ne consomme pas encore le drapeau PS.
+Les réglages actifs exposés comprennent le gain haptique, la réduction des gâchettes, le mode d’interrogation, le délai d’inactivité, la LED du Pico, le réveil de l’hôte, la persona USB et le numéro de série USB. Le tampon audio et le raccourci PS restent visibles uniquement pour expliquer et préserver leur valeur persistante : ils sont désactivés dans l’interface 0.42 parce que la classe USB Audio n’est pas exposée et que le firmware ne consomme pas encore le drapeau PS.
 
 Un commit de configuration ne réénumère jamais implicitement l’USB. Son accusé de réception indique si le PID effectif ou la politique de numéro de série exige une nouvelle énumération. L’application affiche alors une action séparée avec confirmation. L’annulation du brouillon local et la restauration persistante des valeurs d’usine sont deux opérations distinctes.
 
@@ -71,24 +71,24 @@ Le test rapide est un test de lecture des entrées uniquement. Il n’envoie auc
 
 ### 3.6 Diagnostics
 
-Les diagnostics 0.41 sont partiels. Ils peuvent afficher les états que le pont publie pour le transport USB, la configuration flash, la radio Bluetooth, la connexion et la réception d’entrées. L’état audio est affiché seulement si le firmware expose une information exploitable ; l’absence de flux reste `non testé` ou `indisponible`, jamais `PASS` par déduction.
+Les diagnostics 0.42 sont partiels. Ils peuvent afficher les états que le pont publie pour le transport USB, la configuration flash, la radio Bluetooth, la connexion et la réception d’entrées. L’état audio est affiché seulement si le firmware expose une information exploitable ; l’absence de flux reste `non testé` ou `indisponible`, jamais `PASS` par déduction.
 
-La version installée est affichée lorsque le pont répond à la commande d’information. Les résultats ne remplacent pas un test physique complet du firmware 0.41.
+La version installée est affichée lorsque le pont répond à la commande d’information. Les résultats ne remplacent pas un test physique complet du firmware 0.42.
 
 ### 3.7 Inspection UF2
 
 L’inspection d’un fichier UF2 vérifie localement sa structure et calcule son SHA-256 lorsque l’API du navigateur le permet. Elle ne vérifie pas la carte cible, l’identité MiraLink, la provenance, la signature ni l’authenticité du fichier. Aucun flash n’est déclenché par l’application.
 
-## 4. Limites explicites du candidat 0.41
+## 4. Limites explicites du candidat 0.42
 
 - Le test matériel 0.38 a validé les boutons/sticks dans `joy.cpl` et un commit de configuration. Le test 0.39 a validé l’appairage initial, un échantillon au test rapide, le Controller Lab, les diagnostics et la lecture de configuration, mais la manette ne s’est pas reconnectée après extinction sans nouvel appairage.
-- Le test 0.40 a montré que la reconnexion passive échouait après extinction de la manette et après redémarrage du Pico. La correction candidate 0.41 est vérifiée par le code, les tests purs et le cross-build seulement ; elle doit être confirmée après flash manuel par des cycles extinction/rallumage, redémarrage du Pico et pertes brutales de liaison.
+- Le test 0.40 a montré que la reconnexion passive échouait après extinction de la manette et après redémarrage du Pico. Les corrections candidates 0.41 et 0.42 sont vérifiées par le code et le cross-build seulement ; elles doivent être confirmées après flash manuel par des cycles extinction/rallumage, redémarrage du Pico, reprise après veille locale et pertes brutales de liaison.
 - Le mouvement et le tactile sont transportés par le rapport enrichi mais n’ont pas été exercés pendant le test 0.39.
 - L’audio, les haptiques, les gâchettes adaptatives et les effets lumineux ne sont pas déclarés validés matériellement.
 - Les instantanés du Controller Lab ne modifient aucune calibration matérielle.
 - L’inspecteur UF2 ne fournit aucune garantie cryptographique d’origine ou de compatibilité.
 - Les métriques absentes du protocole restent indisponibles ; MiraLink n’invente ni batterie, ni température, ni latence radio.
-- Le français est la seule langue livrée dans l’interface 0.41.
+- Le français est la seule langue livrée dans l’interface 0.42.
 
 ## 5. Modèle de sécurité
 
@@ -111,9 +111,9 @@ MiraLink reste local-first et sans télémétrie :
 
 Les exports sont déclenchés par l’utilisateur. Les identifiants sensibles doivent être minimisés et masqués par défaut.
 
-## 7. Langage visuel 0.41
+## 7. Langage visuel 0.42
 
-Le candidat 0.41 conserve le poste de contrôle high-tech original introduit en 0.39 :
+Le candidat 0.42 conserve le poste de contrôle high-tech original introduit en 0.39 :
 
 - fond charbon et surfaces graphite avec contraste confortable ;
 - ivoire doux, sauge froide, bleu-gris et ambre d’état en accents parcimonieux ;

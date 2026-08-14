@@ -38,6 +38,11 @@ constexpr bool should_rearm_page_scan(const bool hci_working,
     return hci_working && !idle_suspended && !hid_link_active;
 }
 
+constexpr bool should_rearm_after_idle_resume(const bool hci_working,
+    const bool resume_from_idle) {
+    return hci_working && resume_from_idle;
+}
+
 constexpr bool completes_pairing_window(const bool pairing_window_active,
     const bool first_valid_enhanced_input) {
     return pairing_window_active && first_valid_enhanced_input;

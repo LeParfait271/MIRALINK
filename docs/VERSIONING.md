@@ -7,10 +7,10 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41
+0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41 → 0.42
 ```
 
-The current sequence continues through public version `0.41`.
+The current sequence continues through public version `0.42`.
 
 The public site version must be reflected in:
 
@@ -19,19 +19,19 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.41.0`; this is
-packaging metadata for the public site version `0.41`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.42.0`; this is
+packaging metadata for the public site version `0.42`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest currently use `0.41`. CMake uses
-the technical form `0.41.0` only because it requires three numeric segments;
-the firmware reported by the device remains exactly `0.41`.
+UF2 metadata, release folder and manifest currently use `0.42`. CMake uses
+the technical form `0.42.0` only because it requires three numeric segments;
+the firmware reported by the device remains exactly `0.42`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current site and firmware version is `0.41`. It contains the clean-room,
+The current site and firmware version is `0.42`. It contains the clean-room,
 experimental DualSense-family USB persona with one HID interface, one root
 Gamepad Application collection and nested MiraLink Feature management. A
 manual `0.38` Windows test confirmed one bridge-owned controller and working
@@ -40,9 +40,11 @@ quick-test sample, Controller Lab, diagnostics and configuration read, then
 showed that remembered reconnect failed after controller power-off. The manual
 `0.40` run confirmed the bridge and radio transport after a Pico restart but
 showed the known controller offline without a new pairing window. Version
-`0.41` keeps the passive incoming policy and forces a deferred page-scan rearm
+`0.41` kept the passive incoming policy and forced a deferred page-scan rearm
 when BTstack's cached connectable state would otherwise suppress the HCI write.
-The correction is software-tested but not yet physically retested.
+`0.42` routes the same scan recovery through the foreground poll when a
+configuration commit resumes local idle suspension. Both corrections are
+software-validated but not yet physically retested.
 The binary protocol remains version `1`; a product version does not imply a
 protocol-version increment. Sony VID/PID compatibility does not imply Sony
 firmware, endorsement or affiliation. USB audio remains source-only.

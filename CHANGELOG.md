@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.42 - 2026-08-14
+
+- Kept the passive remembered-controller policy and the 0.41 foreground
+  page-scan rearm after a HID link closes.
+- Fixed the local-idle resume path: a configuration commit no longer calls
+  BTstack directly while TinyUSB dispatches the USB report. It now queues the
+  same bounded page-scan rearm for the foreground Bluetooth poll.
+- Added pure policy assertions for the HCI-working idle-resume transition.
+- Kept the binary protocol at version `1`, the desktop-only scope, the manual
+  flash boundary and the rule that no DS5Dongle score increases without new
+  physical evidence. Firmware `0.42` remains a hardware-test candidate.
+
 ## 0.41 - 2026-08-14
 
 - Recorded the manual `0.40` result: after a Pico restart, WebHID recovered

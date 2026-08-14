@@ -6,8 +6,8 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local-first, sans télémétrie, cloud ni synchronisation ; source et artefacts publiables, opérations matérielles locales
-- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.41
-- Version produit actuelle : 0.41 candidate
+- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.42
+- Version produit actuelle : 0.42 candidate
 - Étude initiale : 2026-08-12
 - Dernier alignement : 2026-08-14
 
@@ -882,5 +882,35 @@ brute `76 %`, score pondéré prouvé `54,4 %`, DS5Dongle fixé à `100 %`.
   pertes brutales de liaison et le retour à l'état neutre.
 - [ ] Maintenir Controller Lab/WebHID pendant 30 à 60 minutes sans ouvrir de
   nouvelle fenêtre d'appairage, puis consigner les statuts et compteurs.
+- [ ] Ne pas augmenter le score avant une preuve matérielle nouvelle et
+  reproductible.
+
+### 9.6 Candidat 0.42 - 2026-08-14
+
+#### Cause ciblée
+
+- [x] Le chemin de reprise après suspension locale pouvait appeler directement
+  `gap_connectable_control(1)` depuis l'application de configuration, alors que
+  BTstack peut conserver son indicateur `connectable` après la perte du page
+  scan.
+- [x] Cette reprise peut être déclenchée pendant le dispatch d'un rapport USB ;
+  elle doit donc rejoindre le même polling foreground que la correction 0.41.
+
+#### Correction candidate
+
+- [x] Le lot `0.42` pose une demande de réarmement après sortie de veille et
+  laisse `service_page_scan_rearm()` réappliquer les paramètres puis la
+  transition connectable `0 -> 1`.
+- [x] Le protocole binaire `1`, le desktop-only, le flash manuel et le score
+  DS5Dongle `54,4 %` sont conservés.
+
+#### Validation matérielle requise
+
+- [ ] Flasher manuellement `0.42`, appairer une fois si nécessaire, puis
+  configurer une suspension locale et la déclencher sans ouvrir le site.
+- [ ] Modifier ensuite le délai d'inactivité pour sortir de veille et vérifier
+  une reconnexion PS sans nouvelle association ni doublon Windows.
+- [ ] Répéter après redémarrage du Pico et conserver les journaux ; aucune
+  réussite logicielle ou de build ne vaut une preuve matérielle.
 - [ ] Ne pas augmenter le score avant une preuve matérielle nouvelle et
   reproductible.

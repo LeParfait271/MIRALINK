@@ -8,8 +8,8 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier actif vérifié : `C:\MIRALINK\MIRALINK`, branche `main`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.41`
-- Version firmware alignée au site : `0.41`
+- Version publique actuelle du site : `0.42`
+- Version firmware alignée au site : `0.42`
 - Date de démarrage : `2026-08-12`
 - Livraison par source GitHub et release firmware manuelle lorsqu'elle est
   explicitement autorisée ; aucun flash n'est automatique.
@@ -36,7 +36,7 @@
 - Thème sombre uniquement.
 - Design original, sobre et futuriste, avec une palette reposante et des accents lumineux parcimonieux ; aucun néon dominant.
 - Inspiration HUD de combat VR uniquement ; aucune copie de ressources protégées.
-- L'interface `0.41` est livrée en français ; l'anglais par défaut et la
+- L'interface `0.42` est livrée en français ; l'anglais par défaut et la
   couverture des langues européennes restent une cible d'architecture future,
   pas une capacité actuellement annoncée.
 - Sauvegardes locales exportables/importables, comparaison avant écriture et restauration.
@@ -61,7 +61,7 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
-Le lot `0.41` vise à atteindre puis dépasser les capacités observables de
+Le lot `0.42` vise à atteindre puis dépasser les capacités observables de
 DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
 expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
 standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
@@ -79,8 +79,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.39` → `0.40` → `0.41`. La version technique du paquet npm utilise `0.41.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.41`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.41.0`, mais le firmware affiché et livré reste `0.41`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.39` → `0.40` → `0.41` → `0.42`. La version technique du paquet npm utilise `0.42.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.42`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.42.0`, mais le firmware affiché et livré reste `0.42`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -199,3 +199,4 @@ automatique.
 - `2026-08-14` — Le test matériel de `0.40` a confirmé la reconnexion WebHID manuelle du bridge après redémarrage (`USB PASS`) et une radio prête (`Radio PASS`), mais a laissé la `DualSense connue` hors ligne sans nouvelle fenêtre d'appairage : la reconnexion passive échoue après extinction et après redémarrage du Pico. L'inspection de BTstack identifie comme cause probable le cache `connectable` qui peut rendre `gap_connectable_control(1)` inopérant après désactivation du page scan ; le candidat `0.41` reporte le réarmement hors callback et force une transition de scan. Cette correction reste non validée matériellement.
 - `2026-08-14` — Le correctif firmware `0.41` a été compilé, inspecté avec picotool et empaqueté avec SHA-256. Comme il est destiné à un test matériel, la release GitHub `v0.41` doit être publiée avec ces artefacts avant de demander le flash manuel ; cette publication ne vaut pas preuve matérielle et n'autorise aucun flash automatique.
 - `2026-08-14` — Le lot `0.41` est la mission corrective ciblée de reconnexion passive ; il conserve le protocole binaire `1`, le desktop-only, le flash manuel et l'interdiction de lancer `miralink-core-tests.exe` sous Windows. Aucun score DS5Dongle ne peut augmenter avant une nouvelle preuve matérielle.
+- `2026-08-14` — Le candidat firmware `0.42` corrige uniquement la reprise Bluetooth après suspension locale : un commit de configuration ne rappelle plus directement BTstack depuis le callback USB et demande un réarmement traité par le polling foreground. Le protocole binaire reste `1`, le flash reste manuel, le desktop-only est conservé et aucune preuve matérielle ni hausse de score DS5Dongle n'est déclarée.

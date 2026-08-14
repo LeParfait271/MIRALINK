@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.41`
-- Current firmware version: `0.41` (targeted passive page-scan rearm correction after the failed 0.40 hardware reconnect; USB audio remains source-only)
+- Current site version: `0.42`
+- Current firmware version: `0.42` (queues Bluetooth scan recovery after local idle resume; USB audio remains source-only)
 - Last update: `2026-08-14`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: GitHub source and manual firmware release
@@ -51,14 +51,15 @@ after a Pico restart: WebHID recovered the bridge, radio transport reported
 `PASS`, but the known DualSense remained offline without opening a new pairing
 window. Source inspection found a likely page-scan rearm hole: BTstack can keep
 its cached `connectable` flag true after the controller disables page scan, so a
-later `gap_connectable_control(1)` call does nothing. Candidate `0.41` defers
-the rearm to the foreground poll and forces a fresh page-scan enable command.
-This correction remains software-validated until a new manual Pico 2 W/DualSense
-run.
+later `gap_connectable_control(1)` call does nothing. Candidate `0.41` deferred
+the rearm to the foreground poll and forced a fresh page-scan enable command.
+Candidate `0.42` applies the same foreground-only rule when a configuration
+commit resumes the radio from local idle suspension. Both corrections remain
+software-validated until a new manual Pico 2 W/DualSense run.
 
 The web application is an original desktop control deck with working WebHID
 discovery, guided diagnostics, local profiles, local UF2 inspection and an
-offline shell. Version `0.41` keeps the quick-access navigation introduced in
+offline shell. Version `0.42` keeps the quick-access navigation introduced in
 `0.39` and hardens WebHID command handling with a cancellable per-device FIFO,
 bounded response-read retries that never resend an ambiguously written
 command, 100 ms controller polling, and explicit USB-disappearance checks for

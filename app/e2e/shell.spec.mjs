@@ -309,7 +309,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await page.locator('#connect-button').click();
 
   await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
-  await expect(page.locator('#installed-version')).toHaveText('0.41');
+  await expect(page.locator('#installed-version')).toHaveText('0.42');
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   const confirmation = page.locator('#confirm-dialog');
@@ -345,7 +345,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#audio-buffer')).toHaveValue('96');
   await expect(page.locator('#ps-shortcut')).toBeDisabled();
   await expect(page.locator('#ps-shortcut')).toBeChecked();
-  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.41');
+  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.42');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';

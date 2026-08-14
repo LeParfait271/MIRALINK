@@ -1171,10 +1171,11 @@ void apply_config(const Config& config) {
     if (resume_from_idle) {
         g_idle_suspended = false;
         note_activity();
-        if (g_hci_working) {
-            gap_connectable_control(1);
-            gap_discoverable_control(0);
-        }
+        // Configuration commits can arrive while TinyUSB is dispatching a
+        // control report. Keep all BTstack controller writes in the
+        // foreground poll, just like the HID-close recovery path.
+        g_page_scan_rearm_pending = reconnect::should_rearm_after_idle_resume(
+            g_hci_working, resume_from_idle);
     }
 }
 
