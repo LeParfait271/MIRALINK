@@ -5,7 +5,8 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 ## 1. Transport
 
 The first transport is a vendor-defined USB HID Feature-report collection
-inside MiraLink's experimental DualSense-family interface. Firmware 0.36 uses
+inside the single root Gamepad Application collection of MiraLink's
+experimental DualSense-family interface. Firmware 0.37 uses
 Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
 not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
@@ -114,8 +115,9 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.36 exposes one HID-only USB
-interface with Gamepad and MiraLink vendor collections. The
+claim that a controller is connected. Firmware 0.37 exposes one HID-only USB
+interface with one root Gamepad Application collection and a nested MiraLink
+vendor collection. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
 descriptor until physical Pico 2 W validation is complete; USB audio counters
 therefore remain inactive in this build. The capture endpoint is not a
@@ -129,7 +131,7 @@ validated DualSense input report has been received.
 
 ### 3.2 Pico controller state payload
 
-`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.36
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.37
 does not declare or emit an asynchronous management Input report under the
 Sony persona; the application polls this command every 40 ms. It still accepts
 the historical 16-byte schema `1`:

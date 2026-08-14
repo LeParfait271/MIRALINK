@@ -6,7 +6,13 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-Firmware 0.36 adds an experimental DualSense-family USB persona to the safe
+Firmware 0.37 corrects the experimental DualSense-family USB persona after the
+0.36 hardware test exposed two controller children in Windows. The single HID
+interface now has one root Gamepad Application collection and nests MiraLink
+Feature management inside it. It also keeps new Bluetooth addresses provisional
+until a complete DualSense input report validates the link and runs CYW43/
+BTstack by explicit main-loop polling instead of a competing background IRQ.
+These fixes retain the safe
 runtime wiring for persisted settings and automatic first-pair Bluetooth:
 speaker/headset volume, bounded speaker gain, trigger-effect reduction,
 optional unique USB serial exposure, conservative local inactivity suspension

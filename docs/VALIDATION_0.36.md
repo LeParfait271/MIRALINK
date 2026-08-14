@@ -56,6 +56,22 @@ motion scaling, rumble, adaptive triggers, configuration-driven PID/serial
 re-enumeration, and suspend/explicit remote wake. USB audio remains disabled
 and is outside this candidate.
 
+## Post-release hardware observation — failed Windows topology
+
+Firmware 0.36 was manually flashed to a Pico 2 W attached to a separate
+Windows PC. Immediately after the Pico restarted, before a DualSense had been
+associated, `joy.cpl` displayed two `DualSense` entries. One reported that the
+controller was not connected correctly; the other remained neutral. Both
+entries disappeared when the Pico was physically unplugged, proving that both
+children came from the 0.36 USB descriptor. The requirement that Windows show
+one controller was therefore not met.
+
+The automatic Bluetooth window remained active for approximately five minutes
+and expired without a validated controller link. This attempt does not validate
+pairing, input, output or reconnection. Firmware 0.37 changes the descriptor to
+one root Gamepad Application collection with nested MiraLink management and
+must be flashed manually before that correction can be considered validated.
+
 ## DS5Dongle baseline
 
 The full scoring method and evidence are recorded in

@@ -1,12 +1,12 @@
 {
   "product": "MiraLink",
-  "version": "0.36",
-  "firmwareVersion": "0.36",
+  "version": "0.37",
+  "firmwareVersion": "0.37",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-14",
-  "delivery": "local-source-only",
+  "delivery": "github-source-and-manual-firmware-release",
   "application": "app/src",
-  "applicationVersion": "0.36",
+  "applicationVersion": "0.37",
   "validatedFirmware": {
     "sourceStatus": "historical-artifact",
     "version": "0.2.0",
@@ -18,7 +18,7 @@
   },
   "sourceBuild": {
     "sourceStatus": "compiled-locally-uf2-packaged",
-    "version": "0.36",
+    "version": "0.37",
     "directory": "firmware/pico/build-audit",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
@@ -26,48 +26,50 @@
     "armToolchain": "15.2.1",
     "opus": "vendored-source; CMake-package-version-unavailable",
     "outputs": ["miralink_pico_firmware.elf", "miralink_pico_firmware.bin", "miralink_pico_firmware.hex", "miralink_pico_firmware.uf2"],
-    "hardwareTest": "not-tested",
-    "automaticFirstPairing": "source-implemented; hardware-not-tested",
-    "usbConfiguration": "single-hid-interface-native-dualsense-and-miralink-feature-collections",
-    "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
-    "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
-    "usbAudio": "source-only; hardware-enumeration-not-tested",
-    "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested"
-  },
-  "releaseArtifact": {
-    "sourceStatus": "local-manual-test-candidate",
-    "version": "0.36",
-    "directory": "firmware/releases/0.36",
-    "uf2": "firmware/releases/0.36/miralink_pico_firmware.uf2",
-    "sha256": "E0BCE0C6D4E0C531E9C334FC54348B143215E1A53BACEB83B20CD48EFB303284",
-    "bytes": 1408000,
-    "board": "pico2_w",
-    "target": "RP2350 ARM Secure",
-    "hardwareTest": "not-tested",
-    "automaticFirstPairing": "source-implemented; hardware-not-tested",
-    "usbConfiguration": "single-hid-interface-native-dualsense-and-miralink-feature-collections",
+    "hardwareTest": "0.36-failed-windows-topology-and-bluetooth; 0.37-not-tested",
+    "automaticFirstPairing": "source-hardened-after-0.36-failure; 0.37-hardware-not-tested",
+    "usbConfiguration": "single-hid-interface-single-gamepad-top-level-with-nested-miralink-feature-collection",
     "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
     "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
     "usbAudio": "source-only; hardware-enumeration-not-tested",
     "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested",
+    "radioExecution": "single-main-loop-poll; build-verified; hardware-not-tested"
+  },
+  "releaseArtifact": {
+    "sourceStatus": "github-release-manual-test-candidate",
+    "version": "0.37",
+    "directory": "firmware/releases/0.37",
+    "uf2": "firmware/releases/0.37/miralink_pico_firmware.uf2",
+    "sha256": "3FC7119F4513B2AE75CA4D57286C6C36F729C63D8C1ADF94DA3F2ABE1E5B9E30",
+    "bytes": 1407488,
+    "board": "pico2_w",
+    "target": "RP2350 ARM Secure",
+    "hardwareTest": "not-tested; correction-derived-from-0.36-hardware-failure",
+    "automaticFirstPairing": "source-hardened-after-0.36-failure; 0.37-hardware-not-tested",
+    "usbConfiguration": "single-hid-interface-single-gamepad-top-level-with-nested-miralink-feature-collection",
+    "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
+    "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
+    "usbAudio": "source-only; hardware-enumeration-not-tested",
+    "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested",
+    "radioExecution": "single-main-loop-poll; build-verified; hardware-not-tested",
     "runtimeConfiguration": "speaker-headset-monitor-volume-speaker-gain-trigger-reduction-idle-suspend-optional-serial-safe-status-gpio; hardware-not-tested",
     "flashAction": "manual-only",
     "artifacts": {
       "bin": {
-        "bytes": 703716,
-        "sha256": "505CA3D82B8AE531E6EA0DA58C23A77043209DA8631E58C33C526A2AFA0FF03C"
+        "bytes": 703412,
+        "sha256": "1FD35D7D4717DC2D59FF118EA4912FB3126F4C24733E4C41753136BFA31D7988"
       },
       "elf": {
-        "bytes": 4459312,
-        "sha256": "5A59C58C822C3B517FF7ABEA428AF9F052AE0638875DE768EAD2D78502005CB6"
+        "bytes": 4454976,
+        "sha256": "3900DF390D451E331F2E024C20D78CFF9653C8D692F66E13E6B5D5AD96949282"
       },
       "hex": {
-        "bytes": 1979437,
-        "sha256": "8D25329F7A0F420B6D2DBBB41395CD433DE8E8A34729CB962A6852EA31003AB3"
+        "bytes": 1978595,
+        "sha256": "F9D944CFEB52E25880F93ECE6E85CFA6D589FB895626EB92BD3CB8AF96881AEC"
       },
       "uf2": {
-        "bytes": 1408000,
-        "sha256": "E0BCE0C6D4E0C531E9C334FC54348B143215E1A53BACEB83B20CD48EFB303284"
+        "bytes": 1407488,
+        "sha256": "3FC7119F4513B2AE75CA4D57286C6C36F729C63D8C1ADF94DA3F2ABE1E5B9E30"
       }
     }
   },

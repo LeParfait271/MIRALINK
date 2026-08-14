@@ -11,6 +11,9 @@ Downloaded from official upstream distributors on 2026-08-12:
 - Ninja `1.13.2`, Windows;
 - Raspberry Pi `picotool 2.3.0`, Windows x64.
 - LLVM-MinGW `20260616`, used only for native build helpers and C++ tests, never in the firmware or application runtime.
+- GitHub CLI `2.97.0`, portable Windows x64, used for authenticated release
+  publication. Its official ZIP SHA-256 is
+  `35D7FE05C4DD1411FFDA1E73DFC7C6F44B75C936CA51FA6595C657FDC0350CEC`.
 - Raspberry Pi Pico examples are kept locally as an ignored API reference for
   the Bluetooth HID host integration; no example source is part of MiraLink's
   runtime or implementation.

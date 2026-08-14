@@ -9,11 +9,11 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.36`
-- Current firmware version: `0.36` (experimental DualSense/Edge USB persona with native-size input/output reports and a separate MiraLink vendor collection in the same HID interface; USB audio remains source-only)
+- Current site version: `0.37`
+- Current firmware version: `0.37` (experimental DualSense/Edge USB persona with native-size input/output reports and a nested MiraLink vendor collection under one Gamepad root; USB audio remains source-only)
 - Last update: `2026-08-14`
 - First hardware target: Raspberry Pi Pico 2 W
-- Delivery mode: local only
+- Delivery mode: GitHub source and manual firmware release
 
 ## Repository layout
 

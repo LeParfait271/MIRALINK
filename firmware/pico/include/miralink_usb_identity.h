@@ -14,9 +14,10 @@ constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::uint8_t kControllerModeStandard = 0;
 constexpr std::uint8_t kControllerModeEdge = 1;
 constexpr std::uint8_t kControllerModeAuto = 2;
-// Both collections intentionally share one HID interface. The Sony VID/PID is
-// matched per interface by hid-playstation, so a second interface would be
-// probed as a second, incomplete controller on Linux.
+// One root Gamepad collection and its nested vendor-management collection
+// intentionally share one HID interface. Windows creates a child per top-level
+// collection, while hid-playstation matches the Sony VID/PID per interface;
+// both operating systems therefore require this single-root topology.
 constexpr std::uint8_t kHidInstance = 0;
 constexpr std::uint8_t kBridgeHidInstance = kHidInstance;
 constexpr std::uint8_t kControlHidInstance = kHidInstance;

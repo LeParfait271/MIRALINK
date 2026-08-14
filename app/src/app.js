@@ -18,12 +18,12 @@ import {
   getHidIdentificationOrder
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=36-dualsense-persona';
+import { applyTranslations, translate } from './i18n.js?ui=37-single-hid-root';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, commitCalibrationRestore, createCalibrationRevision, prepareCalibrationRestore } from './controller-lab.js';
-import './site-effects.js?ui=36-dualsense-persona';
+import './site-effects.js?ui=37-single-hid-root';
 
 const state = {
   devices: new Map(),
@@ -32,7 +32,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.36', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
+  version: { version: '0.37', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -199,7 +199,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=36-dualsense-persona', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=37-single-hid-root', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -717,7 +717,7 @@ function init() {
   const initialHidStatus = webHidStatus();
   if (!initialHidStatus.available) addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=36-dualsense-persona').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=37-single-hid-root').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

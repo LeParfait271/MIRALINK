@@ -12,6 +12,7 @@ tools/ninja/
 tools/arm-gnu/
 tools/llvm-mingw/
 tools/llvm-mingw-*.zip
+tools/gh/
 tools/picotool/
 tools/pico-sdk/
 tools/pico-examples/

@@ -6,7 +6,7 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(miralink_pico_firmware VERSION 0.36.0 LANGUAGES C CXX ASM)
+project(miralink_pico_firmware VERSION 0.37.0 LANGUAGES C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -59,6 +59,7 @@ target_compile_definitions(miralink_pico_firmware PRIVATE
     MIRALINK_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     MIRALINK_VERSION_MINOR=${PROJECT_VERSION_MINOR}
     MIRALINK_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    CYW43_LWIP=0
     ENABLE_CLASSIC=1
 )
 
@@ -70,14 +71,14 @@ target_link_libraries(miralink_pico_firmware PRIVATE
     pico_rand
     tinyusb_device
     tinyusb_board
-    pico_cyw43_arch_none
+    pico_cyw43_arch_poll
     pico_btstack_cyw43
     pico_btstack_classic
     opus
 )
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
-pico_set_program_version(miralink_pico_firmware "0.36")
+pico_set_program_version(miralink_pico_firmware "0.37")
 pico_enable_stdio_uart(miralink_pico_firmware 0)
 pico_enable_stdio_usb(miralink_pico_firmware 0)
 pico_add_extra_outputs(miralink_pico_firmware)

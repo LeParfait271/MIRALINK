@@ -1,8 +1,8 @@
 # MiraLink Pico 2 W firmware 0.36
 
-This directory contains the local manual-test candidate built from MiraLink's
-clean-room source on 2026-08-14. Nothing in this build process flashed a board
-or published a release.
+This directory contains the manual-test candidate built from MiraLink's
+clean-room source on 2026-08-14. At packaging time, nothing in the build
+process had flashed a board or published a release.
 
 ## Native controller persona
 
@@ -36,8 +36,13 @@ or published a release.
 
 ## Manual test boundary
 
-This candidate has not been flashed or enumerated on hardware. Before calling
-the persona compatible, test it on a real Pico 2 W under Windows and Linux:
+This candidate had not been flashed or enumerated when it was packaged.
+The later Windows test failed the one-controller requirement: `joy.cpl` showed
+two `DualSense` entries and both disappeared when the Pico was unplugged. The
+five-minute Bluetooth attempt also expired without a validated link. Firmware
+0.37 supersedes this descriptor topology; do not use 0.36 for further testing.
+
+Before calling a later persona compatible, test it on a real Pico 2 W under Windows and Linux:
 enumeration, WebHID Feature exchange, Bluetooth pairing/reconnect, all inputs,
 rumble, adaptive triggers, suspend/wake and both standard/Edge modes.
 

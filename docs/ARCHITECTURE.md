@@ -53,7 +53,8 @@ firmware core and a local WebHID input adapter in the application. The Pico 2 W
 firmware also contains a Classic HID host path for the DualSense Bluetooth
 input report (`0x31`, CRC checked) and relays validated samples through the
 native-size USB input report `0x01`. MiraLink management uses Feature reports
-`0x70`/`0x71` in a separate top-level collection of the same HID interface;
+`0x70`/`0x71` in a vendor collection nested under the single root Gamepad
+Application collection of the same HID interface;
 the app polls typed controller state so management traffic does not compete
 with game input. A fresh Pico with no remembered key opens a bounded local
 pairing window automatically; it can also be reopened by a confirmed command.

@@ -1,6 +1,6 @@
 {
   "product": "MiraLink",
-  "releaseVersion": "0.36",
+  "releaseVersion": "0.37",
   "protocolVersion": 1,
   "implementation": "clean-room",
   "compatibilityTarget": "observable DS5Dongle v0.7.2-hotfix capabilities",
@@ -15,8 +15,14 @@
     },
     "hidInterfaceCount": 1,
     "topLevelCollections": [
-      "gamepad",
-      "vendor-defined-miralink"
+      "gamepad"
+    ],
+    "nestedCollections": [
+      {
+        "parent": "gamepad",
+        "collection": "vendor-defined-miralink",
+        "reports": ["0x70", "0x71"]
+      }
     ],
     "endpoints": {
       "interruptIn": "0x81",

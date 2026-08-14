@@ -1,10 +1,11 @@
 #pragma once
 
-// MiraLink exposes one HID interface containing independent DualSense bridge
-// and vendor-defined control collections. A second HID interface cannot be
-// used under the Sony VID/PID because Linux probes each matching interface as
-// a controller. The audio pipeline remains compiled for future descriptor
-// work, but USB audio is not exposed until it is validated on real hardware.
+// MiraLink exposes one HID interface and exactly one root Gamepad Application
+// collection. Vendor-defined management is nested under that root: a second
+// top-level collection creates a duplicate controller child on Windows, while
+// a second interface is probed as another Sony controller on Linux. The audio
+// pipeline remains compiled for future descriptor work, but USB audio is not
+// exposed until it is validated on real hardware.
 #ifndef CFG_TUSB_MCU
 #define CFG_TUSB_MCU OPT_MCU_RP2040
 #endif

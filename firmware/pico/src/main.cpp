@@ -691,6 +691,9 @@ int main() {
 
     while (true) {
         tud_task();
+        // Keep CYW43/BTstack callbacks on this foreground context, then let
+        // MiraLink consume the freshly dispatched radio state below.
+        if (g_cyw43_ready) cyw43_arch_poll();
         miralink::audio::poll();
         miralink::bluetooth::poll();
         update_status_led();

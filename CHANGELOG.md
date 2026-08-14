@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.37 - 2026-08-14
+
+- Corrected the Windows duplicate-controller failure observed after the first
+  0.36 hardware flash: both `DualSense` entries disappeared when the Pico was
+  unplugged, proving that the Pico had exposed two HID top-level collections.
+- Kept exactly one root Gamepad Application collection and nested MiraLink
+  Feature reports `0x70`/`0x71` below it. Compile-time descriptor checks now
+  enforce one root, one nested vendor collection, balanced collections and the
+  expected management reports.
+- Delayed trust of a newly observed Bluetooth address until its first complete
+  DualSense input report. A failed new attempt drops only its unvalidated key;
+  keys that existed before the attempt are preserved.
+- Replaced the CYW43 `threadsafe_background` IRQ worker with explicit main-loop
+  polling so BTstack callbacks and foreground Bluetooth calls cannot race.
+- Filtered every handled HID subevent from a stale CID being torn down, not
+  only its final close, so a late report cannot resurrect a false link state.
+- Preserved all native input/output and host-probe report IDs and sizes. The
+  0.37 correction still requires a fresh Windows enumeration, WebHID and
+  Bluetooth hardware test before it can be called functional.
+- Aligned the site, firmware, protocol and package metadata to `0.37` / `0.37.0`.
+
 ## 0.36 - 2026-08-14
 
 - Added an original, clean-room DualSense-family USB persona for the Pico 2 W

@@ -35,6 +35,9 @@ constexpr std::uint32_t kConnectionHandshakeTimeoutMs = 10000;
 constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 constexpr std::uint32_t kInquiryRetryDelayMs = 1000;
 constexpr std::uint32_t kOutputFlightGuardMs = 4;
+constexpr std::uint32_t kIgnoredHidDisconnectRetryMs = 250;
+constexpr std::uint32_t kIgnoredHidDisconnectWindowMs = 10000;
+constexpr std::uint8_t kIgnoredHidDisconnectMaxAttempts = 40;
 
 struct OutputPacket {
     std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> bytes{};
@@ -57,12 +60,23 @@ bool g_connection_pending = false;
 std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
 std::size_t g_paired_address_count = 0;
 std::size_t g_reconnect_index = 0;
+struct ActiveControllerAttempt {
+    std::array<std::uint8_t, 6> address{};
+    bool address_valid = false;
+    bool address_known_before_attempt = false;
+    bool input_validated = false;
+};
+ActiveControllerAttempt g_active_controller_attempt{};
 std::uint64_t g_reconnect_deadline_ms = 0;
 std::uint64_t g_connection_deadline_ms = 0;
 std::uint64_t g_inquiry_retry_deadline_ms = 0;
 std::uint64_t g_output_flight_deadline_ms = 0;
 bool g_connection_failure_recorded = false;
 std::uint16_t g_ignored_hid_cid = 0;
+bool g_ignored_hid_disconnect_pending = false;
+std::uint8_t g_ignored_hid_disconnect_attempts = 0;
+std::uint64_t g_ignored_hid_disconnect_retry_ms = 0;
+std::uint64_t g_ignored_hid_disconnect_deadline_ms = 0;
 std::array<OutputPacket, 2> g_output_packets{};
 int g_output_in_flight = -1;
 int g_output_queued = -1;
@@ -112,6 +126,49 @@ void record_connection_failure(const ConnectionError error, const std::uint8_t s
 
 std::uint64_t now_ms() {
     return to_ms_since_boot(get_absolute_time());
+}
+
+void clear_ignored_hid_teardown() {
+    g_ignored_hid_cid = 0;
+    g_ignored_hid_disconnect_pending = false;
+    g_ignored_hid_disconnect_attempts = 0;
+    g_ignored_hid_disconnect_retry_ms = 0;
+    g_ignored_hid_disconnect_deadline_ms = 0;
+}
+
+void arm_ignored_hid_disconnect() {
+    if (g_ignored_hid_cid == 0) {
+        clear_ignored_hid_teardown();
+        return;
+    }
+    const auto current_ms = now_ms();
+    g_ignored_hid_disconnect_pending = true;
+    g_ignored_hid_disconnect_attempts = 0;
+    g_ignored_hid_disconnect_retry_ms = current_ms;
+    g_ignored_hid_disconnect_deadline_ms = current_ms + kIgnoredHidDisconnectWindowMs;
+}
+
+void service_ignored_hid_disconnect() {
+    if (!g_ignored_hid_disconnect_pending || g_ignored_hid_cid == 0) return;
+    const auto current_ms = now_ms();
+    if (g_ignored_hid_disconnect_attempts >= kIgnoredHidDisconnectMaxAttempts
+        || current_ms >= g_ignored_hid_disconnect_deadline_ms) {
+        g_ignored_hid_disconnect_pending = false;
+        return;
+    }
+    if (current_ms < g_ignored_hid_disconnect_retry_ms) return;
+
+    const auto ignored_cid = g_ignored_hid_cid;
+    ++g_ignored_hid_disconnect_attempts;
+    g_ignored_hid_disconnect_retry_ms = current_ms + kIgnoredHidDisconnectRetryMs;
+    // poll() runs after cyw43_arch_poll(), outside the BTstack callback that
+    // emitted OPENED. BTstack has therefore committed its final connection
+    // state and cannot overwrite this disconnect request on callback return.
+    hid_host_disconnect(ignored_cid);
+    if (g_ignored_hid_cid == ignored_cid
+        && g_ignored_hid_disconnect_attempts >= kIgnoredHidDisconnectMaxAttempts) {
+        g_ignored_hid_disconnect_pending = false;
+    }
 }
 
 void note_activity() {
@@ -240,6 +297,46 @@ bool paired_address_known(const bd_addr_t address) {
     return false;
 }
 
+constexpr bool should_drop_unvalidated_key(const bool address_known_before_attempt,
+    const bool input_validated) {
+    return !address_known_before_attempt && !input_validated;
+}
+
+static_assert(should_drop_unvalidated_key(false, false));
+static_assert(!should_drop_unvalidated_key(true, false));
+static_assert(!should_drop_unvalidated_key(false, true));
+
+void begin_controller_attempt(const bd_addr_t address) {
+    if (address == nullptr) return;
+    if (g_active_controller_attempt.address_valid
+        && bd_addr_cmp(address, g_active_controller_attempt.address.data()) == 0) {
+        return;
+    }
+    g_active_controller_attempt = {};
+    std::memcpy(g_active_controller_attempt.address.data(), address,
+        g_active_controller_attempt.address.size());
+    g_active_controller_attempt.address_valid = true;
+    // Capture trust before this attempt can create or replace a BTstack key.
+    // This lets failure cleanup distinguish a new, unvalidated association
+    // from every controller that was already remembered at attempt start.
+    g_active_controller_attempt.address_known_before_attempt = paired_address_known(address);
+}
+
+void clear_controller_attempt() {
+    g_active_controller_attempt = {};
+}
+
+void discard_unvalidated_controller_attempt() {
+    if (g_active_controller_attempt.address_valid
+        && should_drop_unvalidated_key(g_active_controller_attempt.address_known_before_attempt,
+            g_active_controller_attempt.input_validated)) {
+        bd_addr_t address{};
+        std::memcpy(address, g_active_controller_attempt.address.data(), sizeof(address));
+        gap_drop_link_key_for_bd_addr(address);
+    }
+    clear_controller_attempt();
+}
+
 void remember_paired_address(const bd_addr_t address) {
     if (address == nullptr || paired_address_known(address)) return;
     if (g_paired_address_count < g_paired_addresses.size()) {
@@ -291,6 +388,7 @@ void stop_inquiry() {
 
 bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false) {
     if (g_idle_suspended || (!g_pairing_requested && !paired_address_known(address)) || g_connection_pending) return false;
+    begin_controller_attempt(address);
     stop_inquiry();
     bd_addr_t mutable_address;
     std::memcpy(mutable_address, address, sizeof(mutable_address));
@@ -299,6 +397,7 @@ bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false)
     const auto status = hid_host_connect(mutable_address, HID_PROTOCOL_MODE_REPORT, &g_hid_cid);
     if (status != ERROR_CODE_SUCCESS) {
         record_connection_failure(ConnectionError::HidConnect, status);
+        discard_unvalidated_controller_attempt();
         clear_candidate();
         if (g_pairing_requested) start_inquiry();
         return false;
@@ -433,6 +532,7 @@ void try_send_output() {
 }
 
 void set_connection_closed() {
+    discard_unvalidated_controller_attempt();
     g_connection_pending = false;
     g_reconnect_deadline_ms = 0;
     g_connection_deadline_ms = 0;
@@ -458,6 +558,11 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
     if (report_id != kDualSenseBluetoothReportId) return;
 
     const auto parsed = dualsense::parse_bluetooth_input_report(report, length);
+    if (parsed && g_active_controller_attempt.address_valid
+        && !g_active_controller_attempt.input_validated) {
+        remember_paired_address(g_active_controller_attempt.address.data());
+        g_active_controller_attempt.input_validated = true;
+    }
     critical_section_enter_blocking(&g_state_lock);
     if (parsed) {
         note_activity();
@@ -491,6 +596,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_inquiry_retry_deadline_ms = 0;
                 g_idle_suspended = false;
                 g_last_activity_ms = now_ms();
+                clear_ignored_hid_teardown();
+                clear_controller_attempt();
                 clear_candidate();
                 gap_connectable_control(1);
                 gap_discoverable_control(0);
@@ -523,10 +630,11 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_pairing_requested = false;
                 g_connection_pending = false;
                 g_hid_cid = 0;
-                g_ignored_hid_cid = 0;
+                clear_ignored_hid_teardown();
                 g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
+                clear_controller_attempt();
                 clear_output_queue();
                 clear_candidate();
                 critical_section_enter_blocking(&g_state_lock);
@@ -613,14 +721,62 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             }
             break;
 
-        case HCI_EVENT_HID_META:
-            switch (hci_event_hid_meta_get_subevent_code(packet)) {
+        case HCI_EVENT_HID_META: {
+            const auto subevent = hci_event_hid_meta_get_subevent_code(packet);
+            std::uint16_t event_cid = 0;
+            switch (subevent) {
+                case HID_SUBEVENT_INCOMING_CONNECTION:
+                    event_cid = hid_subevent_incoming_connection_get_hid_cid(packet);
+                    break;
+                case HID_SUBEVENT_CONNECTION_OPENED:
+                    event_cid = hid_subevent_connection_opened_get_hid_cid(packet);
+                    break;
+                case HID_SUBEVENT_SET_PROTOCOL_RESPONSE:
+                    event_cid = hid_subevent_set_protocol_response_get_hid_cid(packet);
+                    break;
+                case HID_SUBEVENT_DESCRIPTOR_AVAILABLE:
+                    event_cid = hid_subevent_descriptor_available_get_hid_cid(packet);
+                    break;
+                case HID_SUBEVENT_REPORT:
+                    event_cid = hid_subevent_report_get_hid_cid(packet);
+                    break;
+                case HID_SUBEVENT_CONNECTION_CLOSED:
+                    event_cid = hid_subevent_connection_closed_get_hid_cid(packet);
+                    break;
+                default:
+                    break;
+            }
+            if (g_ignored_hid_cid != 0 && event_cid == g_ignored_hid_cid) {
+                // open_pairing_window() releases the active slot before
+                // BTstack finishes tearing down the stale link. Ignore every
+                // late event from that exact CID so it cannot repopulate the
+                // state belonging to a newer connection. A disconnect issued
+                // during SDP can be a no-op because no L2CAP channel exists
+                // yet. A successful OPENED therefore arms a retry in poll(),
+                // after BTstack has returned from this callback and committed
+                // its own final state. Failed OPENED events are finalized by
+                // BTstack without a CLOSE; otherwise CLOSE consumes the
+                // tombstone. Events for every other CID continue below.
+                if (subevent == HID_SUBEVENT_CONNECTION_OPENED) {
+                    if (hid_subevent_connection_opened_get_status(packet) == ERROR_CODE_SUCCESS) {
+                        arm_ignored_hid_disconnect();
+                    } else {
+                        clear_ignored_hid_teardown();
+                    }
+                } else if (subevent == HID_SUBEVENT_CONNECTION_CLOSED) {
+                    clear_ignored_hid_teardown();
+                }
+                break;
+            }
+
+            switch (subevent) {
                 case HID_SUBEVENT_INCOMING_CONNECTION: {
                     const auto cid = hid_subevent_incoming_connection_get_hid_cid(packet);
                     if (hid_subevent_incoming_connection_get_status(packet) != ERROR_CODE_SUCCESS) break;
                     bd_addr_t address{};
                     hid_subevent_incoming_connection_get_address(packet, address);
                     if (pairing_window_active() || paired_address_known(address)) {
+                        begin_controller_attempt(address);
                         note_activity();
                         stop_inquiry();
                         record_connection_attempt(false);
@@ -629,7 +785,6 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         critical_section_enter_blocking(&g_state_lock);
                         g_snapshot.connection_pending = true;
                         critical_section_exit(&g_state_lock);
-                        remember_paired_address(address);
                         const auto accept_status = hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
                         if (accept_status == ERROR_CODE_SUCCESS) {
                             g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
@@ -650,7 +805,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         g_hid_cid = hid_subevent_connection_opened_get_hid_cid(packet);
                         bd_addr_t address{};
                         hid_subevent_connection_opened_get_bd_addr(packet, address);
-                        remember_paired_address(address);
+                        begin_controller_attempt(address);
                         g_reconnect_deadline_ms = 0;
                         g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
                         g_reconnect_index = 0;
@@ -700,10 +855,6 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 case HID_SUBEVENT_CONNECTION_CLOSED:
                     {
                         const auto closed_cid = hid_subevent_connection_closed_get_hid_cid(packet);
-                        if (closed_cid == g_ignored_hid_cid) {
-                            g_ignored_hid_cid = 0;
-                            break;
-                        }
                         if (g_hid_cid != 0 && closed_cid != g_hid_cid) break;
                         const auto prior = snapshot();
                         if (!g_connection_failure_recorded
@@ -718,6 +869,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     break;
             }
             break;
+        }
 
         default:
             break;
@@ -791,6 +943,8 @@ bool open_pairing_window() {
         const auto stale_cid = g_hid_cid;
         g_ignored_hid_cid = stale_cid;
         hid_host_disconnect(stale_cid);
+        arm_ignored_hid_disconnect();
+        discard_unvalidated_controller_attempt();
         // The close event will still arrive asynchronously, but releasing the
         // local gate here lets poll() retry inquiry while BTstack completes
         // the teardown instead of waiting forever on a stale CID.
@@ -879,6 +1033,7 @@ bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t len
 
 void poll() {
     if (!g_initialized) return;
+    service_ignored_hid_disconnect();
     const auto inactive_minutes = configured_inactive_minutes();
     if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {
         const auto current = snapshot();

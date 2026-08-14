@@ -75,7 +75,7 @@ test('MiraLink vendor collection detection handles missing, direct and nested co
 
 test('Sony identification probes MiraLink first only when its vendor collection is present', () => {
   const directDualSense = { vendorId: 0x054c, productId: 0x0ce6, collections: [{ usagePage: 0x0001 }] };
-  const MiraLinkDualSense = { ...directDualSense, collections: [{ usagePage: 0x0001 }, { usagePage: 0xff00 }] };
+  const MiraLinkDualSense = { ...directDualSense, collections: [{ usagePage: 0x0001, children: [{ usagePage: 0xff00 }] }] };
   assert.deepEqual(getHidIdentificationOrder(directDualSense, true), ['controller']);
   assert.deepEqual(getHidIdentificationOrder(MiraLinkDualSense, true), ['bridge', 'controller']);
   assert.deepEqual(getHidIdentificationOrder({ vendorId: 0xcafe, collections: [] }, false), ['bridge']);
@@ -83,9 +83,9 @@ test('Sony identification probes MiraLink first only when its vendor collection 
 
 test('GET_INFO exposes the real compact firmware version', () => {
   const info = decodeInfoPayload(Uint8Array.from([
-    0x4d, 0x69, 0x72, 0x61, 0x4c, 0x69, 0x6e, 0x6b, 0x00, 0x24, 0x00, 0x00
+    0x4d, 0x69, 0x72, 0x61, 0x4c, 0x69, 0x6e, 0x6b, 0x00, 0x25, 0x00, 0x00
   ]));
-  assert.deepEqual(info, { product: 'MiraLink', version: '0.36', major: 0, minor: 36, patch: 0 });
+  assert.deepEqual(info, { product: 'MiraLink', version: '0.37', major: 0, minor: 37, patch: 0 });
   assert.throws(() => decodeInfoPayload(Uint8Array.from([0x4d, 0x69])), /too short/);
   assert.throws(() => decodeInfoPayload(Uint8Array.from([
     0x4e, 0x6f, 0x74, 0x4d, 0x69, 0x72, 0x61, 0x21, 0, 36, 0
