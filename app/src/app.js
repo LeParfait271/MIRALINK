@@ -4,6 +4,7 @@ import {
   REPORT_IDS,
   ProtocolError,
   assertValidConfig,
+  decodeCommitConfigAck,
   decodeConfig,
   decodeControllerCapabilities,
   decodeControllerStatePayload,
@@ -18,7 +19,7 @@ import {
   inspectMiraLinkHidIdentity
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=38-control-deck';
+import { applyTranslations, translate } from './i18n.js?ui=39-soft-signal';
 import { inspectUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { commitProfileApplication, createBuiltInProfiles, createProfile, diffConfig, previewProfileApplication } from './profiles.js';
@@ -38,7 +39,7 @@ import {
   transactFeatureReport
 } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, compareControllerAnalyses, createCalibrationRevision } from './controller-lab.js';
-import './site-effects.js?ui=38-control-deck';
+import { scrollToRouteTarget } from './site-effects.js?ui=39-soft-signal';
 
 const state = {
   devices: new Map(),
@@ -47,11 +48,129 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.38', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
+  version: { version: '0.39', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
 };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function setElementVisibility(element, visible) {
+  if (!element) return;
+  element.hidden = !visible;
+  if (visible) element.style.removeProperty('display');
+  else element.style.setProperty('display', 'none', 'important');
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, Number(value) || 0));
+}
+
+function setText(selector, value) {
+  const node = $(selector);
+  if (node) node.textContent = value;
+}
+
+function formatVector(vector) {
+  return vector ? `X ${vector.x} / Y ${vector.y} / Z ${vector.z}` : 'X — / Y — / Z —';
+}
+
+function formatBatteryState(value) {
+  return ({ discharging: 'décharge', charging: 'charge', full: 'pleine', error: 'erreur' })[value] || 'état inconnu';
+}
+
+function formatStickAnalysis(stick) {
+  if (!stick || stick.status !== 'available') return { center: '—', amplitude: '—', circularity: '—' };
+  return {
+    center: `X ${formatLabValue(stick.center.x)} / Y ${formatLabValue(stick.center.y)} / Δ ${formatLabValue(stick.center.offset)}`,
+    amplitude: `X ${formatLabValue(stick.amplitude.x.span)} / Y ${formatLabValue(stick.amplitude.y.span)} / R ${formatLabValue(stick.amplitude.maxRadius)}`,
+    circularity: Number.isFinite(stick.circularity.ratio)
+      ? `${(stick.circularity.ratio * 100).toFixed(1)} %`
+      : 'Échantillons insuffisants'
+  };
+}
+
+function renderControllerLab(entry = activeEntry()) {
+  const consoleNode = $('#controller-lab-console');
+  if (!consoleNode) return;
+  const sample = entry?.lastSample || null;
+  const controllerState = entry?.controllerState || null;
+  const samples = controllerSamples(entry);
+  const inputLive = entry?.state === 'ready' && Boolean(sample);
+
+  consoleNode.dataset.state = inputLive ? 'live' : entry?.state === 'ready' ? 'waiting' : 'offline';
+  const linkState = !entry
+    ? 'Aucun appareil'
+    : entry.kind === 'bridge'
+      ? controllerState?.connected ? `Manette connectée · ${sample?.transport || 'transport local'}` : 'Bridge prêt · manette en attente'
+      : entry.state === 'ready' ? 'Manette USB connectée' : 'Liaison indisponible';
+  setText('#controller-lab-link-state', linkState);
+  setText('#controller-lab-sample-state', sample ? 'Entrées reçues' : 'Aucun reçu');
+  setText('#controller-lab-sample-count', String(samples.length));
+
+  const extended = sample?.extended || null;
+  setText('#controller-lab-battery', sample?.batteryPercent === null || sample?.batteryPercent === undefined
+    ? 'Non exposée'
+    : `${sample.batteryPercent} % · ${formatBatteryState(sample.batteryState)}`);
+  setText('#controller-lab-headset', extended
+    ? `${extended.headphoneConnected ? 'Connecté' : 'Non connecté'} · flux audio USB non exposé`
+    : 'Non exposé par ce rapport');
+  setText('#controller-lab-microphone', extended
+    ? `${extended.microphoneConnected ? 'Connecté' : 'Non connecté'}${extended.microphoneMuted ? ' · muet' : ''} · flux USB non exposé`
+    : 'Non exposé par ce rapport');
+
+  for (const side of ['left', 'right']) {
+    const stick = sample?.[`${side}Stick`] || { x: 0, y: 0 };
+    const point = $(`#controller-${side}-stick-point`);
+    if (point) {
+      point.style.setProperty('--stick-left', `${(50 + clamp(stick.x, -1, 1) * 42).toFixed(2)}%`);
+      point.style.setProperty('--stick-top', `${(50 + clamp(stick.y, -1, 1) * 42).toFixed(2)}%`);
+    }
+    setText(`#controller-${side}-stick-value`, `X ${formatLabValue(stick.x)} / Y ${formatLabValue(stick.y)}`);
+  }
+
+  for (const side of ['left', 'right']) {
+    const value = clamp(sample?.[`${side}Trigger`], 0, 1);
+    const progress = $(`#controller-${side}-trigger`);
+    if (progress) progress.value = value;
+    setText(`#controller-${side}-trigger-value`, `${Math.round(value * 100)} %`);
+  }
+
+  const buttonState = { ...(sample?.buttons || {}), ...(sample?.buttons?.dpad || {}) };
+  $$('[data-controller-button]').forEach((node) => {
+    const active = Boolean(buttonState[node.dataset.controllerButton]);
+    const label = node.querySelector('small')?.textContent || node.textContent.trim();
+    node.dataset.active = String(active);
+    node.setAttribute('aria-label', `${label} : ${active ? 'appuyé' : 'relâché'}`);
+  });
+
+  setText('#controller-gyro-value', formatVector(extended?.gyro));
+  setText('#controller-accelerometer-value', formatVector(extended?.accelerometer));
+  [0, 1].forEach((index) => {
+    const touch = extended?.touchPoints?.[index];
+    setText(`#controller-touch-${index + 1}-value`, touch
+      ? `${touch.active ? 'Actif' : 'Inactif'} / X ${touch.x} / Y ${touch.y}`
+      : 'Non exposé / X — / Y —');
+  });
+
+  if (!samples.length) {
+    setText('#controller-analysis-summary', 'En attente d’échantillons locaux · aucune calibration écrite.');
+    for (const side of ['left', 'right']) {
+      for (const metric of ['center', 'amplitude', 'circularity']) setText(`#controller-analysis-${side}-${metric}`, '—');
+    }
+    return;
+  }
+
+  try {
+    const analysis = analyzeControllerInputs(samples);
+    setText('#controller-analysis-summary', `${analysis.sampleCount} échantillons locaux · analyse en lecture seule · aucune calibration écrite.`);
+    for (const side of ['left', 'right']) {
+      const formatted = formatStickAnalysis(analysis.sticks[side]);
+      for (const metric of ['center', 'amplitude', 'circularity']) setText(`#controller-analysis-${side}-${metric}`, formatted[metric]);
+    }
+  } catch (error) {
+    setText('#controller-analysis-summary', `Analyse locale indisponible : ${error.message}`);
+  }
+}
 
 function connectionErrorLabel(code) {
   return ({
@@ -119,6 +238,7 @@ function recordControllerSample(entry, sample) {
   entry.sampleHistory = [...(entry.sampleHistory || []), sample].slice(-600);
   entry.sampleCount = entry.sampleHistory.length;
   entry.lastSample = sample;
+  if (entry.id === state.activeDeviceId) renderControllerLab(entry);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('miralink:controller-sample', { detail: { deviceId: entry.id, sample } }));
 }
 
@@ -141,6 +261,10 @@ function selectEntry(entry) {
   state.savedConfig = workingCopy.savedConfig;
 }
 
+function scrollToSection(id) {
+  scrollToRouteTarget(`#${id}`, { updateHash: true });
+}
+
 function showBridgeConnectionDiagnostics(entry) {
   if (!entry || entry.kind !== 'bridge') return;
   const ready = entry.state === 'ready';
@@ -158,8 +282,8 @@ function openEntryDiagnostics(entry) {
   selectEntry(entry);
   renderDevices();
   updateUiForActiveDevice();
-  setTab('diagnostics');
   showBridgeConnectionDiagnostics(entry);
+  scrollToSection('tab-diagnostics');
 }
 
 function renderDevices() {
@@ -239,34 +363,6 @@ function updateInstalledVersion() {
   else noteNode.textContent = 'Pont connecté, mais cette version du firmware ne publie pas son numéro.';
 }
 
-function setTab(name, { focus = false } = {}) {
-  let activeButton = null;
-  $$('.tab-button').forEach((button) => {
-    const selected = button.dataset.tab === name;
-    button.classList.toggle('is-active', selected);
-    button.setAttribute('aria-selected', String(selected));
-    button.tabIndex = selected ? 0 : -1;
-    if (selected) activeButton = button;
-  });
-  $$('[data-panel]').forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
-  if (focus) activeButton?.focus();
-}
-
-function handleTabKeydown(event) {
-  if (event.altKey || event.ctrlKey || event.metaKey) return;
-  const tabs = $$('.tab-button');
-  const currentIndex = tabs.indexOf(event.currentTarget);
-  if (currentIndex < 0) return;
-  let nextIndex = null;
-  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
-  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-  else if (event.key === 'Home') nextIndex = 0;
-  else if (event.key === 'End') nextIndex = tabs.length - 1;
-  if (nextIndex === null) return;
-  event.preventDefault();
-  setTab(tabs[nextIndex].dataset.tab, { focus: true });
-}
-
 function updateUiForActiveDevice() {
   const entry = activeEntry();
   const bridgeReady = entry?.kind === 'bridge' && entry.state === 'ready';
@@ -274,9 +370,17 @@ function updateUiForActiveDevice() {
   const pendingChanges = configurationEditable && state.draft ? diffConfig(state.savedConfig, state.draft) : [];
   const controls = $$('#tab-bridge input, #tab-bridge select');
   controls.forEach((control) => { control.disabled = !configurationEditable; });
+  $('#audio-buffer').disabled = true;
+  $('#ps-shortcut').disabled = true;
   $('#read-config-button').disabled = !bridgeReady;
   $('#save-config-button').disabled = !configurationEditable || !pendingChanges.length;
   $('#reset-config-button').disabled = !configurationEditable || !pendingChanges.length;
+  $('#factory-reset-config-button').disabled = !configurationEditable;
+  const reconnectRequired = Boolean(entry?.usbReenumerationRequired);
+  setElementVisibility($('#usb-reconnect-notice'), reconnectRequired);
+  $('#reconnect-usb-button').disabled = !bridgeReady || !reconnectRequired;
+  setText('#audio-buffer-hint', translate('audioBufferUnavailableHint'));
+  setText('#ps-shortcut-hint', translate('psShortcutUnavailableHint'));
   const pairingButton = $('#open-pairing-button');
   if (pairingButton) pairingButton.disabled = !readyBridgeEntry();
   $('#bridge-device-status').textContent = bridgeReady ? entry.label : entry?.kind === 'bridge' ? `Pont détecté · ${deviceStateLabel(entry.state)}` : translate('selectDevice');
@@ -289,6 +393,7 @@ function updateUiForActiveDevice() {
       : translate('readOnlyBody');
   }
   renderConfig(state.draft || state.savedConfig || defaultConfig());
+  renderControllerLab(entry);
 }
 
 function renderConfig(config) {
@@ -319,19 +424,19 @@ function readDraftFromControls() {
     hapticsGain: Number($('#haptics-gain').value),
     triggerReduce: Number($('#trigger-reduce').value),
     pollingMode: Number($('#polling-mode').value),
-    audioBufferLength: Number($('#audio-buffer').value),
+    audioBufferLength: base.audioBufferLength,
     inactiveMinutes: Number($('#inactive-time').value),
     disableLed: $('#disable-led').checked,
     enableWake: $('#enable-wake').checked,
     controllerMode: Number($('#controller-mode').value),
     enableUsbSerial: $('#enable-usb-sn').checked,
-    psShortcut: $('#ps-shortcut').checked
+    psShortcut: base.psShortcut
   });
 }
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=38-control-deck', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=39-soft-signal', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -509,12 +614,15 @@ function handleBridgeEvent(entry, event) {
   try {
     const frame = decodeFrame(event.data);
     if (frame.command !== COMMANDS.getControllerState) return;
-    const state = decodeControllerStatePayload(frame.payload);
+    const controllerState = decodeControllerStatePayload(frame.payload);
     const previousControllerState = entry.controllerState;
-    entry.controllerState = state;
-    if (state.sample) recordControllerSample(entry, state.sample);
-    if (!state.inputAvailable) entry.lastSample = null;
-    if (controllerOverviewChanged(previousControllerState, state)) updateOverview();
+    entry.controllerState = controllerState;
+    if (controllerState.sample) recordControllerSample(entry, controllerState.sample);
+    if (!controllerState.inputAvailable) {
+      entry.lastSample = null;
+      if (entry.id === state.activeDeviceId) renderControllerLab(entry);
+    }
+    if (controllerOverviewChanged(previousControllerState, controllerState)) updateOverview();
   } catch (error) {
     addLog('error', `${entry.label} controller event rejected: ${error.message}`);
   }
@@ -536,6 +644,7 @@ function startBridgePolling(entry) {
         recordControllerSample(entry, controllerState.sample);
       } else if (!controllerState.inputAvailable) {
         entry.lastSample = null;
+        if (entry.id === state.activeDeviceId) renderControllerLab(entry);
       }
       if (controllerOverviewChanged(previousControllerState, controllerState)) updateOverview();
     } catch (error) {
@@ -607,7 +716,7 @@ async function registerDevice(device) {
   }
   const id = `device-${Date.now()}-${state.devices.size + 1}`;
   const bridgeIdentity = inspectMiraLinkHidIdentity(device);
-  const entry = { id, device, label: device.productName || 'Appareil MiraLink', kind: bridgeIdentity.bridgeCandidate ? 'bridge' : 'unknown', kindLabel: bridgeIdentity.bridgeCandidate ? 'MiraLink bridge' : 'Identification', state: 'opening', config: null, draft: null, savedConfig: null, analysisSnapshots: [], firmwareVersion: null, adapter: null, sampleCount: 0, sampleHistory: [], controllerState: null, lastSample: null, pollTimer: null, pollFailureCount: 0, transactionTail: Promise.resolve(), connectionPromise: null, bridgeIdentity, nextAction: 'Attendez l’ouverture du périphérique.' };
+  const entry = { id, device, label: device.productName || 'Appareil MiraLink', kind: bridgeIdentity.bridgeCandidate ? 'bridge' : 'unknown', kindLabel: bridgeIdentity.bridgeCandidate ? 'MiraLink bridge' : 'Identification', state: 'opening', config: null, draft: null, savedConfig: null, analysisSnapshots: [], firmwareVersion: null, adapter: null, sampleCount: 0, sampleHistory: [], controllerState: null, lastSample: null, pollTimer: null, pollFailureCount: 0, transactionTail: Promise.resolve(), connectionPromise: null, bridgeIdentity, usbReenumerationRequired: false, expectedUsbDisconnect: false, lastCommitAck: null, nextAction: 'Attendez l’ouverture du périphérique.' };
   entry.eventHandler = (event) => handleBridgeEvent(entry, event);
   device.addEventListener('inputreport', entry.eventHandler);
   state.devices.set(id, entry);
@@ -657,6 +766,7 @@ async function refreshDevices() {
 async function disconnectEntry(id) {
   const entry = state.devices.get(id);
   if (!entry) return;
+  const expectedUsbDisconnect = entry.expectedUsbDisconnect === true;
   stopBridgePolling(entry);
   try { entry.adapter?.stop(); } catch (error) { addLog('error', `Controller adapter stop failed: ${error.message}`); }
   entry.device.removeEventListener('inputreport', entry.eventHandler);
@@ -671,7 +781,12 @@ async function disconnectEntry(id) {
   }
   renderDevices(); updateUiForActiveDevice(); updateInstalledVersion();
   if (!state.devices.size && !hasHid()) showHidWarning(webHidStatus());
-  addLog('info', `${entry.label} disconnected.`);
+  if (expectedUsbDisconnect) {
+    setGlobalStatus('Waiting for USB reconnect', 'busy');
+    addLog('info', `${entry.label} disconnected temporarily as expected after the explicit RECONNECT_USB command; waiting for Windows to enumerate it again.`);
+  } else {
+    addLog('info', `${entry.label} disconnected.`);
+  }
 }
 
 async function readConfig() {
@@ -698,7 +813,34 @@ function askConfirmation(message) {
   const dialog = $('#confirm-dialog');
   if (!dialog.showModal) return Promise.resolve(window.confirm(message));
   $('#confirm-message').textContent = message;
+  // Dialog return values persist across openings. Clear the previous choice so
+  // closing a later prompt with Escape can never reuse an earlier approval.
+  dialog.returnValue = '';
   return new Promise((resolve) => { const done = () => { dialog.removeEventListener('close', done); resolve(dialog.returnValue === 'confirm'); }; dialog.addEventListener('close', done); dialog.showModal(); });
+}
+
+function applyCommitAcknowledgement(entry, acknowledgement, operation) {
+  entry.lastCommitAck = acknowledgement;
+  if (acknowledgement.usbReenumerationRequired === true) entry.usbReenumerationRequired = true;
+
+  if (!acknowledgement.supported) {
+    addLog('info', `${operation} succeeded with a legacy empty COMMIT_CONFIG acknowledgement; USB re-enumeration requirement is unknown and no reconnect was started.`);
+  } else if (acknowledgement.usbReenumerationRequired) {
+    addLog('info', `${operation} succeeded; firmware reports that USB re-enumeration is required. Use the separate confirmed USB reconnect action when ready.`);
+  } else {
+    addLog('info', `${operation} succeeded; firmware reports that USB re-enumeration is not required.`);
+  }
+}
+
+function storeCommittedConfig(entry, config, acknowledgement, operation) {
+  entry.config = { ...config };
+  state.savedConfig = { ...config };
+  state.draft = { ...config };
+  syncActiveWorkingCopy();
+  applyCommitAcknowledgement(entry, acknowledgement, operation);
+  renderConfig(config);
+  updateUiForActiveDevice();
+  setGlobalStatus('Ready', 'idle');
 }
 
 async function saveConfig() {
@@ -716,16 +858,70 @@ async function saveConfig() {
     if (!await askConfirmation(`Écrire cette configuration validée dans la mémoire flash du Pico 2 W ?\n\nModifications avant → après :\n${difference}`)) return;
     setGlobalStatus('Writing', 'busy');
     await transact(entry, COMMANDS.setConfigDraft, encodeConfig(config));
-    await transact(entry, COMMANDS.commitConfig);
-    entry.config = { ...config };
-    state.savedConfig = { ...config };
-    state.draft = { ...config };
-    syncActiveWorkingCopy();
-    renderConfig(config);
-    updateUiForActiveDevice();
-    addLog('info', 'Configuration committed and acknowledged.');
-    setGlobalStatus('Ready', 'idle');
+    const commitResponse = await transact(entry, COMMANDS.commitConfig);
+    const acknowledgement = decodeCommitConfigAck(commitResponse.payload);
+    storeCommittedConfig(entry, config, acknowledgement, 'Configuration write');
   } catch (error) { setGlobalStatus('Error', 'error'); addLog('error', `Configuration write failed: ${error.message}`); }
+}
+
+async function factoryResetConfig() {
+  const entry = activeEntry(); if (!entry || entry.kind !== 'bridge') return;
+  try {
+    if (!canEditBridgeConfiguration(entry, state.savedConfig)) throw new ProtocolError('Lisez la configuration actuelle avant une restauration d’usine.', 'config_not_loaded');
+    const factoryConfig = assertValidConfig(defaultConfig());
+    const changes = diffConfig(state.savedConfig, factoryConfig);
+    const difference = changes.length
+      ? formatConfigurationChanges(changes)
+      : '• Aucun écart : la configuration lue correspond déjà aux réglages d’usine.';
+    if (!await askConfirmation(`Restaurer tous les réglages d’usine du Pico 2 W ?\n\nConfiguration actuelle → usine :\n${difference}\n\nCette action est distincte de la réinitialisation du brouillon local et écrit dans la mémoire flash.`)) return;
+    setGlobalStatus('Writing factory defaults', 'busy');
+    await transact(entry, COMMANDS.resetConfig);
+    const commitResponse = await transact(entry, COMMANDS.commitConfig);
+    const acknowledgement = decodeCommitConfigAck(commitResponse.payload);
+    storeCommittedConfig(entry, factoryConfig, acknowledgement, 'Factory reset');
+  } catch (error) {
+    setGlobalStatus('Error', 'error');
+    addLog('error', `Factory reset failed: ${error.message}`);
+  }
+}
+
+function isExpectedUsbDisconnect(error, entry) {
+  if (!entry?.expectedUsbDisconnect) return false;
+  return entry.device.opened === false
+    || ['device_disconnected', 'timeout'].includes(error?.code)
+    || ['InvalidStateError', 'NetworkError', 'NotFoundError', 'NotReadableError'].includes(error?.name);
+}
+
+async function reconnectUsb() {
+  const entry = activeEntry();
+  if (!entry || entry.kind !== 'bridge' || entry.state !== 'ready' || !entry.usbReenumerationRequired) return;
+  if (!await askConfirmation('Reconnecter maintenant le pont USB ?\n\nLe Pico 2 W disparaîtra brièvement de Windows. Cette déconnexion est attendue et distincte de l’enregistrement de la configuration.')) return;
+
+  stopBridgePolling(entry);
+  entry.expectedUsbDisconnect = true;
+  entry.nextAction = 'Déconnexion USB temporaire attendue ; le navigateur reprendra le pont quand Windows l’aura réénuméré.';
+  $('#reconnect-usb-button').disabled = true;
+  setGlobalStatus('USB reconnect requested', 'busy');
+  addLog('info', 'Explicit RECONNECT_USB requested after confirmation; a temporary HID disconnect is expected.');
+  try {
+    await transact(entry, COMMANDS.reconnectUsb, new Uint8Array(), 900);
+    entry.usbReenumerationRequired = false;
+    updateUiForActiveDevice();
+    addLog('info', 'RECONNECT_USB acknowledged; waiting for the expected temporary USB disconnect.');
+  } catch (error) {
+    if (isExpectedUsbDisconnect(error, entry)) {
+      entry.usbReenumerationRequired = false;
+      updateUiForActiveDevice();
+      addLog('info', `Expected USB disconnect observed while RECONNECT_USB completed: ${error.message}`);
+      return;
+    }
+    entry.expectedUsbDisconnect = false;
+    entry.nextAction = 'La reconnexion USB explicite a échoué ; le bridge reste utilisable sans nouvelle tentative automatique.';
+    startBridgePolling(entry);
+    updateUiForActiveDevice();
+    setGlobalStatus('Error', 'error');
+    addLog('error', `Explicit USB reconnect failed: ${error.message}`);
+  }
 }
 
 async function resetDraft() {
@@ -737,7 +933,7 @@ async function resetDraft() {
 }
 
 function wireDraftControls() {
-  ['haptics-gain', 'trigger-reduce', 'polling-mode', 'audio-buffer', 'inactive-time', 'disable-led', 'enable-wake', 'controller-mode', 'enable-usb-sn', 'ps-shortcut'].forEach((id) => $( `#${id}`).addEventListener('input', () => {
+  ['haptics-gain', 'trigger-reduce', 'polling-mode', 'inactive-time', 'disable-led', 'enable-wake', 'controller-mode', 'enable-usb-sn'].forEach((id) => $( `#${id}`).addEventListener('input', () => {
     try {
       state.draft = readDraftFromControls();
       syncActiveWorkingCopy();
@@ -765,13 +961,21 @@ async function applyLocalProfile(profile) {
   const entry = activeEntry();
   if (!canEditBridgeConfiguration(entry, state.savedConfig) || !state.draft) {
     $('#controller-lab-dialog')?.close('profile-needs-config');
-    setTab('bridge');
+    scrollToSection('tab-bridge');
     addLog('error', 'Lisez la configuration du Pico 2 W avant de préparer un profil.');
     return;
   }
   const current = state.draft;
   const target = { type: 'bridge', id: entry?.kind === 'bridge' ? entry.id : null };
-  const preview = previewProfileApplication(profile, current, target);
+  const safeProfile = {
+    ...profile,
+    config: {
+      ...profile.config,
+      audioBufferLength: current.audioBufferLength,
+      psShortcut: current.psShortcut
+    }
+  };
+  const preview = previewProfileApplication(safeProfile, current, target);
   if (!preview.ok) {
     addLog('error', preview.message);
     return;
@@ -787,7 +991,7 @@ async function applyLocalProfile(profile) {
   syncActiveWorkingCopy();
   renderConfig(state.draft);
   updateUiForActiveDevice();
-  setTab('bridge');
+  scrollToSection('tab-bridge');
   addLog('info', `Profile ${preview.profileName} applied as a local draft; Pico flash was not modified.`);
 }
 
@@ -933,7 +1137,7 @@ async function importBackup(event) {
     syncActiveWorkingCopy();
     renderConfig(state.draft);
     updateUiForActiveDevice();
-    setTab('bridge');
+    scrollToSection('tab-bridge');
     addLog('info', 'Backup loaded into a local draft.');
   } catch (error) { addLog('error', `Backup rejected: ${error.message}`); }
   event.target.value = '';
@@ -1222,16 +1426,14 @@ function openCalibrationHistory() {
 function init() {
   applyTranslations();
   renderLogs();
-  $$('.tab-button').forEach((button) => {
-    button.addEventListener('click', () => setTab(button.dataset.tab));
-    button.addEventListener('keydown', handleTabKeydown);
-  });
   $('#connect-button')?.addEventListener('click', connectDevice);
   $('#refresh-devices-button')?.addEventListener('click', refreshDevices);
   $('#open-pairing-button')?.addEventListener('click', () => openPairingWindow(readyBridgeEntry()));
   $('#read-config-button')?.addEventListener('click', readConfig);
   $('#save-config-button')?.addEventListener('click', saveConfig);
   $('#reset-config-button')?.addEventListener('click', resetDraft);
+  $('#factory-reset-config-button')?.addEventListener('click', factoryResetConfig);
+  $('#reconnect-usb-button')?.addEventListener('click', reconnectUsb);
   $('#backup-file')?.addEventListener('change', importBackup);
   $('#export-button')?.addEventListener('click', exportBackup);
   $('#profiles-button')?.addEventListener('click', openProfilesManager);
@@ -1257,7 +1459,7 @@ function init() {
     showHidWarning(initialHidStatus);
     addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=38-control-deck').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=39-soft-signal').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -20,6 +21,19 @@ constexpr std::uint8_t kFeatureRecovery = 1u << 4;
 constexpr std::uint8_t kFeatureLocalLogs = 1u << 5;
 constexpr std::uint8_t kFeatureBluetoothReconnect = 1u << 6;
 constexpr std::uint8_t kFeatureUsbGamepad = 1u << 7;
+constexpr std::uint8_t kCommitConfigAckSchema = 1;
+constexpr std::uint8_t kCommitConfigAckUsbReenumerationRequired = 1u << 0;
+constexpr std::size_t kCommitConfigAckBytes = 2;
+
+constexpr std::array<std::uint8_t, kCommitConfigAckBytes>
+commit_config_ack(const bool usb_reenumeration_required) {
+    return {
+        kCommitConfigAckSchema,
+        usb_reenumeration_required
+            ? kCommitConfigAckUsbReenumerationRequired
+            : std::uint8_t{0},
+    };
+}
 
 enum class Command : std::uint8_t {
     Hello = 0x01,

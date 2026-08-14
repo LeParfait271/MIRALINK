@@ -42,7 +42,7 @@ function rangeStats(values) {
     mean: mean(values),
     span: max - min,
     positive: Math.max(0, max),
-    negative: Math.max(0, Math.abs(min))
+    negative: Math.max(0, -min)
   };
 }
 
@@ -80,10 +80,20 @@ export function analyzeStick(samples, { deadzone = 0.08, driftThreshold = 0.1 } 
   const centerY = mean(ys);
   const centerOffset = Math.hypot(centerX, centerY);
   const radii = values.map(({ x, y }) => Math.hypot(x, y));
-  const circularSamples = radii.filter((radius) => radius >= 0.2);
   const maxRadius = Math.max(...radii);
-  const minCircularRadius = circularSamples.length ? Math.min(...circularSamples) : null;
-  const maxCircularRadius = circularSamples.length ? Math.max(...circularSamples) : null;
+  const circularitySectorCount = 8;
+  const circularitySectorWidth = Math.PI * 2 / circularitySectorCount;
+  const circularitySectorRadii = Array(circularitySectorCount).fill(null);
+  values.forEach(({ x, y }, index) => {
+    const radius = radii[index];
+    if (radius < 0.2) return;
+    const angle = (Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2);
+    const sector = Math.floor(((angle + circularitySectorWidth / 2) % (Math.PI * 2)) / circularitySectorWidth);
+    circularitySectorRadii[sector] = Math.max(circularitySectorRadii[sector] ?? 0, radius);
+  });
+  const circularityCovered = circularitySectorRadii.every((radius) => radius !== null);
+  const minCircularRadius = circularityCovered ? Math.min(...circularitySectorRadii) : null;
+  const maxCircularRadius = circularityCovered ? Math.max(...circularitySectorRadii) : null;
   const circularityRatio = maxCircularRadius ? minCircularRadius / maxCircularRadius : null;
   const xRange = rangeStats(xs);
   const yRange = rangeStats(ys);

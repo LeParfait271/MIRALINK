@@ -253,6 +253,32 @@ test('Controller Lab measures drift, deadzone coverage, amplitude and asymmetry'
   assert.ok(analysis.triggers.left.amplitude > 0);
 });
 
+test('Controller Lab does not claim circularity from repeated samples at one angle', () => {
+  const analysis = analyzeControllerInputs(Array.from({ length: 32 }, () => sample({ leftX: 1, leftY: 0 })));
+  assert.equal(analysis.sticks.left.circularity.ratio, null);
+  assert.equal(analysis.sticks.left.circularity.deviationPercent, null);
+});
+
+test('Controller Lab measures circularity from an eight-sector outer course', () => {
+  const samples = Array.from({ length: 8 }, (_, index) => {
+    const angle = index * Math.PI / 4;
+    return sample({ leftX: Math.cos(angle), leftY: Math.sin(angle) });
+  });
+  const analysis = analyzeControllerInputs(samples);
+  assert.ok(Math.abs(analysis.sticks.left.circularity.ratio - 1) < 1e-12);
+  assert.ok(Math.abs(analysis.sticks.left.circularity.deviationPercent) < 1e-10);
+});
+
+test('Controller Lab positive-only samples do not invent negative travel', () => {
+  const analysis = analyzeControllerInputs([
+    sample({ leftX: 0.25 }),
+    sample({ leftX: 0.5 }),
+    sample({ leftX: 1 })
+  ]);
+  assert.equal(analysis.sticks.left.amplitude.x.negative, 0);
+  assert.equal(analysis.sticks.left.asymmetry.xPercent, 100);
+});
+
 test('Controller Lab rejects values outside controller report ranges', () => {
   assert.throws(() => analyzeControllerInputs([sample({ leftX: 2 })]), /between -1 and 1/);
   assert.throws(() => analyzeControllerInputs([sample({ leftTrigger: 2 })]), /between 0 and 1/);

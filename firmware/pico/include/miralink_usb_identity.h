@@ -14,6 +14,22 @@ constexpr std::uint16_t kDualSenseEdgeProductId = 0x0df2;
 constexpr std::uint8_t kControllerModeStandard = 0;
 constexpr std::uint8_t kControllerModeEdge = 1;
 constexpr std::uint8_t kControllerModeAuto = 2;
+
+// Auto and unknown values deliberately resolve to the broadly compatible
+// standard persona. Keep this mapping pure so descriptor selection and the
+// decision to re-enumerate can never drift apart.
+constexpr std::uint16_t product_id_for_mode(const std::uint8_t mode) {
+    return mode == kControllerModeEdge
+        ? kDualSenseEdgeProductId
+        : kDualSenseProductId;
+}
+
+constexpr bool requires_reenumeration(const std::uint8_t previous_mode,
+    const bool previous_unique_serial_enabled, const std::uint8_t next_mode,
+    const bool next_unique_serial_enabled) {
+    return product_id_for_mode(previous_mode) != product_id_for_mode(next_mode)
+        || previous_unique_serial_enabled != next_unique_serial_enabled;
+}
 // One root Gamepad collection and its nested vendor-management collection
 // intentionally share one HID interface. Windows creates a child per top-level
 // collection, while hid-playstation matches the Sony VID/PID per interface;

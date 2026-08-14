@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.38
+## Firmware 0.39
 
 The firmware exposes one experimental HID-only DualSense-family persona. It
 uses Sony VID `0x054c` with PID `0x0ce6` (standard/Auto) or `0x0df2` (Edge)
@@ -61,7 +61,7 @@ in source and is not exposed as a working USB capability.
 - CYW43 and BTstack use the SDK polling async context. The main loop services
   USB first, dispatches radio/BTstack work, then advances the Bluetooth state
   machine, avoiding foreground/background BTstack races.
-- In the compiled `0.38` candidate, a build-generated SDK source patch also
+- In the compiled `0.39` candidate, a build-generated SDK source patch also
   keeps the relevant Bluetooth output path inside that serialization boundary.
   This is software evidence only until exercised on a real Pico 2 W.
 - A stale HID CID released for explicit pairing is tombstoned until its close;
@@ -85,8 +85,14 @@ in source and is not exposed as a working USB capability.
 - Optional privacy-preserving USB serial exposure, conservative local
   inactivity suspension, and a disabled-by-default status GPIO on user-facing
   Pico 2 W pins `0..22`. These settings require the existing configuration
-  confirmation. A controller-mode or serial change schedules USB
-  re-enumeration after the commit acknowledgement.
+  confirmation. `COMMIT_CONFIG` never disconnects USB: its two-byte
+  acknowledgement reports whether the effective PID or serial policy requires
+  re-enumeration. Only a separately confirmed `RECONNECT_USB` command can
+  schedule it, after that command's response has actually been read.
+- The configured standard/Auto/Edge mode selects only the USB persona. During
+  pairing, discovery accepts supported standard and Edge identities regardless
+  of that persona; strict descriptor, enhanced-report length and CRC checks
+  still gate controller input.
 - Optional standard USB remote wake: only a validated controller input can
   request it, and only when both the locally saved profile and the USB host have
   enabled it.
@@ -100,9 +106,11 @@ or source-only paths and must not be presented as active capabilities.
 ## Validation boundary
 
 The source is built locally with Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1`,
-vendored Opus and picotool. Native MiraLink core tests pass. The HID-only
-configuration descriptor is checked at compile time, and the UF2 is inspected
-locally for Pico 2 W / RP2350 ARM Secure targeting.
+vendored Opus and picotool. The HID-only configuration descriptor is checked at
+compile time, and the UF2 is inspected locally for Pico 2 W / RP2350 ARM Secure
+targeting. The Windows host-test executable is not launched during the 0.39
+pass; its new pure assertions are compiled separately and the complete Pico
+cross-build remains the release gate.
 
 The first manual 0.35 flash showed that Windows enumerated the Pico but the
 game-controller Properties test failed and no LED blink was observed. A manual
@@ -118,15 +126,23 @@ the result: MiraLink accepted only enhanced Bluetooth report `0x31`, a
 DualSense can begin with minimal report `0x01`, and MiraLink did not initiate
 the Sony Feature-report activation sequence.
 
-Firmware `0.38` addresses that deadlock in source with the bounded bootstrap
-described above. Its build, static checks and host tests do not establish a
-successful physical connection. WebHID exchange with the real Pico, enhanced
-input, rumble, adaptive triggers, reconnect and wake all still require a fresh
-manual `0.38` hardware test.
+The subsequent manual `0.38` test confirmed one controller entry, a ready
+MiraLink bridge, active Bluetooth input and working buttons/sticks. Diagnostics
+reported an audio link with no stream. After the user changed polling, enabled
+the USB serial and enabled the persisted PS flag, the serial-policy commit
+caused the old implicit USB re-enumeration; the controller could not then be
+reached or re-paired during that run. Status `0x04` recorded a page timeout, not
+proof of an authentication or key-store failure.
+
+Firmware `0.39` carries the now hardware-observed enhanced bootstrap and fixes
+that commit/re-enumeration lifecycle as described above. WebHID exchange,
+commit without interruption, explicit re-enumeration, re-pairing, motion,
+touch, rumble, adaptive triggers and wake still require a fresh manual `0.39`
+hardware test.
 
 ## Local manual-test candidate
 
-`firmware/releases/0.38/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/0.39/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.

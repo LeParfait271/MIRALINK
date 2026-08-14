@@ -6,7 +6,7 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 
 The first transport is a vendor-defined USB HID Feature-report collection
 inside the single root Gamepad Application collection of MiraLink's
-experimental DualSense-family interface. Firmware 0.38 uses
+experimental DualSense-family interface. Firmware 0.39 uses
 Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
 not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
@@ -62,8 +62,10 @@ or the command is not supported.
 - `GET_INFO` — firmware, board and capability information.
 - `GET_CONFIG` — read the persistent configuration.
 - `SET_CONFIG_DRAFT` — validate and stage a complete configuration in RAM.
-- `COMMIT_CONFIG` — write the staged configuration to flash and verify it.
-- `RESET_CONFIG` — restore safe defaults after confirmation.
+- `COMMIT_CONFIG` — write the staged configuration to flash, verify it and
+  report whether a separate USB re-enumeration is required.
+- `RESET_CONFIG` — stage safe defaults after confirmation; persistence still
+  requires a following `COMMIT_CONFIG`.
 - `RECONNECT_USB` — intentionally re-enumerate the USB device.
 - `GET_DIAGNOSTICS` — return structured health data.
 - `GET_LOG_PAGE` — return bounded local diagnostic records.
@@ -82,7 +84,25 @@ the Pico opens the local Bluetooth window automatically when its BTstack key
 database is empty. `OPEN_PAIRING_WINDOW` remains available as a manual way to
 reopen the five-minute window later.
 
-### 3.1 Current diagnostics payload
+### 3.1 Configuration commit acknowledgement
+
+Firmware `0.39` returns exactly two payload bytes after a successful
+`COMMIT_CONFIG`:
+
+| Offset | Meaning |
+|---:|---|
+| 0 | acknowledgement schema (`1`) |
+| 1 | flags: bit `0` means USB re-enumeration is required; bits `1..7` are reserved and must be zero |
+
+The flag is based on the effective DualSense/Edge PID and USB serial policy,
+not merely on the raw controller-mode byte. Standard and Auto both resolve to
+PID `0x0ce6` and therefore do not require re-enumeration when switching between
+one another. `COMMIT_CONFIG` never disconnects USB. The application may show a
+separate confirmed `RECONNECT_USB` action when bit `0` is set. It accepts an
+empty legacy acknowledgement from older firmware only to explain that the
+requirement is unknown; it must not infer success or start a reconnect.
+
+### 3.2 Current diagnostics payload
 
 `GET_DIAGNOSTICS` returns 48 structured bytes for schema `4`. The application
 keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
@@ -115,7 +135,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.38 exposes one HID-only USB
+claim that a controller is connected. Firmware 0.39 exposes one HID-only USB
 interface with one root Gamepad Application collection and a nested MiraLink
 vendor collection. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
@@ -129,9 +149,9 @@ below but require real hardware validation. Battery status, compatible rumble,
 lightbar, motion, touch and microphone state are reported only after a
 validated DualSense input report has been received.
 
-### 3.2 Pico controller state payload
+### 3.3 Pico controller state payload
 
-`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.38
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.39
 does not declare or emit an asynchronous management Input report under the
 Sony persona; the application polls this command every 40 ms. It still accepts
 the historical 16-byte schema `1`:
@@ -165,20 +185,22 @@ opens the same local window automatically after the radio reaches
 The command does not flash firmware or write configuration. Incoming HID
 connections outside that window are declined.
 
-### 3.3 Local diagnostics and recovery commands
+### 3.4 Local diagnostics and recovery commands
 
 `GET_LOG_PAGE` accepts an optional one-byte page index and returns a bounded
 local record: schema, page, presence, timestamp, message length and at most
 40 UTF-8 message bytes. The records live in a 12-entry RAM ring and are lost
 when the Pico restarts; controller input is never written to this log.
 
-`RECONNECT_USB` accepts no payload and schedules a local USB re-enumeration
-after the acknowledgement. `ENTER_RECOVERY` accepts exactly the confirmation
+`RECONNECT_USB` accepts no payload. The firmware arms local USB re-enumeration
+only after TinyUSB has actually served that command's acknowledgement on the
+MiraLink response report, then waits a further 250 ms. An unread or replaced
+response cannot disconnect the host. `ENTER_RECOVERY` accepts exactly the confirmation
 token `RCV1` and schedules the Pico BOOTSEL recovery path. The application must
 confirm both actions separately; the firmware never triggers either one from a
 background event.
 
-### 3.4 DualSense output payloads
+### 3.5 DualSense output payloads
 
 `GET_CONTROLLER_CAPABILITIES` returns eight bytes: schema, connected flag,
 transport (`1` for Bluetooth), model (`1` for DualSense), a little-endian
@@ -226,7 +248,7 @@ minimal input report `0x01`. That report proves only that traffic is arriving:
 it does not carry the complete state expected by MiraLink and cannot set the
 `connected` or `input-valid` controller flags.
 
-After accepting a valid Bluetooth HID descriptor, firmware `0.38` advances a
+After accepting a valid Bluetooth HID descriptor, firmware `0.39` advances a
 bounded asynchronous bootstrap through controller Feature reports `0x05`,
 `0x09` and `0x20`. At most one request is outstanding. Transient busy/not-ready
 results and response timeouts stay inside the Bluetooth state machine instead
@@ -237,7 +259,7 @@ Only a complete Bluetooth input report `0x31` with the strict expected length
 and a valid CRC can complete the handshake, expose controller input or make a
 provisional address trusted. The bootstrap is internal to the Pico-to-controller
 transport; it does not change the USB report table or MiraLink frame format.
-Its `0.38` implementation is software-validated but still requires a manual
+Its `0.39` implementation is software-validated but still requires a manual
 Pico 2 W and DualSense hardware test.
 
 ## 4. Configuration record

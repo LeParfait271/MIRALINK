@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMMANDS,
+  CONFIG_BYTES,
   HID_USAGE_PAGE,
   MIRALINK_PRODUCT_ID,
   MIRALINK_USB_FILTER,
@@ -11,6 +12,7 @@ import {
   assertValidConfig,
   decodeControllerCapabilities,
   decodeControllerStatePayload,
+  decodeCommitConfigAck,
   decodeConfig,
   decodeAudioStatusPayload,
   decodeDiagnosticsPayload,
@@ -28,6 +30,7 @@ import {
   hasMiraLinkVendorCollection,
   inspectMiraLinkHidIdentity
 } from '../src/protocol.js';
+
 import {
   describeWebHidError,
   inspectWebHidAvailability,
@@ -35,6 +38,42 @@ import {
   setWebHidWarningVisibility,
   transactFeatureReport
 } from '../src/hid-transport.js';
+
+test('COMMIT_CONFIG acknowledgement distinguishes safe save from explicit USB re-enumeration', () => {
+  assert.deepEqual(decodeCommitConfigAck(Uint8Array.from([1, 0])), {
+    schema: 1,
+    supported: true,
+    usbReenumerationRequired: false
+  });
+  assert.deepEqual(decodeCommitConfigAck(Uint8Array.from([1, 1])), {
+    schema: 1,
+    supported: true,
+    usbReenumerationRequired: true
+  });
+});
+
+test('COMMIT_CONFIG acknowledgement keeps legacy firmware explicit and rejects malformed flags', () => {
+  assert.deepEqual(decodeCommitConfigAck(new Uint8Array()), {
+    schema: 0,
+    supported: false,
+    usbReenumerationRequired: null
+  });
+  assert.throws(() => decodeCommitConfigAck(Uint8Array.from([1])), /acknowledgement is invalid/);
+  assert.throws(() => decodeCommitConfigAck(Uint8Array.from([1, 2])), /unsupported flags/);
+});
+
+test('configuration validation matches firmware byte and GPIO constraints', () => {
+  assert.throws(
+    () => assertValidConfig({ ...defaultConfig(), pollingMode: 1.5 }),
+    /pollingMode must be an integer/
+  );
+  assert.throws(
+    () => assertValidConfig({ ...defaultConfig(), statusGpioPin: 23 }),
+    /statusGpioPin must be an integer between 0 and 22, or 255/
+  );
+  assert.equal(assertValidConfig({ ...defaultConfig(), statusGpioPin: 22 }).statusGpioPin, 22);
+  assert.equal(assertValidConfig({ ...defaultConfig(), statusGpioPin: 0xff }).statusGpioPin, 0xff);
+});
 
 test('WebHID availability identifies a blocked permissions policy locally', () => {
   const status = inspectWebHidAvailability({
@@ -549,7 +588,25 @@ test('controller state exposes local paired-controller knowledge', () => {
 
 test('configuration round trip preserves all fields', () => {
   const value = { ...defaultConfig(), hapticsGain: 1.37, speakerVolume: 77, inactiveMinutes: 12, pollingMode: 2, enableWake: true, lockVolume: true, statusGpioPin: 8, statusGpioMode: 1 };
-  assert.deepEqual(decodeConfig(encodeConfig(value)), assertValidConfig(value));
+  const encoded = encodeConfig(value);
+  assert.equal(encoded.length, CONFIG_BYTES);
+  assert.deepEqual([...encoded.subarray(15)], Array(9).fill(0));
+  assert.deepEqual(decodeConfig(encoded), assertValidConfig(value));
+});
+
+test('configuration decoder rejects noncanonical lengths, flags and reserved bytes', () => {
+  const canonical = encodeConfig(defaultConfig());
+  const longPayload = new Uint8Array(CONFIG_BYTES + 1);
+  longPayload.set(canonical);
+  const unknownFlag = canonical.slice();
+  unknownFlag[10] |= 1 << 7;
+  const nonZeroReserved = canonical.slice();
+  nonZeroReserved[15] = 1;
+
+  assert.throws(() => decodeConfig(canonical.slice(0, -1)), /exactly 24 bytes/);
+  assert.throws(() => decodeConfig(longPayload), /exactly 24 bytes/);
+  assert.throws(() => decodeConfig(unknownFlag), /unsupported feature flags/);
+  assert.throws(() => decodeConfig(nonZeroReserved), /reserved bytes must be zero/);
 });
 
 test('configuration rejects unsafe values', () => {

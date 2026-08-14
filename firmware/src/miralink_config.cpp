@@ -1,5 +1,6 @@
 #include "miralink_config.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace miralink {
@@ -40,14 +41,24 @@ std::array<std::uint8_t, kConfigEncodedBytes> encode_config(const Config& config
 }
 
 ValidationResult decode_config(const std::vector<std::uint8_t>& bytes, Config& output) {
-    if (bytes.size() < 15) return {false, "configuration payload is too short"};
+    if (bytes.size() != kConfigEncodedBytes) {
+        return {false, "configuration payload must be exactly 24 bytes"};
+    }
+    const auto flags = static_cast<std::uint16_t>(bytes[10])
+        | static_cast<std::uint16_t>(bytes[11]) << 8;
+    if ((flags & static_cast<std::uint16_t>(~kConfigFeatureFlagsMask)) != 0) {
+        return {false, "configuration payload has unsupported feature flags"};
+    }
+    if (std::any_of(bytes.begin() + static_cast<std::ptrdiff_t>(kConfigReservedOffset),
+            bytes.end(), [](const std::uint8_t byte) { return byte != 0; })) {
+        return {false, "configuration payload reserved bytes must be zero"};
+    }
     output = default_config();
     output.schema = bytes[0];
     const auto gain = static_cast<std::uint16_t>(bytes[1]) | static_cast<std::uint16_t>(bytes[2]) << 8;
     output.haptics_gain = static_cast<float>(gain) / 100.0f;
     output.speaker_volume = bytes[3]; output.headset_volume = bytes[4]; output.speaker_gain = bytes[5]; output.inactive_minutes = bytes[6];
     output.polling_mode = bytes[7]; output.audio_buffer_length = bytes[8]; output.controller_mode = bytes[9];
-    const auto flags = static_cast<std::uint16_t>(bytes[10]) | static_cast<std::uint16_t>(bytes[11]) << 8;
     output.disable_led = (flags & kFlagDisableLed) != 0; output.enable_usb_serial = (flags & kFlagEnableUsbSerial) != 0; output.ps_shortcut = (flags & kFlagPsShortcut) != 0;
     output.disable_mic = (flags & kFlagDisableMic) != 0; output.disable_speaker = (flags & kFlagDisableSpeaker) != 0; output.enable_wake = (flags & kFlagEnableWake) != 0; output.lock_volume = (flags & kFlagLockVolume) != 0;
     output.trigger_reduce = bytes[12]; output.status_gpio_pin = bytes[13]; output.status_gpio_mode = bytes[14];

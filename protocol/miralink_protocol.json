@@ -1,6 +1,6 @@
 {
   "product": "MiraLink",
-  "releaseVersion": "0.38",
+  "releaseVersion": "0.39",
   "protocolVersion": 1,
   "implementation": "clean-room",
   "compatibilityTarget": "observable DS5Dongle v0.7.2-hotfix capabilities",
@@ -110,6 +110,17 @@
     "SET_MICROPHONE_MUTE": 16,
     "SET_CONTROLLER_OUTPUT": 17,
     "GET_AUDIO_STATUS": 18
+  },
+  "commitConfigAck": {
+    "payloadBytes": 2,
+    "schema": 1,
+    "fields": [
+      { "name": "schema", "offset": 0, "type": "u8", "value": 1 },
+      { "name": "usbReenumerationRequired", "offset": 1, "type": "bit", "bit": 0 },
+      { "name": "reserved", "offset": 1, "type": "zeroBits", "bits": "1..7" }
+    ],
+    "commitDisconnectsUsb": false,
+    "reconnectCommand": "RECONNECT_USB"
   },
   "diagnostics": {
     "payloadBytes": 48,

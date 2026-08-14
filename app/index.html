@@ -3,39 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090c0a">
+  <meta name="theme-color" content="#0b0e0f">
   <meta name="description" content="MiraLink, centre de contrôle local pour Pico 2 W">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
   <title>MiraLink — Centre de contrôle local</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=38-control-deck">
+  <link rel="stylesheet" href="styles.css?ui=39-soft-signal">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Aller au contenu</a>
 
-  <header class="site-chrome" aria-label="Navigation principale MiraLink">
+  <header class="site-chrome" aria-label="En-tête MiraLink">
     <div class="chrome-primary">
       <a class="site-brand" href="#top" aria-label="MiraLink — retour en haut">
         <span class="site-brand-mark" aria-hidden="true"><img src="icon.svg" alt=""></span>
         <span class="site-brand-copy"><strong>MIRALINK</strong><small>PICO 2 W / LOCAL CONTROL</small></span>
       </a>
       <div class="site-chrome-meta">
-        <span class="version-chip" id="version-chip">v0.38</span>
+        <span class="version-chip" id="version-chip">v0.39</span>
         <span class="status-chip" id="global-status" data-state="ready">
           <span class="status-dot" aria-hidden="true"></span>
           <span id="global-status-text" data-i18n="statusReady">Prêt</span>
         </span>
       </div>
     </div>
-    <nav class="site-nav" aria-label="Sections MiraLink" aria-orientation="horizontal" role="tablist">
-      <button class="tab-button site-nav-item is-active" type="button" role="tab" tabindex="0" aria-selected="true" aria-controls="tab-overview" id="tab-button-overview" data-tab="overview" data-i18n="tabOverview">Système</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-bridge" id="tab-button-bridge" data-tab="bridge" data-i18n="tabBridge">Configuration</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-controllers" id="tab-button-controllers" data-tab="controllers" data-i18n="tabControllers">Manettes</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-diagnostics" id="tab-button-diagnostics" data-tab="diagnostics" data-i18n="tabDiagnostics">Diagnostics</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-firmware" id="tab-button-firmware" data-tab="firmware" data-i18n="tabFirmware">Firmware</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-backups" id="tab-button-backups" data-tab="backups" data-i18n="tabBackups">Sauvegardes</button>
-      <button class="tab-button site-nav-item" type="button" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-logs" id="tab-button-logs" data-tab="logs" data-i18n="tabLogs">Journaux</button>
+    <nav class="site-nav" aria-label="Accès rapide aux sections">
+      <span class="site-nav-label" aria-hidden="true">ACCÈS RAPIDE</span>
+      <a class="site-nav-item" id="nav-link-overview" href="#tab-overview" data-route-target="#tab-overview" data-index="01" data-i18n="tabOverview">Système</a>
+      <a class="site-nav-item" id="nav-link-bridge" href="#tab-bridge" data-route-target="#tab-bridge" data-index="02" data-i18n="tabBridge">Configuration</a>
+      <a class="site-nav-item" id="nav-link-controllers" href="#tab-controllers" data-route-target="#tab-controllers" data-index="03" data-i18n="tabControllers">Manettes</a>
+      <a class="site-nav-item" id="nav-link-diagnostics" href="#tab-diagnostics" data-route-target="#tab-diagnostics" data-index="04" data-i18n="tabDiagnostics">Diagnostics</a>
+      <a class="site-nav-item" id="nav-link-firmware" href="#tab-firmware" data-route-target="#tab-firmware" data-index="05" data-i18n="tabFirmware">Firmware</a>
+      <a class="site-nav-item" id="nav-link-backups" href="#tab-backups" data-route-target="#tab-backups" data-index="06" data-i18n="tabBackups">Sauvegardes</a>
+      <a class="site-nav-item" id="nav-link-logs" href="#tab-logs" data-route-target="#tab-logs" data-index="07" data-i18n="tabLogs">Journaux</a>
     </nav>
   </header>
 
@@ -62,7 +63,7 @@
           </div>
         </div>
 
-        <aside class="connection-surface" id="workspace" aria-labelledby="workspace-title">
+        <section class="connection-surface" id="workspace" aria-labelledby="workspace-title">
           <div class="panel-marker"><span>01</span><span>CONNEXION</span></div>
           <div class="connection-surface-heading">
             <div>
@@ -87,7 +88,7 @@
               <div><p class="empty-title" data-i18n="noDevices">Aucun appareil connecté</p><p class="empty-copy" data-i18n="noDevicesCopy">Lancez la recherche pour connecter un appareil MiraLink.</p></div>
             </div>
           </div>
-        </aside>
+        </section>
       </div>
 
       <section class="live-console" id="diagnostic-console" aria-labelledby="console-title">
@@ -132,7 +133,7 @@
       <span class="system-rail-live"><i aria-hidden="true"></i>TRAITEMENT LOCAL</span>
     </div>
 
-    <section class="tab-panel" id="tab-overview" role="tabpanel" tabindex="0" aria-labelledby="tab-button-overview" data-panel="overview">
+    <section class="tab-panel content-section" id="tab-overview" data-panel="overview" data-section-index="04">
       <div class="section-heading">
         <div><p class="eyebrow" data-i18n="overviewEyebrow">VUE SYSTÈME</p><h2 data-i18n="overviewTitle">Un parcours court.<br>Des états lisibles.</h2></div>
         <span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span>
@@ -163,7 +164,7 @@
       </div>
     </section>
 
-    <section class="tab-panel" id="tab-bridge" role="tabpanel" tabindex="0" aria-labelledby="tab-button-bridge" data-panel="bridge" hidden>
+    <section class="tab-panel content-section" id="tab-bridge" data-panel="bridge" data-section-index="05">
       <div class="section-heading">
         <div><p class="eyebrow" data-i18n="bridgeEyebrow">PICO 2 W / PARAMÈTRES PERSISTANTS</p><h2 data-i18n="bridgeTitle">Configuration du bridge</h2></div>
         <span class="panel-status" id="bridge-device-status" data-i18n="selectDevice">Sélectionnez un appareil</span>
@@ -181,7 +182,7 @@
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">02</span><div><h3 data-i18n="performanceTitle">Performance</h3><p data-i18n="performanceCopy">Fréquence d’interrogation et rythme audio.</p></div></div>
           <label class="field" for="polling-mode"><span class="field-label" data-i18n="pollingMode">Mode d’interrogation</span><select id="polling-mode" disabled><option value="0">250 Hz</option><option value="1">500 Hz</option><option value="2">Temps réel</option></select></label>
-          <label class="field" for="audio-buffer"><span class="field-label" data-i18n="audioBuffer">Tampon audio</span><span class="field-value" id="audio-buffer-value">64</span><input id="audio-buffer" type="range" min="16" max="127" step="1" value="64" disabled></label>
+          <label class="field unavailable-field" for="audio-buffer"><span class="field-label" data-i18n="audioBuffer">Tampon audio</span><span class="field-value" id="audio-buffer-value">64</span><input id="audio-buffer" type="range" min="16" max="127" step="1" value="64" aria-describedby="audio-buffer-hint" disabled><span class="field-hint" id="audio-buffer-hint">Indisponible en 0.39 — transport audio USB non exposé.</span></label>
         </article>
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">03</span><div><h3 data-i18n="powerTitle">Énergie et témoins</h3><p data-i18n="powerCopy">Veille, lumière et réveil de l’hôte.</p></div></div>
@@ -193,17 +194,123 @@
           <div class="card-heading"><span class="card-kicker">04</span><div><h3 data-i18n="compatibilityTitle">Compatibilité</h3><p data-i18n="compatibilityCopy">Mode manette et comportement USB.</p></div></div>
           <label class="field" for="controller-mode"><span class="field-label" data-i18n="controllerMode">Mode manette</span><select id="controller-mode" disabled><option value="0">DualSense</option><option value="1">DualSense Edge</option><option value="2">Automatique</option></select></label>
           <label class="switch-field"><input id="enable-usb-sn" type="checkbox" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="enableUsbSerial">Activer le numéro de série USB</span></label>
-          <label class="switch-field"><input id="ps-shortcut" type="checkbox" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="psShortcut">Activer le raccourci PS</span></label>
+          <label class="switch-field unavailable-field"><input id="ps-shortcut" type="checkbox" aria-describedby="ps-shortcut-hint" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="psShortcut">Activer le raccourci PS</span><span class="field-hint" id="ps-shortcut-hint">Indisponible en 0.39 — commande non exposée par le firmware actuel.</span></label>
         </article>
+      </div>
+      <div class="notice warning usb-reconnect-notice" id="usb-reconnect-notice" role="status" hidden>
+        <div><strong>Réénumération USB requise.</strong><span>L’identité USB du Pico 2 W a changé. Reconnectez explicitement le pont pour que l’ordinateur détecte la nouvelle configuration.</span></div>
+        <button class="button quiet" id="reconnect-usb-button" type="button">Reconnecter le pont USB</button>
       </div>
       <div class="action-bar panel-inner">
         <div><p class="eyebrow" data-i18n="draftStatus">ÉTAT DU BROUILLON</p><p id="draft-status" data-i18n="noDraft">Aucune modification locale.</p></div>
-        <div class="action-row"><button class="button quiet" id="read-config-button" type="button" disabled data-i18n="readConfig">Lire le Pico 2 W</button><button class="button primary" id="save-config-button" type="button" disabled data-i18n="saveConfig">Enregistrer sur le Pico 2 W</button><button class="button danger" id="reset-config-button" type="button" disabled data-i18n="resetConfig">Réinitialiser le brouillon</button></div>
+        <div class="action-row"><button class="button quiet" id="read-config-button" type="button" disabled data-i18n="readConfig">Lire le Pico 2 W</button><button class="button primary" id="save-config-button" type="button" disabled data-i18n="saveConfig">Enregistrer sur le Pico 2 W</button><button class="button danger" id="reset-config-button" type="button" disabled data-i18n="resetConfig">Réinitialiser le brouillon</button><button class="button danger" id="factory-reset-config-button" type="button" disabled>Restaurer les réglages d’usine</button></div>
       </div>
     </section>
 
-    <section class="tab-panel" id="tab-controllers" role="tabpanel" tabindex="0" aria-labelledby="tab-button-controllers" data-panel="controllers" hidden>
+    <section class="tab-panel content-section" id="tab-controllers" data-panel="controllers" data-section-index="06">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="controllerEyebrow">ENTRÉES / ANALYSE DE SESSION / COMPARAISON</p><h2 data-i18n="controllerTitle">Espace manette</h2></div><span class="panel-status" data-i18n="desktopOnly">ORDINATEUR UNIQUEMENT</span></div>
+      <section class="controller-lab-console" id="controller-lab-console" aria-labelledby="controller-lab-console-title">
+        <div class="controller-lab-heading">
+          <div>
+            <p class="section-overline">TÉLÉMÉTRIE D’ENTRÉE / LECTURE SEULE</p>
+            <h3 id="controller-lab-console-title">Controller Lab</h3>
+          </div>
+          <div class="controller-stream-state" aria-label="État du flux de contrôleur">
+            <span class="controller-stream-dot" aria-hidden="true"></span>
+            <span><small>Liaison</small><span id="controller-lab-link-state">En attente</span></span>
+            <span><small>Échantillons</small><span id="controller-lab-sample-state">Aucun reçu</span><b id="controller-lab-sample-count">0</b></span>
+          </div>
+        </div>
+
+        <div class="controller-health-strip" aria-label="État de la manette">
+          <div><span>Batterie</span><span id="controller-lab-battery">—</span></div>
+          <div><span>Casque</span><span id="controller-lab-headset">En attente d’un rapport</span></div>
+          <div><span>Microphone</span><span id="controller-lab-microphone">En attente d’un rapport</span></div>
+          <p>États reçus uniquement ; aucune commande audio n’est exposée.</p>
+        </div>
+
+        <div class="controller-lab-layout">
+          <section class="controller-live-inputs" aria-labelledby="controller-live-inputs-title">
+            <div class="controller-subheading"><span>01</span><div><h4 id="controller-live-inputs-title">Entrées en direct</h4><p>Valeurs normalisées du dernier rapport valide.</p></div></div>
+
+            <div class="controller-stick-grid">
+              <article class="controller-stick-module">
+                <div class="controller-module-label"><span>Stick gauche</span><span id="controller-left-stick-value">X 0.000 / Y 0.000</span></div>
+                <div class="controller-stick-pad" role="img" aria-label="Position du stick gauche" aria-describedby="controller-left-stick-value">
+                  <span class="controller-stick-ring" aria-hidden="true"></span>
+                  <span class="controller-stick-axis axis-x" aria-hidden="true"></span>
+                  <span class="controller-stick-axis axis-y" aria-hidden="true"></span>
+                  <span class="controller-stick-point" id="controller-left-stick-point" aria-hidden="true"></span>
+                </div>
+              </article>
+              <article class="controller-stick-module">
+                <div class="controller-module-label"><span>Stick droit</span><span id="controller-right-stick-value">X 0.000 / Y 0.000</span></div>
+                <div class="controller-stick-pad" role="img" aria-label="Position du stick droit" aria-describedby="controller-right-stick-value">
+                  <span class="controller-stick-ring" aria-hidden="true"></span>
+                  <span class="controller-stick-axis axis-x" aria-hidden="true"></span>
+                  <span class="controller-stick-axis axis-y" aria-hidden="true"></span>
+                  <span class="controller-stick-point" id="controller-right-stick-point" aria-hidden="true"></span>
+                </div>
+              </article>
+            </div>
+
+            <div class="controller-trigger-grid">
+              <label for="controller-left-trigger"><span>L2</span><progress id="controller-left-trigger" max="1" value="0"></progress><span id="controller-left-trigger-value">0 %</span></label>
+              <label for="controller-right-trigger"><span>R2</span><progress id="controller-right-trigger" max="1" value="0"></progress><span id="controller-right-trigger-value">0 %</span></label>
+            </div>
+
+            <div class="controller-button-panel">
+              <p>Boutons reçus</p>
+              <ul class="controller-button-grid" aria-label="État des boutons du dernier échantillon">
+                <li class="controller-input-key" data-controller-button="up" data-active="false" aria-label="Haut : relâché">↑<small>HAUT</small></li>
+                <li class="controller-input-key" data-controller-button="right" data-active="false" aria-label="Droite : relâché">→<small>DROITE</small></li>
+                <li class="controller-input-key" data-controller-button="down" data-active="false" aria-label="Bas : relâché">↓<small>BAS</small></li>
+                <li class="controller-input-key" data-controller-button="left" data-active="false" aria-label="Gauche : relâché">←<small>GAUCHE</small></li>
+                <li class="controller-input-key" data-controller-button="square" data-active="false" aria-label="Carré : relâché">□<small>CARRÉ</small></li>
+                <li class="controller-input-key" data-controller-button="cross" data-active="false" aria-label="Croix : relâché">×<small>CROIX</small></li>
+                <li class="controller-input-key" data-controller-button="circle" data-active="false" aria-label="Rond : relâché">○<small>ROND</small></li>
+                <li class="controller-input-key" data-controller-button="triangle" data-active="false" aria-label="Triangle : relâché">△<small>TRIANGLE</small></li>
+                <li class="controller-input-key" data-controller-button="l1" data-active="false" aria-label="L1 : relâché">L1</li>
+                <li class="controller-input-key" data-controller-button="r1" data-active="false" aria-label="R1 : relâché">R1</li>
+                <li class="controller-input-key" data-controller-button="l2" data-active="false" aria-label="L2 : relâché">L2</li>
+                <li class="controller-input-key" data-controller-button="r2" data-active="false" aria-label="R2 : relâché">R2</li>
+                <li class="controller-input-key" data-controller-button="create" data-active="false" aria-label="Create : relâché">CREATE</li>
+                <li class="controller-input-key" data-controller-button="options" data-active="false" aria-label="Options : relâché">OPTIONS</li>
+                <li class="controller-input-key" data-controller-button="l3" data-active="false" aria-label="L3 : relâché">L3</li>
+                <li class="controller-input-key" data-controller-button="r3" data-active="false" aria-label="R3 : relâché">R3</li>
+                <li class="controller-input-key" data-controller-button="ps" data-active="false" aria-label="PS : relâché">PS</li>
+                <li class="controller-input-key" data-controller-button="touchpad" data-active="false" aria-label="Pavé tactile : relâché">TOUCH</li>
+                <li class="controller-input-key" data-controller-button="mute" data-active="false" aria-label="Muet : relâché">MUTE</li>
+              </ul>
+            </div>
+          </section>
+
+          <div class="controller-data-column">
+            <section class="controller-sensor-panel" aria-labelledby="controller-sensor-title">
+              <div class="controller-subheading"><span>02</span><div><h4 id="controller-sensor-title">Mouvement et tactile</h4><p>Lecture brute, sans correction ni écriture.</p></div></div>
+              <dl class="controller-sensor-grid">
+                <div><dt>Gyroscope</dt><dd><span id="controller-gyro-value">X — / Y — / Z —</span></dd></div>
+                <div><dt>Accéléromètre</dt><dd><span id="controller-accelerometer-value">X — / Y — / Z —</span></dd></div>
+                <div><dt>Tactile 01</dt><dd><span id="controller-touch-1-value">Inactif / X — / Y —</span></dd></div>
+                <div><dt>Tactile 02</dt><dd><span id="controller-touch-2-value">Inactif / X — / Y —</span></dd></div>
+              </dl>
+            </section>
+
+            <section class="controller-analysis-panel" aria-labelledby="controller-analysis-title">
+              <div class="controller-subheading"><span>03</span><div><h4 id="controller-analysis-title">Analyse locale, aucune calibration écrite</h4><p id="controller-analysis-summary">En attente d’échantillons locaux.</p></div></div>
+              <table class="controller-analysis-table">
+                <caption>Mesures calculées sur les entrées conservées localement</caption>
+                <thead><tr><th scope="col">Axe</th><th scope="col">Centre</th><th scope="col">Amplitude</th><th scope="col">Circularité</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Stick gauche</th><td><span id="controller-analysis-left-center">—</span></td><td><span id="controller-analysis-left-amplitude">—</span></td><td><span id="controller-analysis-left-circularity">—</span></td></tr>
+                  <tr><th scope="row">Stick droit</th><td><span id="controller-analysis-right-center">—</span></td><td><span id="controller-analysis-right-amplitude">—</span></td><td><span id="controller-analysis-right-circularity">—</span></td></tr>
+                </tbody>
+              </table>
+              <p class="controller-analysis-footnote">Cette vue observe les échantillons déjà reçus. Elle ne modifie ni le Pico 2 W, ni la manette.</p>
+            </section>
+          </div>
+        </div>
+      </section>
       <div class="feature-grid">
         <article class="feature-card"><span class="feature-glyph" aria-hidden="true">01</span><h3 data-i18n="calibrationTitle">Analyse locale</h3><p data-i18n="calibrationCopy">Analysez les entrées reçues et créez un instantané de session qui n’est jamais appliqué au firmware.</p><button class="button quiet" type="button" id="open-calibration-button" data-i18n="openWorkspace">Ouvrir l’analyse</button></article>
         <article class="feature-card"><span class="feature-glyph" aria-hidden="true">02</span><h3 data-i18n="quickTestTitle">Test des entrées</h3><p data-i18n="quickTestCopy">Vérifiez sticks, gâchettes et boutons reçus, sans envoyer de vibration, d’audio ni d’autre sortie.</p><button class="button quiet" type="button" id="run-quick-test-button" data-i18n="runTest">Lancer le test</button></article>
@@ -212,7 +319,7 @@
       <div class="notice info"><strong data-i18n="controllerNoticeTitle">Le travail sur la manette reste local.</strong><span data-i18n="controllerNoticeBody">MiraLink ne téléverse ni numéro de série, ni adresse Bluetooth, ni échantillon de calibration.</span></div>
     </section>
 
-    <section class="tab-panel" id="tab-diagnostics" role="tabpanel" tabindex="0" aria-labelledby="tab-button-diagnostics" data-panel="diagnostics" hidden>
+    <section class="tab-panel content-section" id="tab-diagnostics" data-panel="diagnostics" data-section-index="07">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="diagnosticEyebrow">OBSERVER / VÉRIFIER / RÉCUPÉRER</p><h2 data-i18n="diagnosticTitle">Comprendre le trajet du signal</h2></div><span class="panel-status">LECTURE SEULE</span></div>
       <div class="protocol-map" aria-label="Chemin diagnostique">
         <article><span>01 / HÔTE</span><strong>Navigateur</strong><p>Autorisation WebHID et transport USB local.</p></article>
@@ -224,7 +331,7 @@
       <div class="callout diagnostic-callout"><span class="callout-icon" aria-hidden="true">?</span><div><h3>Les résultats actifs restent en haut.</h3><p>Le tableau de diagnostic est toujours visible près de la connexion pour comparer immédiatement l’état avant et après une action.</p><a class="text-link" href="#diagnostic-console">Revenir au diagnostic <span aria-hidden="true">↑</span></a></div></div>
     </section>
 
-    <section class="tab-panel" id="tab-firmware" role="tabpanel" tabindex="0" aria-labelledby="tab-button-firmware" data-panel="firmware" hidden>
+    <section class="tab-panel content-section" id="tab-firmware" data-panel="firmware" data-section-index="08">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="firmwareEyebrow">VÉRIFIER / RÉCUPÉRER / METTRE À JOUR</p><h2 data-i18n="firmwareTitle">Firmware</h2></div><span class="panel-status" data-i18n="manualUpdate">MISE À JOUR MANUELLE</span></div>
       <div class="firmware-panel panel-inner">
         <div class="firmware-current"><span class="metric-label" data-i18n="installedVersion">Version installée</span><strong id="installed-version">—</strong><span id="installed-version-note" data-i18n="connectForVersion">Connectez un Pico 2 W pour la lire.</span></div>
@@ -232,12 +339,12 @@
           <label class="button primary file-button" for="firmware-file"><span>Vérifier un fichier .UF2</span><input id="firmware-file" type="file" accept=".uf2,application/octet-stream"></label>
           <p>Le fichier est analysé localement avant toute manipulation du Pico 2 W.</p>
         </div>
-        <a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/tag/v0.38" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a>
+        <a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/tag/v0.39" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a>
         <div id="firmware-result" class="verification-result" hidden aria-live="polite"></div>
       </div>
     </section>
 
-    <section class="tab-panel" id="tab-backups" role="tabpanel" tabindex="0" aria-labelledby="tab-button-backups" data-panel="backups" hidden>
+    <section class="tab-panel content-section" id="tab-backups" data-panel="backups" data-section-index="09">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="backupEyebrow">LOCAL / PORTABLE / VERSIONNÉ</p><h2 data-i18n="backupTitle">Sauvegardes et profils</h2></div><span class="panel-status" data-i18n="noCloud">AUCUN CLOUD</span></div>
       <div class="backup-grid">
         <article class="feature-card"><span class="feature-glyph" aria-hidden="true">↓</span><h3 data-i18n="exportTitle">Exporter</h3><p data-i18n="exportCopy">Enregistrez un fichier de configuration versionné sur cet ordinateur.</p><button class="button primary" id="export-button" type="button" data-i18n="exportButton">Exporter la sauvegarde</button></article>
@@ -247,14 +354,14 @@
       <div class="notice info"><strong data-i18n="backupNoticeTitle">Les sauvegardes restent sous votre contrôle.</strong><span data-i18n="backupNoticeBody">MiraLink ne les synchronise et ne les téléverse jamais.</span></div>
     </section>
 
-    <section class="tab-panel" id="tab-logs" role="tabpanel" tabindex="0" aria-labelledby="tab-button-logs" data-panel="logs" hidden>
+    <section class="tab-panel content-section" id="tab-logs" data-panel="logs" data-section-index="10">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="logsEyebrow">TRACE LOCALE DES ÉVÉNEMENTS</p><h2 data-i18n="logsTitle">Journaux</h2></div><button class="button quiet" id="clear-logs-button" type="button" data-i18n="clearLogs">Effacer les journaux</button></div>
       <div class="log-view" id="log-view" aria-live="polite"></div>
     </section>
   </main>
 
   <footer class="footer">
-    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.38</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-14</span>
+    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.39</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-14</span>
   </footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title">
@@ -266,6 +373,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="src/app.js?ui=38-control-deck"></script>
+  <script type="module" src="src/app.js?ui=39-soft-signal"></script>
 </body>
 </html>

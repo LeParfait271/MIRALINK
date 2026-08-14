@@ -6,16 +6,13 @@ two-slot flash store are independent of the board layer; the `pico/` target
 connects them to USB HID and Pico flash operations without importing any
 previous firmware source.
 
-The manual Windows test of firmware 0.37 showed exactly one controller child,
-partially validating the corrected single-root USB topology, but Windows
-received no usable controller input. No Bluetooth packet was captured. Source
-analysis found an activation lock consistent with that result: 0.37 accepted
-only enhanced report `0x31`, a DualSense can begin with minimal report `0x01`,
-and the bridge did not initiate the Feature sequence that enables the enhanced
-stream.
+The manual Windows test of firmware 0.38 showed exactly one controller child,
+an active enhanced Bluetooth input stream, and working buttons/sticks in
+`joy.cpl`. No Bluetooth packet capture was made, and motion, touch, outputs,
+wake and audio were not exercised.
 
-Firmware 0.38 keeps the one-root experimental DualSense-family USB persona and
-adds a bounded asynchronous Feature bootstrap (`0x05` → `0x09` → `0x20`)
+Firmware 0.39 keeps the one-root experimental DualSense-family USB persona and
+the bounded asynchronous Feature bootstrap introduced in 0.38 (`0x05` → `0x09` → `0x20`)
 after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
 only as link liveness. Only a complete, strictly validated enhanced `0x31`
 report can mark the controller connected and make a new Bluetooth address
@@ -32,9 +29,12 @@ inquiry/connection path for DualSense input, bounded diagnostics, local RAM
 logs, USB reconnection, confirmation-token recovery, native-size DualSense
 input/output bridging and opt-in USB remote wake. The UAC2 audio source
 remains in the firmware tree but is disabled from the active USB descriptor
-until a physical Pico 2 W validation is complete. The `0.38` Bluetooth
-correction remains a compiled software candidate; a successful build and host
-tests are not a physical Pico 2 W/controller validation.
+until a physical Pico 2 W validation is complete. Version `0.39` prevents
+configuration commits from implicitly disconnecting USB, reports a separate
+re-enumeration requirement in the commit acknowledgement, and lets pairing
+discovery accept supported standard and Edge controllers independently of the
+selected USB persona. These recovery changes are compiled software candidates;
+their build does not replace a new physical Pico 2 W/controller test.
 
 ## Core and hardware builds
 

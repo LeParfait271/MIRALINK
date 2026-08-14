@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.38`
-- Current firmware version: `0.38` (experimental DualSense/Edge USB persona with native-size input/output reports, one proven Windows controller child and a bounded Bluetooth enhanced-report bootstrap; USB audio remains source-only)
+- Current site version: `0.39`
+- Current firmware version: `0.39` (explicit USB-identity re-enumeration, persona-independent DualSense/Edge discovery and the bounded Bluetooth enhanced-report bootstrap validated through real input on 0.38; USB audio remains source-only)
 - Last update: `2026-08-14`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: GitHub source and manual firmware release
@@ -36,29 +36,33 @@ No external service is required for the local application, and no device is flas
 
 ## Current validation state
 
-The manual Windows test of firmware `0.37` showed exactly one `DualSense`
-controller entry, so the corrected one-root USB topology is partially validated
-on hardware. Pairing completed far enough for the controller LED to turn off,
-but no buttons or sticks moved in the Windows controller properties. The
-test did not capture Bluetooth packets. Source analysis subsequently found a
-lock consistent with that result: `0.37` accepted only enhanced report `0x31`,
-a DualSense can begin with minimal report `0x01`, and the bridge did not
-initiate the Feature-report sequence needed to enable the enhanced stream.
+The manual Windows test of firmware `0.38` confirmed one `DualSense` controller
+entry, a ready MiraLink bridge, active Bluetooth input, and working buttons and
+sticks in `joy.cpl`. Diagnostics reported USB, radio and flash available; the
+audio link existed without a stream. Motion, touch, controller outputs,
+suspend/wake and audio were not tested. The retained Bluetooth diagnostic was
+`connection opening (status 0x04)`, a page timeout, and does not by itself prove
+an authentication or stored-key failure.
 
-Firmware `0.38` is the compiled software candidate for that failure. It runs a
-bounded `0x05` → `0x09` → `0x20` Feature bootstrap, keeps minimal reports as
-liveness-only evidence, and does not declare the controller connected until a
-complete enhanced `0x31` report passes strict validation. This correction has
-not yet been validated on a physical Pico 2 W and DualSense. Configuration
-writes now use the SDK flash-safe executor, and radio startup failure falls
-back to a usable USB diagnostic state instead of touching an uninitialized
-Bluetooth lock.
+That same run exposed a configuration lifecycle defect. Enabling the USB
+serial number committed successfully, then firmware `0.38` re-enumerated USB
+without a separate user decision; the controller subsequently could not be
+reached or re-paired during the run. Firmware `0.39` no longer disconnects USB
+from `COMMIT_CONFIG`. A versioned acknowledgement tells the application when
+the effective PID or serial policy changed, and re-enumeration is a distinct,
+confirmed action. Bluetooth discovery also accepts supported standard and Edge
+controllers independently of the selected USB persona. These `0.39` recovery
+changes still require a new physical test.
 
-The web application is now an original high-tech control deck with working
-WebHID discovery, guided diagnostics, local profiles, local UF2 inspection and
-an offline shell. Its current software baseline passes 98 unit tests and 20
-desktop/mobile end-to-end scenarios; synthetic browser coverage is not a
-physical bridge test.
+The web application is an original desktop control deck with working WebHID
+discovery, guided diagnostics, local profiles, local UF2 inspection and an
+offline shell. Version `0.39` turns the former tab bar into an actual
+quick-access navigator, keeps every tool visible in one continuous page,
+softens the palette and uses original motion/depth effects. Controller Lab now
+visualizes local input, battery, motion and touch and computes read-only stick
+analysis. The observable workflows of DualShock Tools and DS5 Bridge Config
+informed this feature inventory, but no third-party code or assets were copied
+and no permanent controller calibration is exposed.
 
 ## Local build outputs
 

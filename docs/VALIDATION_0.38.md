@@ -78,6 +78,35 @@ sticks, motion and touch. Only after input works should rumble, LEDs, adaptive
 triggers, standard/Edge modes, reconnect and suspend/explicit wake be tested.
 USB audio remains disabled and is outside this candidate.
 
+## Post-release manual Windows result
+
+The user later flashed `0.38` on a Pico 2 W connected to a separate Windows
+computer. This run confirmed exactly one Windows controller entry, a ready
+MiraLink bridge, active Bluetooth input and working buttons and sticks in
+`joy.cpl`. The site reported firmware `0.38`, USB `PASS`, radio `PASS`, flash
+`PASS`, and an audio link with no stream. Motion, touch, outputs, suspend/wake
+and audio rendering were not exercised.
+
+The diagnostic retained `Last Bluetooth issue: connection opening (status
+0x04)`. In BTstack this status is a page timeout: it records that one connection
+opening attempt could not reach the controller. It is not evidence by itself of
+an authentication failure or a corrupt stored key, and the successful active
+input proves that the enhanced-report bootstrap worked during this run.
+
+The user then changed polling mode, enabled the USB serial number and enabled
+the persisted PS-shortcut flag. The flash commit completed, firmware `0.38`
+automatically re-enumerated USB because the serial policy changed, and the user
+reported that the controller light went out and that the controller could not
+subsequently be reached or re-paired during the session. No Bluetooth packet
+capture was made, so the exact radio failure is not asserted. Static review
+confirmed that polling and the PS flag did not schedule USB re-enumeration;
+the serial-policy change did.
+
+This post-release result raises the proven Bluetooth/input evidence but also
+invalidates implicit re-enumeration as a safe configuration workflow. Firmware
+`0.39` therefore separates commit from the disruptive USB action and leaves
+its recovery change unproven until another manual flash/test.
+
 ## DS5Dongle baseline
 
 | Indicator | DS5Dongle v0.7.2-hotfix | MiraLink 0.37 observed | MiraLink 0.38 candidate |

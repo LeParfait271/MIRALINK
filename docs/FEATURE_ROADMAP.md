@@ -6,8 +6,8 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local-first, sans télémétrie, cloud ni synchronisation ; source et artefacts publiables, opérations matérielles locales
-- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.38
-- Version produit actuelle : 0.38 candidate
+- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.39
+- Version produit actuelle : 0.39 candidate
 - Étude initiale : 2026-08-12
 - Dernier alignement : 2026-08-14
 
@@ -71,7 +71,7 @@ Chaque commande doit être bornée en taille, associée à une capacité, proté
 La tranche 0.6.0 implémentait déjà `GET_CONTROLLER_STATE` et
 `OPEN_PAIRING_WINDOW`. Le Pico 2 W hébergeait le transport Bluetooth Classic
 HID DualSense en entrée, publiait des événements de contrôleur sur USB et
-gardait la découvrabilité fermée au démarrage. Dans le candidat 0.38,
+gardait la découvrabilité fermée au démarrage. Dans le candidat 0.39,
 l’ouverture confirmée de la fenêtre d’appairage est désormais branchée au
 bouton visible ; voir la section 9 pour l’état actuel.
 
@@ -91,7 +91,7 @@ Pico sans étendre artificiellement les capacités matérielles :
 
 Cette tranche ne prétendait pas fournir batterie, audio, haptique, gâchettes
 adaptatives ou identité USB de production. Elle est supersédée par le candidat
-0.38 décrit dans la section 9.
+0.39 décrit dans la section 9.
 
 ### 1.6 Limites Pico 2 W
 
@@ -166,7 +166,7 @@ Le classement peut changer après les premiers essais avec un Pico 2 W et une Du
 
 **Protocole.** `GET_PROFILE_LIST`, `GET_PROFILE`, `SET_PROFILE_DRAFT`, `APPLY_PROFILE`, éventuellement `COMMIT_CONFIG` existant pour le bridge.
 
-**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels. Le gestionnaire de profils bridge est visible et relié aux brouillons dans le candidat 0.38 ; les profils individuels de manette restent un objectif futur.
+**Dépendances.** Stockage local de l’application ; configuration flash du Pico 2 W pour la persistance bridge ; adaptateur manette pour les champs individuels. Le gestionnaire de profils bridge est visible et relié aux brouillons dans le candidat 0.39 ; les profils individuels de manette restent un objectif futur.
 
 **Risques.** Écrasement d’un réglage ou application à la mauvaise manette. La cible, le diff et la confirmation sont obligatoires ; les profils non compatibles sont refusés.
 
@@ -609,7 +609,7 @@ Objectif : offrir un produit utile immédiatement sans matériel.
 
 **Sortie.** Tous les parcours de découverte, comparaison, confirmation, annulation et restauration fonctionnent sans WebHID et ne produisent aucune déclaration de test matériel.
 
-**État vérifié.** Les contrats locaux de simulation, profils, aperçu, confirmation, basculement batterie et stockage versionné sont testés. Le gestionnaire visible des profils et leur diff avant brouillon sont câblés dans le candidat 0.38 ; le sélecteur de simulation et son bandeau permanent restent à intégrer.
+**État vérifié.** Les contrats locaux de simulation, profils, aperçu, confirmation, basculement batterie et stockage versionné sont testés. Le gestionnaire visible des profils et leur diff avant brouillon sont câblés dans le candidat 0.39 ; le sélecteur de simulation et son bandeau permanent restent à intégrer.
 
 ### Lot 2 — Controller Lab
 
@@ -624,7 +624,7 @@ Objectif : valider les données d’entrée avant d’afficher des mesures avanc
 
 **Dépendance de sortie.** Aucun réglage n’est marqué supporté sans rapport réel décodé et capacité négociée.
 
-**État vérifié.** Le moteur d’analyse local et l’adaptateur WebHID alimentent le Controller Lab visible dans le candidat 0.38. Les instantanés sont éphémères, comparatifs et non appliqués ; la validation des entrées 0.38 avec matériel réel reste à faire.
+**État vérifié.** Le moteur d’analyse local et l’adaptateur WebHID alimentent le Controller Lab visible dans le candidat 0.39. Les instantanés sont éphémères, comparatifs et non appliqués ; la validation des entrées 0.39 avec matériel réel reste à faire.
 
 ### Lot 3 — Cockpit et carte de connexions
 
@@ -636,11 +636,11 @@ Objectif : rendre l’état opérationnel lisible en direct.
 - distinction mesure réelle, indisponible et simulée ;
 - tampon mémoire borné.
 
-**État vérifié.** Le benchmark local, son score explicable et la détection bornée des anomalies sont implémentés et testés. Le résumé système 0.38 affiche les états essentiels, mais les mesures réelles avancées et le cockpit graphique complet restent à intégrer.
+**État vérifié.** Le benchmark local, son score explicable et la détection bornée des anomalies sont implémentés et testés. Le résumé système 0.39 affiche les états essentiels, mais les mesures réelles avancées et le cockpit graphique complet restent à intégrer.
 
 **Sortie.** Pas de flux externe, pas de rétention permanente par défaut, pas de métrique inventée.
 
-**État vérifié.** Le modèle local de métriques bornées, statuts de capacité, historique mémoire limité et chemin ordinateur → Pico 2 W → manette est en place et testé. Le candidat 0.38 rend ce chemin et les états principaux visibles ; les métriques radio avancées et les graphiques restent à intégrer.
+**État vérifié.** Le modèle local de métriques bornées, statuts de capacité, historique mémoire limité et chemin ordinateur → Pico 2 W → manette est en place et testé. Le candidat 0.39 rend ce chemin et les états principaux visibles ; les métriques radio avancées et les graphiques restent à intégrer.
 
 ### Lot 4 — Diagnostics guidés
 
@@ -652,7 +652,7 @@ Objectif : transformer les états du cockpit en parcours de résolution.
 - actions de récupération confirmées ;
 - rapport local anonymisé.
 
-**État vérifié.** Le candidat 0.38 expose un panneau de diagnostics visible et exécute les commandes partielles du pont. L’assistant guidé complet, le rapport anonymisé visible et la validation de ces commandes sur matériel restent à faire.
+**État vérifié.** Le candidat 0.39 expose un panneau de diagnostics visible et exécute les commandes partielles du pont. L’assistant guidé complet, le rapport anonymisé visible et la validation de ces commandes sur matériel restent à faire.
 
 ### Lot 5 — Studio haptique et gâchettes avancées
 
@@ -778,3 +778,21 @@ La liste de suivi qui figurait ici décrivait plusieurs moteurs locaux et tranch
 #### Preuve matérielle disponible
 
 Le test physique de la 0.37 a confirmé l’énumération d’une seule manette logique après nettoyage des périphériques, mais aucune entrée exploitable. Cette observation motive le bootstrap Bluetooth du candidat 0.38 ; elle ne valide pas son comportement. Aucun résultat matériel 0.38 n’est revendiqué avant le nouveau flash et le test manuel.
+
+### 9.3 Candidat 0.39 — 2026-08-14
+
+- [x] Barre supérieure transformée en navigation d’ancrage réelle ; les sept accès font défiler vers une section visible et indiquent la position active sans masquer le flux continu.
+- [x] Palette visuelle adoucie et accents lumineux limités aux états/actions ; les effets de profondeur, grille, lumière et mouvement restent originaux, locaux et compatibles avec la réduction des animations.
+- [x] Parcours clavier desktop, accessibilité, simulation WebHID et shell hors ligne adaptés à la page continue ; aucune cible mobile dédiée n’est maintenue.
+- [x] Controller Lab desktop enrichi avec sticks, gâchettes, boutons, batterie, états casque/microphone, mouvement, tactile et analyse locale centre/amplitude/circularité ; aucune calibration n’est écrite.
+- [x] Champs PS shortcut et buffer audio rendus explicitement indisponibles : le premier n’a pas de consommateur runtime et la classe USB Audio est désactivée.
+- [x] `COMMIT_CONFIG` ne provoque plus de coupure USB. Son ACK indique si une réénumération est nécessaire, laquelle reste une action séparée, confirmée et servie seulement après lecture de sa réponse.
+- [x] Découverte radio DualSense/Edge découplée de la persona USB, avec validation stricte du rapport enrichi inchangée.
+- [x] Résultat matériel 0.38 enregistré : une seule manette Windows et boutons/sticks fonctionnels ; échec de reconnexion après réénumération implicite, sans capture radio permettant d’en affirmer davantage.
+- [ ] Flasher manuellement l’UF2 0.39 et reprendre la validation du commit sans coupure, de la réénumération explicite et du réappairage ; aucune preuve matérielle 0.39 n’est revendiquée.
+- [ ] Ajouter plus tard le RSSI, les journaux firmware et des tests de sortie bornés. Garder la calibration permanente, NVS, audio et sorties arbitraires hors interface tant que les contrats de récupération et preuves matérielles manquent.
+
+Les parcours de DualShock Tools et DS5 Bridge Config ont servi à établir cet
+inventaire fonctionnel en clean-room. MiraLink ne copie ni leur code ni leurs
+ressources. Les fonctions présentant un risque d’écriture dans la manette
+restent des objectifs, pas des capacités livrées.

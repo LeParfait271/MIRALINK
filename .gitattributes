@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve packaged firmware artifacts byte for byte.
+firmware/releases/**/*.bin binary
+firmware/releases/**/*.elf binary
+firmware/releases/**/*.hex binary
+firmware/releases/**/*.uf2 binary

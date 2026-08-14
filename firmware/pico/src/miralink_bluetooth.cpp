@@ -26,8 +26,6 @@ namespace {
 constexpr std::size_t kHidDescriptorStorageBytes = 2048;
 constexpr std::uint32_t kPairingWindowMs = 300000;
 constexpr std::uint8_t kInquiryDuration = 8;
-constexpr std::uint16_t kSonyVendorId = dualsense::kSonyVendorId;
-constexpr std::uint16_t kDualSenseProductId = dualsense::kDualSenseProductId;
 constexpr std::size_t kMaxRememberedControllers = 4;
 constexpr std::uint16_t kHapticMaxDurationMs = 3000;
 constexpr std::uint32_t kReconnectDelayMs = 250;
@@ -101,7 +99,6 @@ std::uint64_t g_haptic_stop_deadline_ms = 0;
 std::uint64_t g_audio_last_packet_ms = 0;
 std::array<std::uint8_t, 63> g_controller_state{};
 std::uint16_t g_haptic_gain_q8_8 = 256;
-std::uint8_t g_controller_mode = 2;
 std::uint8_t g_trigger_reduce = 0;
 std::uint8_t g_inactive_minutes = 0;
 std::uint64_t g_last_activity_ms = 0;
@@ -212,14 +209,6 @@ std::uint16_t configured_haptic_gain_q8_8() {
     return value;
 }
 
-std::uint8_t configured_controller_mode() {
-    if (!g_initialized) return g_controller_mode;
-    critical_section_enter_blocking(&g_state_lock);
-    const auto value = g_controller_mode;
-    critical_section_exit(&g_state_lock);
-    return value;
-}
-
 std::uint8_t configured_trigger_reduce() {
     if (!g_initialized) return g_trigger_reduce;
     critical_section_enter_blocking(&g_state_lock);
@@ -275,23 +264,18 @@ bool contains_name(const std::uint8_t* name, std::size_t length, const char* nee
 }
 
 bool name_is_dualsense(const std::uint8_t* name, std::size_t length) {
-    const auto controller_mode = configured_controller_mode();
-    if (controller_mode == 1) return contains_name(name, length, "dualsense edge");
-    if (controller_mode == 0) return contains_name(name, length, "dualsense")
-        && !contains_name(name, length, "edge");
+    // The configured controller mode selects only the USB persona. During an
+    // explicit pairing window, discovery accepts either supported controller;
+    // descriptor bootstrap and strict enhanced-report/CRC validation remain
+    // mandatory before any input is exposed.
     return contains_name(name, length, "dualsense") || contains_name(name, length, "wireless controller");
 }
 
 bool inquiry_result_is_dualsense(const std::uint8_t* packet) {
-    const auto controller_mode = configured_controller_mode();
     if (gap_event_inquiry_result_get_device_id_available(packet)) {
         const auto vendor = gap_event_inquiry_result_get_device_id_vendor_id(packet);
         const auto product = gap_event_inquiry_result_get_device_id_product_id(packet);
-        if (vendor == kSonyVendorId) {
-            if (controller_mode == 0) return product == kDualSenseProductId;
-            if (controller_mode == 1) return product == dualsense::kDualSenseEdgeProductId;
-            return product == kDualSenseProductId || product == dualsense::kDualSenseEdgeProductId;
-        }
+        if (dualsense::is_dualsense_usb(vendor, product)) return true;
     }
     // Some controller revisions expose an incomplete device-id during
     // inquiry. A matching local name is a valid pairing hint; the complete
@@ -1145,7 +1129,6 @@ void apply_config(const Config& config) {
         static_cast<std::int32_t>(config.haptics_gain * 256.0f), 256, 512));
     if (!g_initialized) {
         g_haptic_gain_q8_8 = haptic_gain_q8_8;
-        g_controller_mode = config.controller_mode;
         g_trigger_reduce = config.trigger_reduce;
         g_inactive_minutes = config.inactive_minutes;
         return;
@@ -1153,7 +1136,6 @@ void apply_config(const Config& config) {
     const bool resume_from_idle = config.inactive_minutes == 0 && g_idle_suspended;
     critical_section_enter_blocking(&g_state_lock);
     g_haptic_gain_q8_8 = haptic_gain_q8_8;
-    g_controller_mode = config.controller_mode;
     g_trigger_reduce = config.trigger_reduce;
     g_inactive_minutes = config.inactive_minutes;
     critical_section_exit(&g_state_lock);

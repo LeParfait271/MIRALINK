@@ -36,11 +36,7 @@ void write_u32(std::uint8_t* bytes, const std::size_t offset, const std::uint32_
 }
 
 void set_controller_mode(const std::uint8_t mode) {
-    // Unknown and Auto values both fail safely to the broadly compatible
-    // standard controller persona.
-    g_selected_product_id = mode == kControllerModeEdge
-        ? kDualSenseEdgeProductId
-        : kDualSenseProductId;
+    g_selected_product_id = product_id_for_mode(mode);
 }
 
 void set_unique_serial_enabled(const bool enabled) {

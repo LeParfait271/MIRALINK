@@ -35,15 +35,18 @@ async function installMiraLinkBridgeStub(page) {
     };
     const responsePayload = (command) => {
       if (command === 0x01) return Uint8Array.from([1, 1, 1, 0]);
-      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 38, 0]);
-      if (command === 0x03) return Uint8Array.from([1, 100, 0, 100, 100, 0, 0, 1, 64, 2, 0, 0, 0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 39, 0]);
+      if (command === 0x03) return Uint8Array.from([1, 100, 0, 100, 100, 0, 0, 1, 96, 2, 4, 0, 0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      if (command === 0x05) return Uint8Array.from([1, 1]);
       if (command === 0x0d) return Uint8Array.from([1, 0, 0, 1, 0, 0, 0xb8, 0x0b]);
       if (command === 0x0b) {
         const payload = new Uint8Array(48);
-        payload[0] = 2;
-        payload[1] = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);
-        payload.set([0, 0x80, 0x80, 0x80, 0x80, 0, 0, 0x08], 2);
-        payload[16] = 0xff;
+        payload.set([2, 0x0f, 0x31, 160, 96, 200, 64, 128, 255, 0x22, 0x21, 0x05], 0);
+        payload.set([75, 2, 0x1f, 9], 16);
+        const view = new DataView(payload.buffer);
+        view.setInt16(20, -100, true); view.setInt16(22, 200, true); view.setInt16(24, 300, true);
+        view.setInt16(26, 400, true); view.setInt16(28, -500, true); view.setInt16(30, 600, true);
+        view.setUint32(32, 1234, true); view.setUint16(36, 100, true); view.setUint16(38, 200, true);
         return payload;
       }
       if (command === 0x08) {
@@ -69,7 +72,9 @@ async function installMiraLinkBridgeStub(page) {
     };
 
     let pendingResponse = null;
+    let pendingCommand = null;
     const listeners = new Map();
+    globalThis.__miralinkCommandLog = [];
     const device = {
       vendorId: 0x054c,
       productId: 0x0ce6,
@@ -90,12 +95,24 @@ async function installMiraLinkBridgeStub(page) {
       removeEventListener() {},
       async sendFeatureReport(reportId, data) {
         if (reportId !== 0x70) throw new Error('Unexpected command report');
-        pendingResponse = makeResponse(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+        const request = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        pendingCommand = request[6];
+        const payloadLength = request[7] | (request[8] << 8);
+        globalThis.__miralinkCommandLog.push({ command: pendingCommand, payload: [...request.subarray(9, 9 + payloadLength)] });
+        pendingResponse = makeResponse(request);
       },
       async receiveFeatureReport(reportId) {
         if (reportId !== 0x71 || !pendingResponse) throw new Error('No pending MiraLink response');
         const response = pendingResponse;
+        const command = pendingCommand;
         pendingResponse = null;
+        pendingCommand = null;
+        if (command === 0x07) {
+          setTimeout(() => {
+            device.opened = false;
+            for (const callback of listeners.get('disconnect') || []) callback({ device });
+          }, 10);
+        }
         return new DataView(response.buffer);
       }
     };
@@ -122,6 +139,13 @@ test.beforeEach(async ({ page }) => {
   await installWebHidStub(page);
 });
 
+async function revealSection(page, selector) {
+  const section = page.locator(selector);
+  await section.scrollIntoViewIfNeeded();
+  await expect(section).toBeVisible();
+  return section;
+}
+
 test('loads an operational shell and keeps WebHID warnings contextual', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -131,8 +155,7 @@ test('loads an operational shell and keeps WebHID warnings contextual', async ({
   await expect(page.locator('#connect-button')).toBeVisible();
   await expect(page.locator('#hid-warning')).toBeHidden();
 
-  await page.locator('#tab-button-diagnostics').click();
-  await expect(page.locator('#tab-diagnostics')).toBeVisible();
+  await revealSection(page, '#tab-diagnostics');
   await expect(page.locator('#run-diagnostics-button')).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -147,7 +170,7 @@ test('never forces horizontal page overflow', async ({ page }) => {
   await expect(page.locator('#connect-button')).toBeVisible();
 });
 
-test('keeps connection, state and diagnostics above the fold', async ({ page }) => {
+test('keeps connection and live state above the fold', async ({ page }) => {
   await page.goto('/');
   const fold = await page.evaluate(() => {
     const bounds = (selector) => {
@@ -158,40 +181,66 @@ test('keeps connection, state and diagnostics above the fold', async ({ page }) 
       height: window.innerHeight,
       connection: bounds('#workspace'),
       connectButton: bounds('#connect-button'),
-      console: bounds('#diagnostic-console'),
-      diagnosticButton: bounds('#run-diagnostics-button')
+      console: bounds('#diagnostic-console')
     };
   });
   expect(fold.connection.top).toBeLessThan(fold.height);
   expect(fold.connectButton.bottom).toBeLessThanOrEqual(fold.height);
   expect(fold.console.top).toBeLessThan(fold.height);
-  expect(fold.diagnosticButton.bottom).toBeLessThanOrEqual(fold.height);
 });
 
-test('supports the ARIA tab keyboard pattern', async ({ page }) => {
+test('uses the section index as an accessible continuous-page navigator', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const overview = page.locator('#tab-button-overview');
-  const bridge = page.locator('#tab-button-bridge');
-  const logs = page.locator('#tab-button-logs');
+  const routes = [
+    ['overview', 'tab-overview'],
+    ['bridge', 'tab-bridge'],
+    ['controllers', 'tab-controllers'],
+    ['diagnostics', 'tab-diagnostics'],
+    ['firmware', 'tab-firmware'],
+    ['backups', 'tab-backups'],
+    ['logs', 'tab-logs']
+  ];
 
-  await overview.focus();
+  await expect(page.locator('.site-nav')).toBeVisible();
+  await expect(page.locator('[role="tablist"], [role="tab"]')).toHaveCount(0);
+
+  for (const [name, id] of routes) {
+    const link = page.locator(`#nav-link-${name}`);
+    const section = page.locator(`#${id}`);
+    await expect(section).toBeVisible();
+    await expect(section.locator('h2').first()).toBeVisible();
+    const before = await page.evaluate(() => window.scrollY);
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`#${id}$`));
+    await expect(link).toHaveAttribute('aria-current', 'location');
+    await expect(section).toBeInViewport();
+    const position = await page.evaluate((sectionId) => {
+      const target = document.getElementById(sectionId).getBoundingClientRect();
+      const chrome = document.querySelector('.site-chrome').getBoundingClientRect();
+      return { top: target.top, chromeBottom: chrome.bottom, height: window.innerHeight, scrollY: window.scrollY };
+    }, id);
+    expect(position.scrollY).not.toBe(before);
+    expect(position.top).toBeGreaterThanOrEqual(position.chromeBottom + 8);
+    expect(position.top).toBeLessThan(position.height);
+  }
+
+  await page.locator('#tab-controllers').evaluate((section) => section.scrollIntoView({ block: 'start' }));
+  await expect(page.locator('#nav-link-controllers')).toHaveAttribute('aria-current', 'location');
+
+  await page.locator('#nav-link-overview').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(bridge).toBeFocused();
-  await expect(bridge).toHaveAttribute('aria-selected', 'true');
-  await expect(bridge).toHaveAttribute('tabindex', '0');
-  await expect(overview).toHaveAttribute('tabindex', '-1');
-  await expect(page.locator('#tab-bridge')).toBeVisible();
-
+  await expect(page.locator('#nav-link-bridge')).toBeFocused();
   await page.keyboard.press('End');
-  await expect(logs).toBeFocused();
-  await expect(page.locator('#tab-logs')).toBeVisible();
-
+  await expect(page.locator('#nav-link-logs')).toBeFocused();
   await page.keyboard.press('Home');
-  await expect(overview).toBeFocused();
-  await expect(page.locator('#tab-overview')).toBeVisible();
+  await expect(page.locator('#nav-link-overview')).toBeFocused();
 
-  await page.keyboard.press('ArrowLeft');
-  await expect(logs).toBeFocused();
+  await page.locator('#nav-link-diagnostics').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#tab-diagnostics$/);
+  await expect(page.locator('#nav-link-diagnostics')).toHaveAttribute('aria-current', 'location');
+  await expect(page.locator('#tab-diagnostics')).toBeFocused();
 });
 
 test('WebHID chooser filters never authorize an arbitrary vendor collection', async ({ page }) => {
@@ -211,7 +260,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await page.locator('#connect-button').click();
 
   await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
-  await expect(page.locator('#installed-version')).toHaveText('0.38');
+  await expect(page.locator('#installed-version')).toHaveText('0.39');
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   const confirmation = page.locator('#confirm-dialog');
@@ -220,12 +269,33 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#overview-controller-state')).toHaveText('PRÊTE');
   await expect(page.locator('#overview-controller-note')).toContainText('entrées actives');
 
-  await page.locator('#tab-button-bridge').click();
+  await revealSection(page, '#tab-controllers');
+  await expect(page.locator('#controller-lab-link-state')).toContainText('Manette connectée');
+  await expect(page.locator('#controller-lab-sample-count')).not.toHaveText('0');
+  await expect(page.locator('#controller-lab-battery')).toContainText('75 %');
+  await expect(page.locator('#controller-lab-headset')).toContainText('Connecté');
+  await expect(page.locator('#controller-lab-headset')).toContainText('non exposé');
+  await expect(page.locator('#controller-lab-microphone')).toContainText('muet');
+  await expect(page.locator('#controller-left-stick-value')).toContainText('X 0.255');
+  await expect(page.locator('#controller-right-trigger-value')).toHaveText('100 %');
+  await expect(page.locator('[data-controller-button="cross"]')).toHaveAttribute('data-active', 'true');
+  await expect(page.locator('[data-controller-button="cross"]')).toHaveAttribute('aria-label', /appuyé/);
+  await expect(page.locator('#controller-gyro-value')).toContainText('X -100 / Y 200 / Z 300');
+  await expect(page.locator('#controller-touch-1-value')).toContainText('Actif / X 100 / Y 200');
+  await expect(page.locator('#controller-analysis-summary')).toContainText('aucune calibration écrite');
+  await expect(page.locator('#controller-analysis-left-center')).not.toHaveText('—');
+
+  await revealSection(page, '#tab-bridge');
   await expect(page.locator('#haptics-gain')).toBeDisabled();
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await expect(page.locator('#read-config-button')).toBeEnabled();
   await page.locator('#read-config-button').click();
   await expect(page.locator('#haptics-gain')).toBeEnabled();
+  await expect(page.locator('#audio-buffer')).toBeDisabled();
+  await expect(page.locator('#audio-buffer')).toHaveValue('96');
+  await expect(page.locator('#ps-shortcut')).toBeDisabled();
+  await expect(page.locator('#ps-shortcut')).toBeChecked();
+  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.39');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';
@@ -246,7 +316,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(confirmation).toBeVisible();
   await confirmation.locator('[value="cancel"]').click();
 
-  await page.locator('#tab-button-backups').click();
+  await revealSection(page, '#tab-backups');
   await page.locator('#profiles-button').click();
   const lab = page.locator('#controller-lab-dialog');
   await expect(lab).toBeVisible();
@@ -258,9 +328,71 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await confirmation.locator('[value="cancel"]').click();
   await page.locator('#controller-lab-dialog').getByRole('button', { name: 'Fermer' }).click();
 
-  await page.locator('#tab-button-diagnostics').click();
+  await revealSection(page, '#tab-diagnostics');
   await page.locator('#run-diagnostics-button').click();
   await expect(page.locator('#diagnostic-summary')).toContainText(/Bluetooth pairing window open/i);
+});
+
+test('keeps commit, factory reset and explicit USB reconnect as separate confirmed actions', async ({ page }) => {
+  await installMiraLinkBridgeStub(page);
+  await page.goto('/');
+  await page.locator('#connect-button').click();
+  const confirmation = page.locator('#confirm-dialog');
+  if (await confirmation.isVisible()) await confirmation.locator('[value="cancel"]').click();
+
+  await revealSection(page, '#tab-bridge');
+  await page.locator('#read-config-button').click();
+  await expect(page.locator('#audio-buffer')).toBeDisabled();
+  await expect(page.locator('#ps-shortcut')).toBeDisabled();
+
+  await page.locator('#haptics-gain').evaluate((input) => {
+    input.value = '1.4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('#save-config-button').click();
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="confirm"]').click();
+
+  await expect(page.locator('#global-status-text')).toHaveText('Ready');
+  await expect(page.locator('#usb-reconnect-notice')).toBeVisible();
+  await expect(page.locator('#reconnect-usb-button')).toBeEnabled();
+  const savedCommands = await page.evaluate(() => globalThis.__miralinkCommandLog);
+  expect(savedCommands.some(({ command }) => command === 0x04)).toBe(true);
+  expect(savedCommands.some(({ command }) => command === 0x05)).toBe(true);
+  expect(savedCommands.some(({ command }) => command === 0x07)).toBe(false);
+  const draftPayload = savedCommands.filter(({ command }) => command === 0x04).at(-1).payload;
+  expect(draftPayload[8]).toBe(96);
+  expect((draftPayload[10] | (draftPayload[11] << 8)) & (1 << 2)).toBe(1 << 2);
+
+  // A prior approval must never leak into the next destructive prompt when
+  // that prompt is dismissed with Escape.
+  await page.locator('#factory-reset-config-button').click();
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeHidden();
+  expect(await page.evaluate(() => globalThis.__miralinkCommandLog.some(({ command }) => command === 0x06))).toBe(false);
+
+  await page.locator('#factory-reset-config-button').click();
+  await expect(confirmation).toBeVisible();
+  await expect(page.locator('#confirm-message')).toContainText('Configuration actuelle → usine');
+  await expect(page.locator('#confirm-message')).toContainText('Buffer audio : 96 → 64');
+  await expect(page.locator('#confirm-message')).toContainText('Raccourci PS : activé → désactivé');
+  await confirmation.locator('[value="confirm"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__miralinkCommandLog.some(({ command }) => command === 0x06))).toBe(true);
+  const resetCommands = await page.evaluate(() => globalThis.__miralinkCommandLog.map(({ command }) => command));
+  expect(resetCommands).toContain(0x06);
+  expect(resetCommands.slice(resetCommands.lastIndexOf(0x06) + 1)).toContain(0x05);
+  await expect(page.locator('#usb-reconnect-notice')).toBeVisible();
+
+  await page.locator('#reconnect-usb-button').click();
+  await expect(confirmation).toBeVisible();
+  await expect(page.locator('#confirm-message')).toContainText('déconnexion est attendue');
+  expect(await page.evaluate(() => globalThis.__miralinkCommandLog.some(({ command }) => command === 0x07))).toBe(false);
+  await confirmation.locator('[value="confirm"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__miralinkCommandLog.some(({ command }) => command === 0x07))).toBe(true);
+  await expect(page.locator('#log-view')).toContainText('disconnected temporarily as expected');
+  await expect(page.locator('#global-status-text')).toHaveText('Waiting for USB reconnect');
+  await expect(page.locator('#usb-reconnect-notice')).toBeHidden();
 });
 
 test('keeps the complete local control shell available from a cold offline cache', async ({ context, page }) => {
@@ -285,8 +417,7 @@ test('keeps the complete local control shell available from a cold offline cache
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('#connect-button')).toBeVisible();
-    await page.locator('#tab-button-diagnostics').click();
-    await expect(page.locator('#tab-diagnostics')).toBeVisible();
+    await revealSection(page, '#tab-diagnostics');
   } finally {
     await context.setOffline(false);
   }
@@ -324,7 +455,7 @@ test('has no automatically detectable serious accessibility violations', async (
 
 test('keeps the dynamic profiles dialog accessible', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#tab-button-backups').click();
+  await revealSection(page, '#tab-backups');
   await page.locator('#profiles-button').click();
   await expect(page.locator('#controller-lab-dialog')).toBeVisible();
   const results = await new AxeBuilder({ page })

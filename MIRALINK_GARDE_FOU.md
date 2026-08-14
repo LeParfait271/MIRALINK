@@ -8,8 +8,8 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier actif vérifié : `C:\Users\MC\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.38`
-- Version firmware alignée au site : `0.38`
+- Version publique actuelle du site : `0.39`
+- Version firmware alignée au site : `0.39`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
 
@@ -31,11 +31,11 @@
 
 ## Produit attendu
 
-- Une application unique à onglets, desktop-first, pouvant gérer plusieurs appareils.
+- Une application unique en page continue, desktop-first, pouvant gérer plusieurs appareils sans masquer ses outils derrière une barre d’onglets.
 - Thème sombre uniquement.
-- Design original, sobre, futuriste, octogonal, vert émeraude et néon maîtrisé.
+- Design original, sobre et futuriste, avec une palette reposante et des accents lumineux parcimonieux ; aucun néon dominant.
 - Inspiration HUD de combat VR uniquement ; aucune copie de ressources protégées.
-- L'interface `0.38` est livrée en français ; l'anglais par défaut et la
+- L'interface `0.39` est livrée en français ; l'anglais par défaut et la
   couverture des langues européennes restent une cible d'architecture future,
   pas une capacité actuellement annoncée.
 - Sauvegardes locales exportables/importables, comparaison avant écriture et restauration.
@@ -60,7 +60,7 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
-Le lot `0.38` vise à atteindre puis dépasser les capacités observables de
+Le lot `0.39` vise à atteindre puis dépasser les capacités observables de
 DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
 expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
 standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
@@ -78,8 +78,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.37` → `0.38`. La version technique du paquet npm utilise `0.38.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.38`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.38.0`, mais le firmware affiché et livré reste `0.38`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.38` → `0.39`. La version technique du paquet npm utilise `0.39.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.39`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.39.0`, mais le firmware affiché et livré reste `0.39`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -188,3 +188,6 @@ automatique.
 - `2026-08-14` — Le test matériel Windows de la `0.37` a montré exactement une entrée `DualSense`, y compris après redémarrage : la topologie USB à une racine est donc partiellement validée. Aucun bouton ni joystick n'a réagi et aucun paquet Bluetooth n'a été capturé. L'analyse source a identifié un verrou compatible avec ce résultat : la `0.37` n'acceptait que le rapport enrichi `0x31`, une DualSense peut commencer par le rapport simple `0x01`, et le pont ne lançait pas la séquence Feature d'activation. Cette observation invalide toute affirmation de fonctionnement des entrées en `0.37`.
 - `2026-08-14` — Le candidat `0.38` amorce le mode Bluetooth enrichi par une séquence asynchrone bornée `0x05` → `0x09` → `0x20` et un fallback de sortie neutre borné. Le rapport simple `0x01` ne peut ni déclarer `Connected`, ni alimenter les entrées, ni rendre persistante une nouvelle adresse; seul un rapport `0x31` complet, de longueur stricte et CRC valide le peut. Le build et les tests logiciels ne remplacent pas un flash manuel et une validation Pico 2 W/DualSense réelle.
 - `2026-08-14` — L'interface `0.38` doit garder ses fonctions avant la décoration : détection WebHID explicite, état et prochaine action visibles, diagnostics accessibles, profils locaux, inspection UF2 sans flash et reprise hors ligne. La validation navigateur couvre desktop, mobile, clavier et accessibilité; elle ne vaut jamais preuve matérielle.
+- `2026-08-14` — L’interface `0.39` conserve « Système / Configuration / Manettes / Diagnostics / Firmware / Sauvegardes / Journaux » comme une vraie barre d’accès rapide : un clic défile vers la section visible et l’état actif suit la position. Ce ne sont plus des onglets sans changement apparent. La cible produit est le bureau ; aucun parcours mobile dédié n’est revendiqué. La référence Terminal Industries concerne uniquement les principes abstraits de profondeur, rythme, transition, grille et mouvement : MiraLink conserve un code, des ressources, une composition et une identité propres, avec une palette adoucie et des accents lumineux rares.
+- `2026-08-14` — Le test matériel `0.38` a confirmé une seule manette Windows, le pont prêt, un flux Bluetooth enrichi et des boutons/sticks fonctionnels. Après activation du numéro de série USB, le commit a toutefois déclenché une réénumération implicite et la manette n’a plus pu être jointe pendant la session ; le statut `0x04` est un page timeout, pas une preuve de clé corrompue. En `0.39`, `COMMIT_CONFIG` ne coupe jamais l’USB : son ACK versionné signale une réénumération requise et seule une commande séparée confirmée peut la déclencher. Ce correctif reste à retester matériellement.
+- `2026-08-14` — DualShock Tools et DS5 Bridge Config peuvent servir de références fonctionnelles observables pour le Controller Lab et les parcours de configuration. Aucun code, actif, texte, protocole interne ou identité visuelle tiers n’est repris. La calibration permanente, les commandes NVS et le relais arbitraire de Feature reports restent interdits tant qu’une sauvegarde/restauration bornée et un test matériel ciblé n’existent pas.

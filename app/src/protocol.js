@@ -52,6 +52,8 @@ export const CONTROLLER_CAPABILITIES = Object.freeze({
 
 export const CONFIG_SCHEMA = 1;
 export const CONFIG_BYTES = 24;
+export const COMMIT_CONFIG_ACK_SCHEMA = 1;
+export const COMMIT_CONFIG_ACK_USB_REENUMERATION_REQUIRED = 1 << 0;
 export const FEATURE_FLAGS = Object.freeze({
   disableLed: 1 << 0,
   enableUsbSerial: 1 << 1,
@@ -61,6 +63,8 @@ export const FEATURE_FLAGS = Object.freeze({
   enableWake: 1 << 5,
   lockVolume: 1 << 6
 });
+const CONFIG_FEATURE_FLAGS_MASK = Object.values(FEATURE_FLAGS).reduce((mask, flag) => mask | flag, 0);
+const CONFIG_RESERVED_OFFSET = 15;
 
 export class ProtocolError extends Error {
   constructor(message, code = 'protocol_error') {
@@ -147,6 +151,31 @@ export function decodeInfoPayload(input) {
     major,
     minor,
     patch
+  });
+}
+
+export function decodeCommitConfigAck(input) {
+  const bytes = bytesOf(input);
+  // Firmware 0.38 and earlier acknowledged COMMIT_CONFIG without a payload.
+  // Keep that response readable so the web app can explain the legacy
+  // behaviour instead of turning a successful flash write into an error.
+  if (bytes.length === 0) {
+    return Object.freeze({
+      schema: 0,
+      supported: false,
+      usbReenumerationRequired: null
+    });
+  }
+  if (bytes.length !== 2 || bytes[0] !== COMMIT_CONFIG_ACK_SCHEMA) {
+    throw new ProtocolError('COMMIT_CONFIG acknowledgement is invalid', 'invalid_commit_config_ack');
+  }
+  if (bytes[1] & ~COMMIT_CONFIG_ACK_USB_REENUMERATION_REQUIRED) {
+    throw new ProtocolError('COMMIT_CONFIG acknowledgement has unsupported flags', 'invalid_commit_config_ack');
+  }
+  return Object.freeze({
+    schema: bytes[0],
+    supported: true,
+    usbReenumerationRequired: Boolean(bytes[1] & COMMIT_CONFIG_ACK_USB_REENUMERATION_REQUIRED)
   });
 }
 
@@ -430,18 +459,24 @@ export function validateConfig(config) {
   const range = (name, min, max) => {
     if (!Number.isFinite(value[name]) || value[name] < min || value[name] > max) errors.push(`${name} must be between ${min} and ${max}`);
   };
+  const integerRange = (name, min, max) => {
+    if (!Number.isInteger(value[name]) || value[name] < min || value[name] > max) errors.push(`${name} must be an integer between ${min} and ${max}`);
+  };
   if (value.schema !== CONFIG_SCHEMA) errors.push('schema is unsupported');
   range('hapticsGain', 1, 2);
-  range('speakerVolume', 0, 127);
-  range('headsetVolume', 0, 127);
-  range('speakerGain', 0, 7);
-  range('inactiveMinutes', 0, 60);
-  range('pollingMode', 0, 2);
-  range('audioBufferLength', 16, 127);
-  range('controllerMode', 0, 2);
-  range('triggerReduce', 0, 10);
-  range('statusGpioPin', 0, 255);
-  range('statusGpioMode', 0, 1);
+  integerRange('speakerVolume', 0, 127);
+  integerRange('headsetVolume', 0, 127);
+  integerRange('speakerGain', 0, 7);
+  integerRange('inactiveMinutes', 0, 60);
+  integerRange('pollingMode', 0, 2);
+  integerRange('audioBufferLength', 16, 127);
+  integerRange('controllerMode', 0, 2);
+  integerRange('triggerReduce', 0, 10);
+  if (!Number.isInteger(value.statusGpioPin)
+      || !((value.statusGpioPin >= 0 && value.statusGpioPin <= 22) || value.statusGpioPin === 0xff)) {
+    errors.push('statusGpioPin must be an integer between 0 and 22, or 255 when disabled');
+  }
+  integerRange('statusGpioMode', 0, 1);
   for (const key of ['disableLed', 'enableUsbSerial', 'psShortcut', 'disableMic', 'disableSpeaker', 'enableWake', 'lockVolume']) {
     if (typeof value[key] !== 'boolean') errors.push(`${key} must be boolean`);
   }
@@ -478,9 +513,17 @@ export function encodeConfig(config) {
 
 export function decodeConfig(input) {
   const bytes = bytesOf(input);
-  if (bytes.length < 15) throw new ProtocolError('Configuration payload is too short', 'short_config');
+  if (bytes.length !== CONFIG_BYTES) {
+    throw new ProtocolError(`Configuration payload must be exactly ${CONFIG_BYTES} bytes`, 'invalid_config_length');
+  }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const flags = view.getUint16(10, true);
+  if (flags & ~CONFIG_FEATURE_FLAGS_MASK) {
+    throw new ProtocolError('Configuration payload has unsupported feature flags', 'invalid_config_flags');
+  }
+  if (bytes.subarray(CONFIG_RESERVED_OFFSET).some((byte) => byte !== 0)) {
+    throw new ProtocolError('Configuration payload reserved bytes must be zero', 'invalid_config_reserved');
+  }
   const config = {
     schema: bytes[0],
     hapticsGain: view.getUint16(1, true) / 100,

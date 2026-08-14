@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -16,6 +17,11 @@ constexpr std::uint16_t kFlagDisableMic = 1u << 3;
 constexpr std::uint16_t kFlagDisableSpeaker = 1u << 4;
 constexpr std::uint16_t kFlagEnableWake = 1u << 5;
 constexpr std::uint16_t kFlagLockVolume = 1u << 6;
+constexpr std::uint16_t kConfigFeatureFlagsMask = kFlagDisableLed
+    | kFlagEnableUsbSerial | kFlagPsShortcut | kFlagDisableMic
+    | kFlagDisableSpeaker | kFlagEnableWake | kFlagLockVolume;
+constexpr std::size_t kConfigReservedOffset = 15;
+static_assert(kConfigReservedOffset < kConfigEncodedBytes);
 
 struct Config {
     std::uint8_t schema = kConfigSchema;

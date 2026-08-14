@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.39 - 2026-08-14
+
+- Rebuilt `System / Configuration / Controllers / Diagnostics / Firmware /
+  Backups / Logs` as a real desktop quick-access bar: every item now scrolls
+  to its visible section, follows manual scrolling and exposes its active state
+  instead of behaving like an inert tab control.
+- Rebalanced the visual system around charcoal, soft ivory, muted sage,
+  blue-grey and sparse amber status accents instead of an omnipresent neon
+  green.
+- Added original CSS-native depth, grid, scan, light and reveal effects while
+  preserving reduced-motion behavior, keyboard access and the local/offline
+  application boundary. MiraLink now documents and tests the web control center
+  as a desktop-only product.
+- Expanded Controller Lab with read-only live sticks, triggers, buttons,
+  battery, headset/microphone state, motion, touch and local
+  center/amplitude/circularity analysis. No controller calibration is written.
+- Marked the persisted PS-shortcut flag and audio-buffer field unavailable in
+  the interface because the current firmware has no PS-shortcut consumer and
+  exposes no USB Audio class.
+- Recorded the successful physical `0.38` input test: one Windows controller,
+  active Bluetooth input and working buttons/sticks. Motion, touch, outputs,
+  wake and audio remain untested or unavailable.
+- Stopped `COMMIT_CONFIG` from implicitly disconnecting USB. Its versioned ACK
+  now tells the application whether an identity change needs re-enumeration;
+  the user performs that disruptive step separately and explicitly.
+- Decoupled Bluetooth discovery from the selected USB persona so an explicit
+  pairing window can find supported standard and Edge controllers while strict
+  descriptor, enhanced-report and CRC checks remain required for input.
+- Added a separately confirmed factory-default configuration action and kept
+  local draft reset distinct from persistent reset.
+- Used DualShock Tools and DS5 Bridge Config only as observable feature
+  references. No third-party source, asset or product identity was copied;
+  permanent calibration/NVS operations remain deliberately unavailable.
+- Aligned the site, firmware, protocol and package metadata to `0.39` / `0.39.0`.
+
 ## 0.38 - 2026-08-14
 
 - Recorded the manual `0.37` Windows result: exactly one `DualSense` entry

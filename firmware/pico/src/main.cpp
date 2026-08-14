@@ -86,6 +86,7 @@ PicoFlashBackend g_flash_backend;
 miralink::ConfigStore g_config_store(g_flash_backend);
 std::array<std::uint8_t, miralink::kHidReportBytes> g_response{};
 bool g_response_ready = false;
+bool g_usb_reconnect_after_response = false;
 bool g_config_was_loaded = false;
 bool g_usb_reconnect_pending = false;
 bool g_recovery_pending = false;
@@ -240,7 +241,13 @@ std::vector<std::uint8_t> text_payload(const char* text) {
     return std::vector<std::uint8_t>(reinterpret_cast<const std::uint8_t*>(text), reinterpret_cast<const std::uint8_t*>(text) + length);
 }
 
-void set_response(std::uint16_t sequence, miralink::Command command, std::uint8_t flags, const std::vector<std::uint8_t>& payload) {
+void set_response(std::uint16_t sequence, miralink::Command command, std::uint8_t flags,
+    const std::vector<std::uint8_t>& payload, const bool usb_reconnect_after_read = false) {
+    // A deferred action belongs only to the response currently occupying the
+    // single MiraLink response slot. Replacing it, including with an error,
+    // must invalidate an older reconnect intent before the host can read it.
+    g_response_ready = false;
+    g_usb_reconnect_after_response = false;
     miralink::Frame frame;
     frame.sequence = sequence;
     frame.command = command;
@@ -250,6 +257,7 @@ void set_response(std::uint16_t sequence, miralink::Command command, std::uint8_
     if (encoded.size() == g_response.size()) {
         std::copy(encoded.begin(), encoded.end(), g_response.begin());
         g_response_ready = true;
+        g_usb_reconnect_after_response = usb_reconnect_after_read;
     }
 }
 
@@ -510,15 +518,17 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
             g_config_was_loaded = true;
             append_log("configuration committed");
             const auto& active = g_config_store.active();
-            if (previous.controller_mode != active.controller_mode
-                || previous.enable_usb_serial != active.enable_usb_serial) {
-                // Let the host fetch this acknowledgement before forcing a
-                // fresh enumeration with the new PID and/or serial policy.
-                append_log("USB identity changed; reconnect scheduled");
-                g_usb_reconnect_pending = true;
-                g_usb_reconnect_deadline_ms = static_cast<std::uint64_t>(now_ms()) + 250;
+            const bool usb_reenumeration_required =
+                miralink::usb_identity::requires_reenumeration(
+                    previous.controller_mode, previous.enable_usb_serial,
+                    active.controller_mode, active.enable_usb_serial);
+            if (usb_reenumeration_required) {
+                append_log("USB identity changed; explicit reconnect required");
             }
-            set_response(sequence, decoded.frame.command, 0, {});
+            const auto acknowledgement =
+                miralink::commit_config_ack(usb_reenumeration_required);
+            set_response(sequence, decoded.frame.command, 0,
+                {acknowledgement.begin(), acknowledgement.end()});
             return;
         }
         case miralink::Command::ResetConfig:
@@ -603,10 +613,8 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
             return;
         case miralink::Command::ReconnectUsb:
             if (!decoded.frame.payload.empty()) { set_error(sequence, decoded.frame.command, "reconnect payload is invalid"); return; }
-            append_log("USB reconnect scheduled");
-            g_usb_reconnect_pending = true;
-            g_usb_reconnect_deadline_ms = static_cast<std::uint64_t>(now_ms()) + 250;
-            set_response(sequence, decoded.frame.command, 0, {});
+            append_log("USB reconnect awaiting acknowledgement");
+            set_response(sequence, decoded.frame.command, 0, {}, true);
             return;
         case miralink::Command::EnterRecovery:
             if (decoded.frame.payload.size() != kRecoveryToken.size()
@@ -643,7 +651,16 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
     }
     if (!g_response_ready || reqlen < g_response.size()) return 0;
     std::memcpy(buffer, g_response.data(), g_response.size());
+    const bool reconnect_after_read = g_usb_reconnect_after_response;
     g_response_ready = false;
+    g_usb_reconnect_after_response = false;
+    if (reconnect_after_read) {
+        // The 250 ms grace period starts only after TinyUSB has served the
+        // explicit RECONNECT_USB acknowledgement on report 0x71.
+        append_log("USB reconnect scheduled");
+        g_usb_reconnect_pending = true;
+        g_usb_reconnect_deadline_ms = static_cast<std::uint64_t>(now_ms()) + 250;
+    }
     return static_cast<uint16_t>(g_response.size());
 }
 

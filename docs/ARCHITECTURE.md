@@ -18,9 +18,11 @@ The application is a local static web application with no runtime dependency on 
 - firmware file inspection;
 - local logs and redaction.
 
-The `0.38` interface presents those functions as one original high-tech control
-deck. Device state and the next safe action remain visible before decorative
-content. WebHID availability and bridge identity are checked explicitly;
+The `0.39` interface presents those functions as one original high-tech,
+continuous-page desktop control deck. A compact quick-access bar contains real
+anchors, scrolls to each visible section and tracks the active section; it does
+not hide content as tabs. Device state and the next safe action remain visible
+before decorative content. WebHID availability and bridge identity are checked explicitly;
 profiles, diagnostics and UF2 inspection remain local, and the static shell is
 usable offline after it has been cached.
 
@@ -69,14 +71,15 @@ The `0.37` hardware run proved the single Windows controller child but captured
 no Bluetooth packets and delivered no input. Source analysis found an
 activation lock consistent with that result: the bridge accepted only enhanced
 report `0x31`, a DualSense can begin with minimal report `0x01`, and the bridge
-did not initiate the enabling Feature sequence. The `0.38` candidate therefore
-models activation as an explicit bounded sub-state. After descriptor
+did not initiate the enabling Feature sequence. The bounded sub-state added in
+`0.38` was then exercised on hardware: one controller, an active enhanced input
+stream, and working buttons/sticks were observed. After descriptor
 validation it requests Feature reports `0x05` → `0x09` → `0x20`, optionally
 uses a neutral-output fallback, and treats `0x01` as liveness only. Trust,
 `Connected` and game-input forwarding remain gated on a complete, CRC-valid
 `0x31`. The build also serializes the relevant BTstack output calls with the
-polling execution path. None of these software properties is a physical
-`0.38` hardware result.
+polling execution path. Motion, touch and output rendering were not exercised
+by that test, and the `0.39` recovery changes remain software-only evidence.
 
 During that explicit window the Pico performs a bounded Bluetooth inquiry and
 filters Sony DualSense identities before attempting a Classic HID connection.
@@ -115,14 +118,20 @@ The UI must expose the state and the reason for an error. A device cannot receiv
 - Backup files contain a schema version, device type, export date and checksum.
 - Serial numbers and addresses are masked by default.
 
+Configuration commit and USB lifecycle are separate. `COMMIT_CONFIG` updates
+the verified flash record and applies runtime settings but never disconnects
+USB. Its versioned acknowledgement reports whether the effective PID or serial
+policy differs enough to require re-enumeration. Only the separately confirmed
+`RECONNECT_USB` command can schedule that action, and the firmware does so only
+after its acknowledgement has actually been read.
+
 ## 5. Test layers
 
 - protocol unit tests;
 - configuration validation tests;
 - malformed-packet tests;
 - application DOM and keyboard tests;
-- desktop/mobile browser journeys, offline reload and automated accessibility
-  checks;
+- desktop browser journeys, offline reload and automated accessibility checks;
 - firmware host-side tests for pure logic;
 - build reproducibility checks;
 - hardware tests with a real Pico 2 W and real controllers.
