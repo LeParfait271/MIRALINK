@@ -25,7 +25,7 @@ l’utilisateur.
 - Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
   fonctionnalité et tester la lecture explicite des réponses avec
   `receiveFeatureReport`.
-- Pour la persona native `0.38`, vérifier qu'il existe exactement une interface
+- Pour la persona native courante, vérifier qu'il existe exactement une interface
   HID contenant une seule collection Application racine Gamepad et une
   collection vendor MiraLink imbriquée.
   Inspecter les rapports `0x01`, `0x02`, `0x05`, `0x09`, `0x20`, `0x70` et
@@ -48,6 +48,15 @@ l’utilisateur.
 - Après une correction USB, conserver séparément la preuve du build, du
   descripteur, du paquet UF2 et du test de l’échange sur la carte réellement
   flashée ; un build réussi ne valide pas le binaire déjà installé.
+- Ne pas lancer les exécutables de tests firmware natifs Windows tant que leur
+  runtime LLVM n'est pas empaqueté de façon autonome : les dépendances
+  `libc++.dll` et `libunwind.dll` manquantes ouvrent des dialogues système et
+  ne constituent pas un résultat de test. Utiliser les assertions pures en
+  compilation ARM/syntax-only et le cross-build Pico comme portes logicielles.
+- Sérialiser les commandes WebHID par périphérique. Avant chaque écriture,
+  revérifier cycle de vie, descripteur et identité MiraLink. Ne jamais renvoyer
+  un `SET_REPORT` dont l'issue est ambiguë ; seule la lecture de la réponse
+  correspondante peut être reprise de façon bornée.
 
 ## Clôture de chaque prompt de travail
 
@@ -66,19 +75,25 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.39`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.39.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.39`.
-La source CMake peut employer `0.39.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.39`.
+La version publique actuelle du site est `0.40`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.40.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.40`.
+La source CMake peut employer `0.40.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.40`.
 
-La release `0.39` conserve l'ouverture automatique pendant cinq minutes de la
+La release `0.40` conserve l'ouverture automatique pendant cinq minutes de la
 fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore
 aucune manette. Le premier appairage peut donc se faire après flash en mettant
 la DualSense en mode association, sans connecter le Pico au site. Une manette
-déjà mémorisée conserve la reconnexion directe par clé BTstack.
+déjà mémorisée se reconnecte passivement vers le Pico page-scannable : aucune
+tentative `hid_host_connect` automatique ne réserve le seul slot HID-host
+BTstack. Les connexions sortantes sont limitées aux résultats d'une inquiry
+d'appairage active : automatique seulement si aucune clé n'existe, sinon
+ouverte par l'utilisateur. Le page scan est appliqué seulement après
+`HCI_STATE_WORKING`, la connectabilité est réarmée après fermeture et la
+fenêtre d'appairage se ferme au premier `0x31` complet avec CRC valide.
 
-La release `0.39` expose une persona USB DualSense-family expérimentale sous le
+La release `0.40` expose une persona USB DualSense-family expérimentale sous le
 VID Sony `0x054c`, avec PID standard/Auto `0x0ce6` ou Edge `0x0df2`. Cette
 compatibilité explicitement autorisée est une implémentation clean-room et ne
 constitue ni un firmware Sony, ni une approbation, ni une affiliation. Une
@@ -86,7 +101,10 @@ seule interface HID contient une collection Application racine Gamepad et une
 collection vendor MiraLink imbriquée ; le
 composite UAC2 reste désactivé. Les entrées natives passent par `0x01`, les
 sorties bornées par `0x02`, et les commandes de gestion par Feature `0x70` /
-`0x71`. L'état contrôleur est interrogé toutes les 40 ms ; `0x72` n'est pas
+`0x71`. La réponse `0x71` reste relisible jusqu'au prochain rapport de commande
+MiraLink produisant une réponse de succès ou d'erreur.
+L'état contrôleur est interrogé par un cycle récursif toutes les 100 ms, avec
+recul borné après erreur ; `0x72` n'est pas
 exposé. Un build ou un UF2 ne vaut pas preuve d'énumération, d'échange WebHID,
 de flash ou de fonctionnement sur matériel réel.
 
@@ -118,7 +136,16 @@ Le candidat compilé sérialise aussi les appels de sortie/BTstack concernés vi
 un patch source généré au build. Chaque propriété reste à vérifier par un flash
 manuel `0.38` et une observation physique.
 
-L'application `0.39` regroupe connexion WebHID, état suivant, diagnostics,
+Le test matériel `0.38` a confirmé une seule manette Windows, les
+boutons/sticks dans `joy.cpl` et un commit de configuration. Le test `0.39` a
+confirmé l'appairage initial, un échantillon au test rapide, le Controller Lab,
+les diagnostics et la lecture de configuration. Après extinction de la manette, la reconnexion par clé connue a
+échoué et un nouvel appairage a été nécessaire. Le candidat `0.40` corrige la
+politique de reconnexion comme décrit ci-dessus, mais cette correction n'est
+pas une preuve matérielle avant flash et cycles réels extinction/rallumage,
+redémarrage Pico et pertes brutales de liaison.
+
+L'application `0.40` regroupe connexion WebHID, état suivant, diagnostics,
 profils locaux, inspection UF2 et reprise hors ligne dans une interface
 high-tech originale en page continue. La barre de sections est une navigation
 d'ancrage réelle : chaque action doit faire défiler vers sa zone visible et
@@ -127,6 +154,14 @@ cible produit est le navigateur de bureau. Avant livraison, tester au minimum
 le parcours desktop, les sept destinations, le clavier, l'accessibilité, un
 bridge WebHID simulé et un rechargement hors ligne à froid. Ces contrôles sont
 une preuve logicielle, jamais un test du Pico réel.
+
+Toutes les transactions WebHID `0.40` passent par une FIFO annulable par
+périphérique. Une déconnexion annule les opérations obsolètes ; la récupération
+contrôlée referme/réouvre le périphérique puis exige un nouveau `HELLO` strict.
+Un échec de lecture `0x71` peut relire la réponse au plus de façon bornée, sans
+renvoyer la commande. Pour `RECONNECT_USB`, l'application attend la disparition
+USB réelle même si la lecture de l'ACK a échoué ; en l'absence de disparition,
+elle reprend le polling et affiche l'erreur sans réémission.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -258,7 +293,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.39 applique les réglages persistants qui peuvent être
+Le build firmware 0.40 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et

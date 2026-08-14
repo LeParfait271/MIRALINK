@@ -32,6 +32,7 @@ import {
 } from '../src/protocol.js';
 
 import {
+  createHidTransactionQueue,
   describeWebHidError,
   inspectWebHidAvailability,
   isHidRequestCancellation,
@@ -160,6 +161,10 @@ test('WebHID error guidance keeps an identified bridge and gives a next action',
   assert.match(permission.summary, /refusé/);
   assert.match(permission.nextAction, /Chrome ou Edge/);
 
+  const wrappedPermission = new ProtocolError('WebHID receive failed: denied', 'device_io');
+  wrappedPermission.browserErrorName = 'NotAllowedError';
+  assert.match(describeWebHidError(wrappedPermission, { bridgeIdentified: true }).summary, /refusé/);
+
   const unsupported = describeWebHidError(new ProtocolError('missing', 'feature_report_unavailable'), { bridgeIdentified: true });
   assert.equal(unsupported.retryable, false);
   assert.match(unsupported.nextAction, /ordinateur/);
@@ -167,6 +172,10 @@ test('WebHID error guidance keeps an identified bridge and gives a next action',
   const disconnected = describeWebHidError(Object.assign(new Error('gone'), { name: 'NetworkError' }), { bridgeIdentified: true });
   assert.match(disconnected.summary, /interrompue/);
   assert.match(disconnected.nextAction, /Actualiser/);
+
+  const wrappedDisconnect = new ProtocolError('WebHID receive failed: gone', 'device_io');
+  wrappedDisconnect.browserErrorName = 'NetworkError';
+  assert.match(describeWebHidError(wrappedDisconnect, { bridgeIdentified: true }).summary, /interrompue/);
 });
 
 test('MiraLink bridge WebHID filter uses the deployed USB identity', () => {
@@ -364,7 +373,7 @@ test('HID bridge commands read delayed feature responses explicitly', async () =
     }
   };
 
-  const response = await transactFeatureReport(device, { sequence: 7, command: COMMANDS.hello, timeoutMs: 100, pollIntervalMs: 1 });
+  const response = await transactFeatureReport(device, { sequence: 7, command: COMMANDS.hello, timeoutMs: 500, pollIntervalMs: 1 });
   assert.equal(device.sent.reportId, REPORT_IDS.command);
   assert.equal(device.sent.data.length, 64);
   assert.equal(device.reads, 2);
@@ -421,23 +430,131 @@ test('HID bridge reports stale commands instead of accepting the wrong response'
   );
 });
 
-test('HID bridge surfaces fatal browser I/O errors without waiting for timeout', async () => {
+test('HID bridge retries only the receive side after a transient browser I/O error', async () => {
+  const networkError = Object.assign(new Error('response not ready'), { name: 'NetworkError' });
+  const response = encodeFrame({ sequence: 11, command: COMMANDS.hello, flags: 1, payload: Uint8Array.from([1, 1, 1, 0]) });
+  const device = {
+    opened: true,
+    sends: 0,
+    reads: 0,
+    async sendFeatureReport() { this.sends += 1; },
+    async receiveFeatureReport() {
+      this.reads += 1;
+      if (this.reads < 3) throw networkError;
+      return response;
+    }
+  };
+  const retries = [];
+
+  const result = await transactFeatureReport(device, {
+    sequence: 11,
+    command: COMMANDS.hello,
+    timeoutMs: 1000,
+    pollIntervalMs: 1,
+    onReceiveRetry: (retry) => retries.push(retry)
+  });
+  assert.equal(result.sequence, 11);
+  assert.equal(device.sends, 1);
+  assert.equal(device.reads, 3);
+  assert.deepEqual(retries.map(({ attempt, maximum, error }) => [attempt, maximum, error.operationStage]), [
+    [1, 2, 'receive'],
+    [2, 2, 'receive']
+  ]);
+});
+
+test('HID bridge keeps persistent browser I/O failures bounded and stage-aware', async () => {
   const networkError = Object.assign(new Error('device gone'), { name: 'NetworkError' });
   const device = {
     opened: true,
-    async sendFeatureReport() {},
-    async receiveFeatureReport() { throw networkError; }
+    sends: 0,
+    reads: 0,
+    async sendFeatureReport() { this.sends += 1; },
+    async receiveFeatureReport() { this.reads += 1; throw networkError; }
   };
   await assert.rejects(
     transactFeatureReport(device, { sequence: 11, command: COMMANDS.hello, timeoutMs: 1000 }),
-    (error) => error === networkError
+    (error) => error instanceof ProtocolError
+      && error.code === 'device_io'
+      && error.operationStage === 'receive'
+      && error.cause === networkError
   );
+  assert.equal(device.sends, 1);
+  assert.equal(device.reads, 3);
 
   device.opened = false;
   await assert.rejects(
     transactFeatureReport(device, { sequence: 12, command: COMMANDS.hello, timeoutMs: 1000 }),
     (error) => error instanceof ProtocolError && error.code === 'device_disconnected'
   );
+  assert.equal(device.sends, 1, 'a closed device must be rejected before another write');
+});
+
+test('HID bridge never retries an ambiguous feature-report send', async () => {
+  const networkError = Object.assign(new Error('write status unavailable'), { name: 'NetworkError' });
+  const device = {
+    opened: true,
+    sends: 0,
+    reads: 0,
+    async sendFeatureReport() { this.sends += 1; throw networkError; },
+    async receiveFeatureReport() { this.reads += 1; }
+  };
+  await assert.rejects(
+    transactFeatureReport(device, { sequence: 13, command: COMMANDS.commitConfig, timeoutMs: 1000 }),
+    (error) => error instanceof ProtocolError
+      && error.code === 'device_io'
+      && error.operationStage === 'send'
+      && error.cause === networkError
+  );
+  assert.equal(device.sends, 1);
+  assert.equal(device.reads, 0);
+});
+
+test('HID transaction queue is FIFO and never overlaps operations', async () => {
+  const queue = createHidTransactionQueue();
+  const events = [];
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => { releaseFirst = resolve; });
+  const first = queue.enqueue(async () => {
+    events.push('first:start');
+    await firstGate;
+    events.push('first:end');
+    return 1;
+  });
+  const second = queue.enqueue(async () => {
+    events.push('second:start');
+    events.push('second:end');
+    return 2;
+  });
+
+  await Promise.resolve();
+  assert.deepEqual(events, ['first:start']);
+  assert.equal(queue.pending, 2);
+  releaseFirst();
+  assert.deepEqual(await Promise.all([first, second]), [1, 2]);
+  assert.deepEqual(events, ['first:start', 'first:end', 'second:start', 'second:end']);
+  assert.equal(queue.pending, 0);
+});
+
+test('cancelling a HID transaction queue invalidates in-flight results and queued work', async () => {
+  const queue = createHidTransactionQueue();
+  const events = [];
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => { releaseFirst = resolve; });
+  const first = queue.enqueue(async () => {
+    events.push('first:start');
+    await firstGate;
+    events.push('first:end');
+  });
+  const second = queue.enqueue(async () => { events.push('second:start'); });
+
+  await Promise.resolve();
+  queue.cancel('device removed');
+  releaseFirst();
+  await assert.rejects(first, (error) => error instanceof ProtocolError && error.code === 'transaction_cancelled');
+  await assert.rejects(second, (error) => error instanceof ProtocolError && error.code === 'transaction_cancelled');
+  await queue.drain();
+  assert.deepEqual(events, ['first:start', 'first:end']);
+  assert.equal(queue.pending, 0);
 });
 
 test('HELLO payload is decoded as structured binary data', () => {

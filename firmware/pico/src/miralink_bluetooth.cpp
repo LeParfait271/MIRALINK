@@ -1,5 +1,6 @@
 #include "miralink_bluetooth.h"
 #include "miralink_bluetooth_bootstrap.h"
+#include "miralink_bluetooth_reconnect.h"
 #include "miralink_config.h"
 
 #include "btstack.h"
@@ -28,8 +29,6 @@ constexpr std::uint32_t kPairingWindowMs = 300000;
 constexpr std::uint8_t kInquiryDuration = 8;
 constexpr std::size_t kMaxRememberedControllers = 4;
 constexpr std::uint16_t kHapticMaxDurationMs = 3000;
-constexpr std::uint32_t kReconnectDelayMs = 250;
-constexpr std::uint32_t kReconnectRetryDelayMs = 2000;
 constexpr std::uint32_t kConnectionHandshakeTimeoutMs = 10000;
 constexpr std::uint32_t kFeatureResponseTimeoutMs = 1500;
 constexpr std::uint32_t kFeatureRetryDelayMs = 25;
@@ -42,6 +41,8 @@ constexpr std::uint32_t kOutputFlightGuardMs = 4;
 constexpr std::uint32_t kIgnoredHidDisconnectRetryMs = 250;
 constexpr std::uint32_t kIgnoredHidDisconnectWindowMs = 10000;
 constexpr std::uint8_t kIgnoredHidDisconnectMaxAttempts = 40;
+constexpr std::uint16_t kPageScanInterval = 0x0012;
+constexpr std::uint16_t kPageScanWindow = 0x0012;
 
 struct OutputPacket {
     std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> bytes{};
@@ -63,7 +64,6 @@ bool g_inquiry_active = false;
 bool g_connection_pending = false;
 std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
 std::size_t g_paired_address_count = 0;
-std::size_t g_reconnect_index = 0;
 struct ActiveControllerAttempt {
     std::array<std::uint8_t, 6> address{};
     bool address_valid = false;
@@ -71,7 +71,6 @@ struct ActiveControllerAttempt {
     bool input_validated = false;
 };
 ActiveControllerAttempt g_active_controller_attempt{};
-std::uint64_t g_reconnect_deadline_ms = 0;
 std::uint64_t g_connection_deadline_ms = 0;
 bootstrap::State g_feature_bootstrap{};
 std::uint64_t g_feature_retry_deadline_ms = 0;
@@ -116,7 +115,6 @@ InquiryCandidate g_candidate{};
 
 void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_t* packet, std::uint16_t size);
 std::uint64_t now_ms();
-void try_next_paired_controller();
 void try_send_output();
 void service_feature_bootstrap();
 void set_connection_closed();
@@ -225,21 +223,12 @@ std::uint8_t configured_inactive_minutes() {
     return value;
 }
 
-void schedule_reconnect(const std::uint32_t delay_ms, const bool restart_from_first = true) {
-    if (g_idle_suspended) {
-        g_reconnect_deadline_ms = 0;
-        return;
-    }
-    if (g_paired_address_count == 0) {
-        g_reconnect_deadline_ms = 0;
-        return;
-    }
-    if (restart_from_first) g_reconnect_index = 0;
-    g_reconnect_deadline_ms = now_ms() + delay_ms;
-}
-
 bool pairing_window_active() {
     return g_pairing_window_deadline_ms != 0 && now_ms() < g_pairing_window_deadline_ms;
+}
+
+reconnect::RadioAction current_radio_action() {
+    return reconnect::radio_action(g_hci_working, pairing_window_active(), g_paired_address_count);
 }
 
 char ascii_lower(const char value) {
@@ -365,7 +354,6 @@ void remember_paired_address(const bd_addr_t address) {
 void load_paired_addresses() {
     g_paired_addresses = {};
     g_paired_address_count = 0;
-    g_reconnect_index = 0;
 
     btstack_link_key_iterator_t iterator{};
     if (!gap_link_key_iterator_init(&iterator)) return;
@@ -381,7 +369,8 @@ void load_paired_addresses() {
 }
 
 void start_inquiry() {
-    if (!g_pairing_requested || !g_hci_working || g_inquiry_active || g_connection_pending || g_hid_cid != 0) return;
+    if (current_radio_action() != reconnect::RadioAction::ExplicitPairingInquiry
+        || g_inquiry_active || g_connection_pending || g_hid_cid != 0) return;
     if (g_inquiry_retry_deadline_ms != 0 && now_ms() < g_inquiry_retry_deadline_ms) return;
     const auto status = gap_inquiry_start(kInquiryDuration);
     if (status == ERROR_CODE_SUCCESS) {
@@ -398,8 +387,22 @@ void stop_inquiry() {
     set_inquiry_snapshot(false);
 }
 
-bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false) {
-    if (g_idle_suspended || (!g_pairing_requested && !paired_address_known(address)) || g_connection_pending) return false;
+void complete_pairing_window() {
+    g_pairing_window_deadline_ms = 0;
+    g_pairing_requested = false;
+    g_inquiry_retry_deadline_ms = 0;
+    clear_candidate();
+    stop_inquiry();
+    gap_discoverable_control(0);
+    critical_section_enter_blocking(&g_state_lock);
+    g_snapshot.pairing_window_open = false;
+    critical_section_exit(&g_state_lock);
+}
+
+bool begin_hid_connection(const bd_addr_t address) {
+    if (g_idle_suspended
+        || !reconnect::allows_outgoing_hid_connect(current_radio_action())
+        || g_connection_pending || g_hid_cid != 0) return false;
     begin_controller_attempt(address);
     stop_inquiry();
     bd_addr_t mutable_address;
@@ -407,7 +410,7 @@ bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false)
     reset_feature_bootstrap();
     g_protocol_handshake_pending = false;
     g_hid_cid = 0;
-    record_connection_attempt(reconnect);
+    record_connection_attempt(false);
     const auto status = hid_host_connect(mutable_address, HID_PROTOCOL_MODE_REPORT, &g_hid_cid);
     if (status != ERROR_CODE_SUCCESS) {
         record_connection_failure(ConnectionError::HidConnect, status);
@@ -416,7 +419,6 @@ bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false)
         if (g_pairing_requested) start_inquiry();
         return false;
     }
-    g_reconnect_deadline_ms = 0;
     g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
     g_connection_pending = true;
     critical_section_enter_blocking(&g_state_lock);
@@ -424,20 +426,6 @@ bool begin_hid_connection(const bd_addr_t address, const bool reconnect = false)
     g_snapshot.state = LinkState::Starting;
     critical_section_exit(&g_state_lock);
     return true;
-}
-
-void try_next_paired_controller() {
-    if (!g_hci_working || g_pairing_requested || g_connection_pending || g_hid_cid != 0) return;
-    while (g_reconnect_index < g_paired_address_count) {
-        bd_addr_t address{};
-        std::memcpy(address, g_paired_addresses[g_reconnect_index].data(), sizeof(address));
-        ++g_reconnect_index;
-        if (begin_hid_connection(address, true)) return;
-    }
-    // A controller may be powered off temporarily. Retry the complete local
-    // key database later instead of exhausting the index permanently.
-    g_reconnect_deadline_ms = now_ms() + kReconnectRetryDelayMs;
-    g_reconnect_index = 0;
 }
 
 void remember_candidate(const std::uint8_t* packet) {
@@ -674,7 +662,6 @@ void try_send_output() {
 void set_connection_closed() {
     discard_unvalidated_controller_attempt();
     g_connection_pending = false;
-    g_reconnect_deadline_ms = 0;
     g_connection_deadline_ms = 0;
     reset_feature_bootstrap();
     g_protocol_handshake_pending = false;
@@ -689,8 +676,19 @@ void set_connection_closed() {
     critical_section_exit(&g_state_lock);
     clear_candidate();
     g_connection_failure_recorded = false;
-    if (pairing_window_active()) start_inquiry();
-    else if (!g_idle_suspended) schedule_reconnect(kReconnectDelayMs, false);
+    if (!g_hci_working) return;
+
+    // A completed ACL connection disables page scanning on the controller.
+    // Re-arm it after every close so a remembered DualSense can page the Pico
+    // again when its PS button is pressed. Discovery remains limited to an
+    // explicit pairing window.
+    gap_connectable_control(1);
+    if (current_radio_action() == reconnect::RadioAction::ExplicitPairingInquiry) {
+        gap_discoverable_control(1);
+        start_inquiry();
+    } else {
+        gap_discoverable_control(0);
+    }
 }
 
 void handle_report(const std::uint8_t* report, const std::uint16_t length) {
@@ -711,10 +709,19 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
     if (report_kind != bootstrap::InputReportKind::Enhanced) return;
 
     const auto parsed = dualsense::parse_bluetooth_input_report(report, length);
-    if (parsed && g_active_controller_attempt.address_valid
-        && !g_active_controller_attempt.input_validated) {
+    const bool first_valid_enhanced_input = parsed
+        && g_active_controller_attempt.address_valid
+        && !g_active_controller_attempt.input_validated;
+    if (first_valid_enhanced_input) {
         remember_paired_address(g_active_controller_attempt.address.data());
         g_active_controller_attempt.input_validated = true;
+    }
+    if (reconnect::completes_pairing_window(pairing_window_active(), first_valid_enhanced_input)) {
+        // A valid CRC-protected 0x31 report is the trust boundary for a new
+        // association. Stop inquiry immediately; leaving the five-minute
+        // window open would restart discovery instead of passive reconnect
+        // when the newly paired controller is switched off.
+        complete_pairing_window();
     }
     critical_section_enter_blocking(&g_state_lock);
     if (parsed) {
@@ -788,7 +795,6 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_inquiry_active = false;
                 g_pairing_window_deadline_ms = 0;
                 g_pairing_requested = false;
-                g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
                 reset_feature_bootstrap();
@@ -798,6 +804,11 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 clear_ignored_hid_teardown();
                 clear_controller_attempt();
                 clear_candidate();
+                // BTstack can only queue these controller commands once HCI is
+                // working. A fast interlaced page scan matches DS5Dongle's
+                // proven PS-button reconnect path on Pico 2 W.
+                gap_set_page_scan_activity(kPageScanInterval, kPageScanWindow);
+                gap_set_page_scan_type(PAGE_SCAN_MODE_INTERLACED);
                 gap_connectable_control(1);
                 gap_discoverable_control(0);
                 gap_set_local_name("MiraLink Pico 2 W");
@@ -817,11 +828,9 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 if (g_paired_address_count == 0) {
                     // A fresh Pico must be usable without a WebHID command:
                     // expose the radio and start discovery as soon as the
-                    // controller host is ready.  Remembered controllers keep
-                    // the direct, key-based reconnect path below.
+                    // controller host is ready. Remembered controllers stay
+                    // page-scannable and reconnect through incoming HID.
                     open_pairing_window();
-                } else {
-                    schedule_reconnect(kReconnectDelayMs);
                 }
             } else if (btstack_event_state_get_state(packet) == HCI_STATE_OFF) {
                 g_hci_working = false;
@@ -831,7 +840,6 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_connection_pending = false;
                 g_hid_cid = 0;
                 clear_ignored_hid_teardown();
-                g_reconnect_deadline_ms = 0;
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
                 reset_feature_bootstrap();
@@ -984,11 +992,12 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     if (hid_subevent_incoming_connection_get_status(packet) != ERROR_CODE_SUCCESS) break;
                     bd_addr_t address{};
                     hid_subevent_incoming_connection_get_address(packet, address);
-                    if (pairing_window_active() || paired_address_known(address)) {
+                    const bool address_is_remembered = paired_address_known(address);
+                    if (reconnect::accepts_incoming_controller(pairing_window_active(), address_is_remembered)) {
                         begin_controller_attempt(address);
                         note_activity();
                         stop_inquiry();
-                        record_connection_attempt(false);
+                        record_connection_attempt(address_is_remembered);
                         g_hid_cid = cid;
                         g_connection_pending = true;
                         reset_feature_bootstrap();
@@ -1018,9 +1027,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         bd_addr_t address{};
                         hid_subevent_connection_opened_get_bd_addr(packet, address);
                         begin_controller_attempt(address);
-                        g_reconnect_deadline_ms = 0;
                         g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
-                        g_reconnect_index = 0;
                         g_connection_pending = false;
                         critical_section_enter_blocking(&g_state_lock);
                         g_snapshot.connection_pending = false;
@@ -1045,8 +1052,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         record_connection_failure(ConnectionError::ProtocolHandshake,
                             hid_subevent_set_protocol_response_get_handshake_status(packet));
                         // A report-mode handshake failure cannot produce a
-                        // valid DualSense stream. Close it and let the normal
-                        // bounded reconnect path try again.
+                        // valid DualSense stream. Close it and return to the
+                        // passive PS-button reconnect path.
                         hid_host_disconnect(g_hid_cid);
                     } else {
                         // Defer feature traffic until BTstack has returned the
@@ -1142,7 +1149,10 @@ void apply_config(const Config& config) {
     if (resume_from_idle) {
         g_idle_suspended = false;
         note_activity();
-        schedule_reconnect(kReconnectDelayMs);
+        if (g_hci_working) {
+            gap_connectable_control(1);
+            gap_discoverable_control(0);
+        }
     }
 }
 
@@ -1151,7 +1161,6 @@ bool open_pairing_window() {
     note_activity();
     g_pairing_window_deadline_ms = now_ms() + kPairingWindowMs;
     g_pairing_requested = true;
-    g_reconnect_deadline_ms = 0;
     g_inquiry_retry_deadline_ms = 0;
     clear_candidate();
     gap_connectable_control(1);
@@ -1267,12 +1276,11 @@ void poll() {
         const auto inactive_ms = static_cast<std::uint64_t>(inactive_minutes) * 60u * 1000u;
         if (current.state == LinkState::Connected && current.input_available
             && g_last_activity_ms != 0 && now_ms() - g_last_activity_ms >= inactive_ms) {
-            // Sleep is local and conservative: stop the outgoing reconnect
-            // loop, close the current HID link, and wait for an explicit
+            // Sleep is local and conservative: close the current HID link and
+            // keep waiting for an explicit
             // pairing action or an inbound reconnection from a remembered
             // controller. It never erases pairing keys or configuration.
             g_idle_suspended = true;
-            g_reconnect_deadline_ms = 0;
             g_haptic_stop_pending = false;
             hid_host_disconnect(g_hid_cid);
             return;
@@ -1291,17 +1299,13 @@ void poll() {
         critical_section_exit(&g_state_lock);
     } else if (pairing_window_active() && !g_connection_pending) {
         start_inquiry();
-    } else if (!pairing_window_active() && g_reconnect_deadline_ms != 0
-        && now_ms() >= g_reconnect_deadline_ms && !g_connection_pending && g_hid_cid == 0) {
-        g_reconnect_deadline_ms = 0;
-        try_next_paired_controller();
     }
     if (g_connection_deadline_ms != 0 && now_ms() >= g_connection_deadline_ms) {
         const auto current = snapshot();
         if (!current.input_available && g_hid_cid != 0) {
             // A controller that never completes its descriptor/report
             // handshake must not hold the radio forever. The close event
-            // drives the same bounded reconnect path as a real disconnect.
+            // returns the radio to the passive reconnect path.
             g_connection_deadline_ms = 0;
             record_connection_failure(ConnectionError::Timeout);
             hid_host_disconnect(g_hid_cid);

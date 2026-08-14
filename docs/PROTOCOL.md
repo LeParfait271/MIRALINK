@@ -6,7 +6,7 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 
 The first transport is a vendor-defined USB HID Feature-report collection
 inside the single root Gamepad Application collection of MiraLink's
-experimental DualSense-family interface. Firmware 0.39 uses
+experimental DualSense-family interface. Firmware 0.40 uses
 Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
 not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
@@ -56,6 +56,14 @@ The firmware rejects a frame if the report is not exactly 64 bytes, the
 declared payload is outside the report, the CRC fails, the padding is not zero,
 or the command is not supported.
 
+The binary frame protocol remains version `1` in firmware `0.40`; no report ID,
+command ID, payload schema or wire size changes in this release. After a valid
+command, the firmware retains the corresponding `0x71` response and returns it
+on repeated `GET_REPORT` requests until the next MiraLink command report
+produces either a success or an error response.
+This makes the response read retryable. It does not make an ambiguous
+`SET_REPORT` safe to resend, so the application never replays that write.
+
 ## 3. Commands
 
 - `HELLO` — protocol and capability negotiation.
@@ -86,7 +94,7 @@ reopen the five-minute window later.
 
 ### 3.1 Configuration commit acknowledgement
 
-Firmware `0.39` returns exactly two payload bytes after a successful
+Firmware `0.40` returns exactly two payload bytes after a successful
 `COMMIT_CONFIG`:
 
 | Offset | Meaning |
@@ -135,7 +143,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.39 exposes one HID-only USB
+claim that a controller is connected. Firmware 0.40 exposes one HID-only USB
 interface with one root Gamepad Application collection and a nested MiraLink
 vendor collection. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
@@ -151,9 +159,11 @@ validated DualSense input report has been received.
 
 ### 3.3 Pico controller state payload
 
-`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.39
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.40
 does not declare or emit an asynchronous management Input report under the
-Sony persona; the application polls this command every 40 ms. It still accepts
+Sony persona; the application starts the next poll 100 ms after the previous
+transaction finishes and applies bounded 250/500 ms backoff after transient
+failures. It still accepts
 the historical 16-byte schema `1`:
 
 | Offset | Meaning |
@@ -182,8 +192,13 @@ Controller state is transient and is never recorded in flash.
 manually and lasts five minutes. A fresh Pico with no remembered BTstack key
 opens the same local window automatically after the radio reaches
 `HCI_STATE_WORKING`; no web page command is required for the first association.
-The command does not flash firmware or write configuration. Incoming HID
-connections outside that window are declined.
+The command does not flash firmware or write configuration. Outgoing
+`hid_host_connect` is limited to supported devices found during this inquiry.
+A controller with a known local key may reconnect inbound outside the pairing
+window; an unknown incoming controller is declined. Page scan is configured
+only after `HCI_STATE_WORKING`, connectability is rearmed after close, and
+discoverability remains disabled outside the pairing window. The pairing
+window closes after the first complete CRC-valid enhanced `0x31` input.
 
 ### 3.4 Local diagnostics and recovery commands
 
@@ -194,8 +209,13 @@ when the Pico restarts; controller input is never written to this log.
 
 `RECONNECT_USB` accepts no payload. The firmware arms local USB re-enumeration
 only after TinyUSB has actually served that command's acknowledgement on the
-MiraLink response report, then waits a further 250 ms. An unread or replaced
-response cannot disconnect the host. `ENTER_RECOVERY` accepts exactly the confirmation
+MiraLink response report, consumes that deferred action only once, then waits a
+further 250 ms. Re-reading the retained acknowledgement cannot schedule a
+second disconnect. The application never resends an ambiguously written
+command; whether the ACK was decoded or its read failed, it waits a bounded
+interval for the actual USB device disappearance and reports an error if none
+occurs. An unread or replaced response cannot disconnect the host.
+`ENTER_RECOVERY` accepts exactly the confirmation
 token `RCV1` and schedules the Pico BOOTSEL recovery path. The application must
 confirm both actions separately; the firmware never triggers either one from a
 background event.
@@ -248,7 +268,7 @@ minimal input report `0x01`. That report proves only that traffic is arriving:
 it does not carry the complete state expected by MiraLink and cannot set the
 `connected` or `input-valid` controller flags.
 
-After accepting a valid Bluetooth HID descriptor, firmware `0.39` advances a
+After accepting a valid Bluetooth HID descriptor, firmware `0.40` advances a
 bounded asynchronous bootstrap through controller Feature reports `0x05`,
 `0x09` and `0x20`. At most one request is outstanding. Transient busy/not-ready
 results and response timeouts stay inside the Bluetooth state machine instead
@@ -259,8 +279,12 @@ Only a complete Bluetooth input report `0x31` with the strict expected length
 and a valid CRC can complete the handshake, expose controller input or make a
 provisional address trusted. The bootstrap is internal to the Pico-to-controller
 transport; it does not change the USB report table or MiraLink frame format.
-Its `0.39` implementation is software-validated but still requires a manual
-Pico 2 W and DualSense hardware test.
+The `0.38` run observed buttons/sticks in `joy.cpl`; the `0.39` run observed
+initial pairing and a live quick-test input sample, but remembered reconnect
+failed after controller power-off. Firmware `0.40` removes automatic remembered-key HID connect
+attempts so the single BTstack HID-host slot remains free for passive incoming
+reconnects. That reconnect correction is software-validated only and still
+requires a manual Pico 2 W and DualSense hardware test.
 
 ## 4. Configuration record
 

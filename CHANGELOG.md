@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.40 - 2026-08-14
+
+- Recorded the physical `0.39` result: initial pairing, a live quick-test
+  sample, Controller Lab, diagnostics and configuration read worked, but a
+  controller powered off could not reconnect from its remembered key without
+  being paired again. The earlier `0.38` run remains the source of the
+  `joy.cpl` buttons/sticks and configuration-commit evidence.
+- Replaced automatic remembered-key `hid_host_connect` attempts with passive
+  reconnect listening so BTstack's single HID-host slot remains available for
+  the controller's incoming connection. Outgoing connects are now limited to
+  an active pairing inquiry (automatically opened only when no key exists,
+  otherwise opened by the user).
+- Applied page scan only after `HCI_STATE_WORKING`, rearmed connectability after
+  a link close, kept discoverability off outside pairing, and closed the
+  pairing window after the first complete CRC-valid enhanced `0x31` report.
+- Kept Feature response `0x71` readable until the next MiraLink command report
+  produces a success or error response, while consuming a deferred USB reconnect action only
+  once. This permits a bounded response-read retry without replaying a write.
+- Added a cancellable FIFO for WebHID transactions, bridge identity checks
+  before management commands, bounded receive-only retries, explicit stale
+  operation cancellation and controlled transport recovery. An ambiguous
+  `SET_REPORT` is never sent twice.
+- Replaced the overlapping 25 Hz controller interval with controlled 100 ms
+  polling and bounded 250/500 ms backoff after transient read/write failures.
+- Made `RECONNECT_USB` wait for an observed USB disappearance whether its ACK
+  was read or the response read became ambiguous; absence of a disconnect is
+  reported as an error and never triggers a command resend.
+- Kept the wire report table, command IDs and `protocolVersion` at `1`; this is
+  a transport/lifecycle correction, not a binary protocol revision.
+- Aligned active site, firmware and package metadata to `0.40` / `0.40.0`.
+- Hardware validation of reconnect, outputs, wake and audio remains pending for
+  this candidate.
+
 ## 0.39 - 2026-08-14
 
 - Rebuilt `System / Configuration / Controllers / Diagnostics / Firmware /

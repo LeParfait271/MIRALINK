@@ -19,7 +19,7 @@ import {
   inspectMiraLinkHidIdentity
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=39-soft-signal';
+import { applyTranslations, translate } from './i18n.js?ui=40-webhid-queue';
 import { inspectUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { commitProfileApplication, createBuiltInProfiles, createProfile, diffConfig, previewProfileApplication } from './profiles.js';
@@ -32,6 +32,7 @@ import {
   saveEntryWorkingCopy
 } from './ui-state.js';
 import {
+  createHidTransactionQueue,
   describeWebHidError,
   inspectWebHidAvailability,
   isHidRequestCancellation,
@@ -39,7 +40,7 @@ import {
   transactFeatureReport
 } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, compareControllerAnalyses, createCalibrationRevision } from './controller-lab.js';
-import { scrollToRouteTarget } from './site-effects.js?ui=39-soft-signal';
+import { scrollToRouteTarget } from './site-effects.js?ui=40-webhid-queue';
 
 const state = {
   devices: new Map(),
@@ -48,8 +49,14 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.39', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
+  version: { version: '0.40', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
 };
+
+const CONTROLLER_POLL_INTERVAL_MS = 100;
+const CONTROLLER_POLL_RETRY_DELAYS_MS = Object.freeze([250, 500]);
+const CONTROLLER_POLL_MAX_FAILURES = 3;
+const USB_DISCONNECT_OBSERVE_TIMEOUT_MS = 900;
+const USB_DISCONNECT_OBSERVE_INTERVAL_MS = 25;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -436,7 +443,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=39-soft-signal', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=40-webhid-queue', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -498,16 +505,43 @@ function requireHid() {
 
 function nextSequence() { state.sequence = (state.sequence + 1) & 0xffff; return state.sequence; }
 
+function isRegisteredEntry(entry) {
+  return Boolean(entry && !entry.disposed && state.devices.get(entry.id) === entry);
+}
+
+function assertBridgeTransactionAllowed(entry, command) {
+  if (!isRegisteredEntry(entry)) throw new ProtocolError('The HID device entry is no longer active', 'transaction_cancelled');
+  const identity = inspectMiraLinkHidIdentity(entry.device);
+  entry.bridgeIdentity = identity;
+  if (!identity.bridgeCandidate || (command !== COMMANDS.hello && (entry.kind !== 'bridge' || !entry.bridgeVerified))) {
+    throw new ProtocolError('Refusing MiraLink management traffic for an unverified HID device', 'untrusted_hid_device');
+  }
+  if (!entry.device.opened) throw new ProtocolError('The HID device is not open', 'device_not_open');
+}
+
 function transact(entry, command, payload = new Uint8Array(), timeoutMs = 1400) {
-  // Feature reports are request/response traffic. Keep one exchange in flight
-  // per device so the supervision poll cannot consume another command's reply.
-  const previous = entry.transactionTail || Promise.resolve();
-  const run = previous.then(async () => {
-    if (!entry.device.opened) await entry.device.open();
-    return transactFeatureReport(entry.device, { sequence: nextSequence(), command, payload, timeoutMs });
+  if (!entry?.transactionQueue) {
+    return Promise.reject(new ProtocolError('The HID transaction queue is unavailable', 'transaction_cancelled'));
+  }
+  return entry.transactionQueue.enqueue(async ({ assertActive }) => {
+    const assertCurrent = () => {
+      assertActive();
+      if (!isRegisteredEntry(entry)) throw new ProtocolError('The HID device entry is no longer active', 'transaction_cancelled');
+    };
+    assertBridgeTransactionAllowed(entry, command);
+    // Sequence allocation happens only when the transaction reaches the head
+    // of the queue. No stale entry may auto-open or write to a new device.
+    return transactFeatureReport(entry.device, {
+      sequence: nextSequence(),
+      command,
+      payload,
+      timeoutMs,
+      assertActive: assertCurrent,
+      onReceiveRetry: ({ attempt, maximum, error }) => {
+        addLog('info', `WebHID response read retry ${attempt}/${maximum} for command 0x${command.toString(16).padStart(2, '0')} (${error.browserErrorName}): ${error.message}; the command was not resent.`);
+      }
+    });
   });
-  entry.transactionTail = run.catch(() => undefined);
-  return run;
 }
 
 function identifyAsDirectDualSense(entry) {
@@ -529,6 +563,7 @@ function identifyAsDirectDualSense(entry) {
 }
 
 async function identifyAsMiraLinkBridge(entry) {
+  entry.bridgeVerified = false;
   entry.kind = 'bridge';
   entry.kindLabel = 'MiraLink bridge';
   entry.transport = 'usb';
@@ -536,6 +571,7 @@ async function identifyAsMiraLinkBridge(entry) {
   entry.nextAction = 'Attendez la réponse HELLO du Pico.';
   const response = await transact(entry, COMMANDS.hello);
   const hello = decodeHelloPayload(response.payload);
+  entry.bridgeVerified = true;
   entry.firmwareVersion = `protocol ${hello.protocolVersion}`;
   entry.hello = hello;
   entry.state = 'ready';
@@ -610,7 +646,7 @@ async function identify(entry) {
 }
 
 function handleBridgeEvent(entry, event) {
-  if (event.device !== entry.device || event.reportId !== REPORT_IDS.event) return;
+  if (!isRegisteredEntry(entry) || event.device !== entry.device || event.reportId !== REPORT_IDS.event) return;
   try {
     const frame = decodeFrame(event.data);
     if (frame.command !== COMMANDS.getControllerState) return;
@@ -629,14 +665,33 @@ function handleBridgeEvent(entry, event) {
 }
 
 function startBridgePolling(entry) {
-  if (entry.kind !== 'bridge' || entry.pollTimer) return;
-  let inFlight = false;
+  if (entry.kind !== 'bridge' || entry.pollRunning) return;
+  const generation = (entry.pollGeneration || 0) + 1;
+  entry.pollGeneration = generation;
+  entry.pollRunning = true;
+  entry.pollFailureCount = 0;
+
+  const pollingIsCurrent = () => entry.pollRunning
+    && entry.pollGeneration === generation
+    && isRegisteredEntry(entry)
+    && entry.state === 'ready';
+
+  const schedule = (delayMs) => {
+    if (!pollingIsCurrent()) return;
+    entry.pollTimer = window.setTimeout(() => {
+      entry.pollTimer = null;
+      void poll();
+    }, delayMs);
+  };
+
   const poll = async () => {
-    if (inFlight || !state.devices.has(entry.id) || entry.state !== 'ready') return;
-    inFlight = true;
+    if (!pollingIsCurrent()) return;
+    let nextDelayMs = CONTROLLER_POLL_INTERVAL_MS;
     try {
       const response = await transact(entry, COMMANDS.getControllerState, new Uint8Array(), 350);
+      if (!pollingIsCurrent()) return;
       const controllerState = decodeControllerStatePayload(response.payload);
+      const recoveredFailures = entry.pollFailureCount || 0;
       entry.pollFailureCount = 0;
       const previousControllerState = entry.controllerState;
       entry.controllerState = controllerState;
@@ -647,29 +702,36 @@ function startBridgePolling(entry) {
         if (entry.id === state.activeDeviceId) renderControllerLab(entry);
       }
       if (controllerOverviewChanged(previousControllerState, controllerState)) updateOverview();
+      if (recoveredFailures > 0) {
+        addLog('info', `Controller polling recovered after ${recoveredFailures} failed ${recoveredFailures === 1 ? 'attempt' : 'attempts'}.`);
+      }
     } catch (error) {
-      if (state.devices.has(entry.id)) {
+      if (pollingIsCurrent()) {
         entry.pollFailureCount = (entry.pollFailureCount || 0) + 1;
-        if (entry.pollFailureCount >= 3) {
+        const stage = error?.operationStage ? ` · ${error.operationStage}` : '';
+        const code = error?.code || error?.name || 'webhid_error';
+        addLog('info', `Controller polling retry ${entry.pollFailureCount}/${CONTROLLER_POLL_MAX_FAILURES} (${code}${stage}): ${error.message}`);
+        if (entry.pollFailureCount >= CONTROLLER_POLL_MAX_FAILURES) {
           markConnectionFailure(entry, error, { bridgeIdentified: true, operation: 'supervision' });
           renderDevices();
           updateUiForActiveDevice();
           setGlobalStatus('Bridge attention', 'error');
-        } else if (error?.code !== 'timeout') {
-          addLog('info', `Controller polling retry ${entry.pollFailureCount}/3: ${error.message}`);
+        } else {
+          nextDelayMs = CONTROLLER_POLL_RETRY_DELAYS_MS[entry.pollFailureCount - 1] || CONTROLLER_POLL_RETRY_DELAYS_MS.at(-1);
         }
       }
     } finally {
-      inFlight = false;
+      schedule(nextDelayMs);
     }
   };
-  entry.pollTimer = window.setInterval(poll, 40);
-  poll();
+  void poll();
 }
 
 function stopBridgePolling(entry) {
-  if (!entry?.pollTimer) return;
-  window.clearInterval(entry.pollTimer);
+  if (!entry) return;
+  entry.pollRunning = false;
+  entry.pollGeneration = (entry.pollGeneration || 0) + 1;
+  if (entry.pollTimer) window.clearTimeout(entry.pollTimer);
   entry.pollTimer = null;
 }
 
@@ -683,13 +745,22 @@ async function reconnectEntry(entry, { initial = false } = {}) {
     updateUiForActiveDevice();
     setGlobalStatus(initial ? 'Connecting' : 'Reconnecting', 'busy');
     try {
-      await entry.transactionTail.catch(() => undefined);
-      entry.transactionTail = Promise.resolve();
+      await entry.transactionQueue.drain();
+      if (!isRegisteredEntry(entry)) throw new ProtocolError('The HID device entry is no longer active', 'transaction_cancelled');
+      entry.bridgeIdentity = inspectMiraLinkHidIdentity(entry.device);
+      entry.bridgeVerified = false;
+      if (!initial && entry.device.opened) {
+        addLog('info', `${entry.label}: reopening the authorised WebHID session before identification.`);
+        await entry.device.close();
+      }
+      if (!isRegisteredEntry(entry)) throw new ProtocolError('The HID device entry is no longer active', 'transaction_cancelled');
       if (!entry.device.opened) await entry.device.open();
+      if (!isRegisteredEntry(entry)) throw new ProtocolError('The HID device entry is no longer active', 'transaction_cancelled');
       await identify(entry);
     } catch (error) {
-      markConnectionFailure(entry, error, { bridgeIdentified: entry.bridgeIdentity?.bridgeCandidate });
+      if (isRegisteredEntry(entry)) markConnectionFailure(entry, error, { bridgeIdentified: entry.bridgeIdentity?.bridgeCandidate });
     }
+    if (!isRegisteredEntry(entry)) return entry;
     renderDevices();
     updateUiForActiveDevice();
     updateInstalledVersion();
@@ -716,7 +787,7 @@ async function registerDevice(device) {
   }
   const id = `device-${Date.now()}-${state.devices.size + 1}`;
   const bridgeIdentity = inspectMiraLinkHidIdentity(device);
-  const entry = { id, device, label: device.productName || 'Appareil MiraLink', kind: bridgeIdentity.bridgeCandidate ? 'bridge' : 'unknown', kindLabel: bridgeIdentity.bridgeCandidate ? 'MiraLink bridge' : 'Identification', state: 'opening', config: null, draft: null, savedConfig: null, analysisSnapshots: [], firmwareVersion: null, adapter: null, sampleCount: 0, sampleHistory: [], controllerState: null, lastSample: null, pollTimer: null, pollFailureCount: 0, transactionTail: Promise.resolve(), connectionPromise: null, bridgeIdentity, usbReenumerationRequired: false, expectedUsbDisconnect: false, lastCommitAck: null, nextAction: 'Attendez l’ouverture du périphérique.' };
+  const entry = { id, device, label: device.productName || 'Appareil MiraLink', kind: bridgeIdentity.bridgeCandidate ? 'bridge' : 'unknown', kindLabel: bridgeIdentity.bridgeCandidate ? 'MiraLink bridge' : 'Identification', state: 'opening', config: null, draft: null, savedConfig: null, analysisSnapshots: [], firmwareVersion: null, adapter: null, sampleCount: 0, sampleHistory: [], controllerState: null, lastSample: null, pollTimer: null, pollRunning: false, pollGeneration: 0, pollFailureCount: 0, transactionQueue: createHidTransactionQueue(), connectionPromise: null, disposed: false, bridgeIdentity, bridgeVerified: false, usbReenumerationRequired: false, expectedUsbDisconnect: false, lastCommitAck: null, nextAction: 'Attendez l’ouverture du périphérique.' };
   entry.eventHandler = (event) => handleBridgeEvent(entry, event);
   device.addEventListener('inputreport', entry.eventHandler);
   state.devices.set(id, entry);
@@ -767,10 +838,11 @@ async function disconnectEntry(id) {
   const entry = state.devices.get(id);
   if (!entry) return;
   const expectedUsbDisconnect = entry.expectedUsbDisconnect === true;
+  entry.disposed = true;
   stopBridgePolling(entry);
+  entry.transactionQueue.cancel('The HID device was disconnected');
   try { entry.adapter?.stop(); } catch (error) { addLog('error', `Controller adapter stop failed: ${error.message}`); }
   entry.device.removeEventListener('inputreport', entry.eventHandler);
-  try { if (entry.device.opened) await entry.device.close(); } catch (error) { addLog('error', `Close failed: ${error.message}`); }
   state.devices.delete(id);
   if (state.activeDeviceId === id) {
     state.activeDeviceId = null;
@@ -781,6 +853,8 @@ async function disconnectEntry(id) {
   }
   renderDevices(); updateUiForActiveDevice(); updateInstalledVersion();
   if (!state.devices.size && !hasHid()) showHidWarning(webHidStatus());
+  await entry.transactionQueue.drain();
+  try { if (entry.device.opened) await entry.device.close(); } catch (error) { addLog('error', `Close failed: ${error.message}`); }
   if (expectedUsbDisconnect) {
     setGlobalStatus('Waiting for USB reconnect', 'busy');
     addLog('info', `${entry.label} disconnected temporarily as expected after the explicit RECONNECT_USB command; waiting for Windows to enumerate it again.`);
@@ -885,11 +959,41 @@ async function factoryResetConfig() {
   }
 }
 
-function isExpectedUsbDisconnect(error, entry) {
-  if (!entry?.expectedUsbDisconnect) return false;
-  return entry.device.opened === false
-    || ['device_disconnected', 'timeout'].includes(error?.code)
-    || ['InvalidStateError', 'NetworkError', 'NotFoundError', 'NotReadableError'].includes(error?.name);
+function usbDisconnectObserved(entry, error = null) {
+  return !isRegisteredEntry(entry) || entry?.device?.opened === false || error?.code === 'device_disconnected';
+}
+
+function usbDisconnectMayFollow(error) {
+  const browserErrorName = error?.browserErrorName || error?.cause?.name || error?.name;
+  return error?.code === 'timeout'
+    || (error?.code === 'device_io'
+    && error?.operationStage === 'receive'
+    && ['InvalidStateError', 'NetworkError', 'NotFoundError', 'NotReadableError'].includes(browserErrorName));
+}
+
+async function waitForUsbDisconnect(entry, error = null) {
+  const deadline = Date.now() + USB_DISCONNECT_OBSERVE_TIMEOUT_MS;
+  while (!usbDisconnectObserved(entry, error) && Date.now() < deadline) {
+    await new Promise((resolve) => window.setTimeout(resolve, USB_DISCONNECT_OBSERVE_INTERVAL_MS));
+  }
+  return usbDisconnectObserved(entry, error);
+}
+
+async function finishObservedUsbDisconnect(entry) {
+  entry.usbReenumerationRequired = false;
+  if (isRegisteredEntry(entry) && entry.device.opened === false) await disconnectEntry(entry.id);
+}
+
+function restoreAfterMissingUsbDisconnect(entry, detail) {
+  if (!isRegisteredEntry(entry)) return;
+  entry.expectedUsbDisconnect = false;
+  entry.usbReenumerationRequired = true;
+  entry.nextAction = 'La déconnexion USB attendue n’a pas été observée ; le bridge reste actif et aucune commande n’a été renvoyée.';
+  startBridgePolling(entry);
+  renderDevices();
+  updateUiForActiveDevice();
+  setGlobalStatus('USB reconnect failed', 'error');
+  addLog('error', `${detail} No RECONNECT_USB retry was sent; polling resumed on the existing verified bridge.`);
 }
 
 async function reconnectUsb() {
@@ -905,14 +1009,27 @@ async function reconnectUsb() {
   addLog('info', 'Explicit RECONNECT_USB requested after confirmation; a temporary HID disconnect is expected.');
   try {
     await transact(entry, COMMANDS.reconnectUsb, new Uint8Array(), 900);
-    entry.usbReenumerationRequired = false;
-    updateUiForActiveDevice();
     addLog('info', 'RECONNECT_USB acknowledged; waiting for the expected temporary USB disconnect.');
+    if (await waitForUsbDisconnect(entry)) {
+      addLog('info', 'Expected USB disconnect observed after the RECONNECT_USB acknowledgement.');
+      await finishObservedUsbDisconnect(entry);
+      return;
+    }
+    restoreAfterMissingUsbDisconnect(entry, `RECONNECT_USB was acknowledged, but no USB disconnect followed within ${USB_DISCONNECT_OBSERVE_TIMEOUT_MS} ms.`);
   } catch (error) {
-    if (isExpectedUsbDisconnect(error, entry)) {
-      entry.usbReenumerationRequired = false;
-      updateUiForActiveDevice();
+    if (usbDisconnectObserved(entry, error)) {
       addLog('info', `Expected USB disconnect observed while RECONNECT_USB completed: ${error.message}`);
+      await finishObservedUsbDisconnect(entry);
+      return;
+    }
+    if (usbDisconnectMayFollow(error)) {
+      addLog('info', `RECONNECT_USB may have reached the firmware, but its ACK was not readable; waiting up to ${USB_DISCONNECT_OBSERVE_TIMEOUT_MS} ms for the physical disconnect: ${error.message}`);
+      if (await waitForUsbDisconnect(entry)) {
+        addLog('info', `Expected USB disconnect observed after an unreadable RECONNECT_USB acknowledgement: ${error.message}`);
+        await finishObservedUsbDisconnect(entry);
+        return;
+      }
+      restoreAfterMissingUsbDisconnect(entry, `RECONNECT_USB ACK could not be confirmed and no USB disconnect followed within ${USB_DISCONNECT_OBSERVE_TIMEOUT_MS} ms: ${error.message}`);
       return;
     }
     entry.expectedUsbDisconnect = false;
@@ -1459,7 +1576,7 @@ function init() {
     showHidWarning(initialHidStatus);
     addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=39-soft-signal').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=40-webhid-queue').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

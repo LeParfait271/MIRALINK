@@ -35,7 +35,7 @@ async function installMiraLinkBridgeStub(page) {
     };
     const responsePayload = (command) => {
       if (command === 0x01) return Uint8Array.from([1, 1, 1, 0]);
-      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 39, 0]);
+      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 40, 0]);
       if (command === 0x03) return Uint8Array.from([1, 100, 0, 100, 100, 0, 0, 1, 96, 2, 4, 0, 0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
       if (command === 0x05) return Uint8Array.from([1, 1]);
       if (command === 0x0d) return Uint8Array.from([1, 0, 0, 1, 0, 0, 0xb8, 0x0b]);
@@ -73,8 +73,29 @@ async function installMiraLinkBridgeStub(page) {
 
     let pendingResponse = null;
     let pendingCommand = null;
+    let reconnectDisconnectScheduled = false;
     const listeners = new Map();
     globalThis.__miralinkCommandLog = [];
+    globalThis.__miralinkReceiveFailures = 0;
+    globalThis.__miralinkReconnectReceiveFailures = 0;
+    globalThis.__miralinkSuppressReconnectDisconnect = false;
+    globalThis.__miralinkTransportMetrics = {
+      activeCalls: 0,
+      maxConcurrentCalls: 0,
+      overlappingWrites: 0,
+      replacedPendingResponses: 0,
+      sendCount: 0,
+      receiveCount: 0,
+      openCount: 0,
+      closeCount: 0
+    };
+    const beginIo = (operation) => {
+      const metrics = globalThis.__miralinkTransportMetrics;
+      metrics.activeCalls += 1;
+      metrics.maxConcurrentCalls = Math.max(metrics.maxConcurrentCalls, metrics.activeCalls);
+      if (operation === 'send' && metrics.activeCalls > 1) metrics.overlappingWrites += 1;
+    };
+    const endIo = () => { globalThis.__miralinkTransportMetrics.activeCalls -= 1; };
     const device = {
       vendorId: 0x054c,
       productId: 0x0ce6,
@@ -89,31 +110,59 @@ async function installMiraLinkBridgeStub(page) {
           featureReports: [{ reportId: 0x70 }, { reportId: 0x71 }]
         }]
       }],
-      async open() { this.opened = true; },
-      async close() { this.opened = false; },
+      async open() { this.opened = true; globalThis.__miralinkTransportMetrics.openCount += 1; },
+      async close() { this.opened = false; globalThis.__miralinkTransportMetrics.closeCount += 1; },
       addEventListener() {},
       removeEventListener() {},
       async sendFeatureReport(reportId, data) {
-        if (reportId !== 0x70) throw new Error('Unexpected command report');
-        const request = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        pendingCommand = request[6];
-        const payloadLength = request[7] | (request[8] << 8);
-        globalThis.__miralinkCommandLog.push({ command: pendingCommand, payload: [...request.subarray(9, 9 + payloadLength)] });
-        pendingResponse = makeResponse(request);
+        beginIo('send');
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 4));
+          if (reportId !== 0x70) throw new Error('Unexpected command report');
+          if (pendingResponse) {
+            // Firmware keeps 0x71 stable for receive retries and replaces it
+            // only when a later SET starts a distinct transaction.
+            globalThis.__miralinkTransportMetrics.replacedPendingResponses += 1;
+          }
+          const request = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+          pendingCommand = request[6];
+          const payloadLength = request[7] | (request[8] << 8);
+          globalThis.__miralinkCommandLog.push({ command: pendingCommand, payload: [...request.subarray(9, 9 + payloadLength)] });
+          globalThis.__miralinkTransportMetrics.sendCount += 1;
+          pendingResponse = makeResponse(request);
+        } finally {
+          endIo();
+        }
       },
       async receiveFeatureReport(reportId) {
-        if (reportId !== 0x71 || !pendingResponse) throw new Error('No pending MiraLink response');
-        const response = pendingResponse;
-        const command = pendingCommand;
-        pendingResponse = null;
-        pendingCommand = null;
-        if (command === 0x07) {
-          setTimeout(() => {
-            device.opened = false;
-            for (const callback of listeners.get('disconnect') || []) callback({ device });
-          }, 10);
+        beginIo('receive');
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 4));
+          globalThis.__miralinkTransportMetrics.receiveCount += 1;
+          if (reportId !== 0x71 || !pendingResponse) throw new Error('No pending MiraLink response');
+          const command = pendingCommand;
+          if (command === 0x07 && !reconnectDisconnectScheduled && !globalThis.__miralinkSuppressReconnectDisconnect) {
+            reconnectDisconnectScheduled = true;
+            setTimeout(() => {
+              device.opened = false;
+              for (const callback of listeners.get('disconnect') || []) callback({ device });
+            }, 120);
+          }
+          if (command === 0x07 && globalThis.__miralinkReconnectReceiveFailures > 0) {
+            globalThis.__miralinkReconnectReceiveFailures -= 1;
+            throw Object.assign(new Error('Injected RECONNECT_USB ACK read failure'), { name: 'NetworkError' });
+          }
+          if (globalThis.__miralinkReceiveFailures > 0) {
+            globalThis.__miralinkReceiveFailures -= 1;
+            throw Object.assign(new Error('Injected transient feature-report read failure'), { name: 'NetworkError' });
+          }
+          const response = pendingResponse;
+          pendingResponse = null;
+          pendingCommand = null;
+          return new DataView(response.buffer);
+        } finally {
+          endIo();
         }
-        return new DataView(response.buffer);
       }
     };
     const hid = {
@@ -260,11 +309,12 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await page.locator('#connect-button').click();
 
   await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
-  await expect(page.locator('#installed-version')).toHaveText('0.39');
+  await expect(page.locator('#installed-version')).toHaveText('0.40');
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   const confirmation = page.locator('#confirm-dialog');
-  if (await confirmation.isVisible()) await confirmation.locator('[value="cancel"]').click();
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
 
   await expect(page.locator('#overview-controller-state')).toHaveText('PRÊTE');
   await expect(page.locator('#overview-controller-note')).toContainText('entrées actives');
@@ -295,7 +345,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#audio-buffer')).toHaveValue('96');
   await expect(page.locator('#ps-shortcut')).toBeDisabled();
   await expect(page.locator('#ps-shortcut')).toBeChecked();
-  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.39');
+  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.40');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';
@@ -333,15 +383,69 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#diagnostic-summary')).toContainText(/Bluetooth pairing window open/i);
 });
 
+test('serializes polling and foreground WebHID work while recovering bounded response reads', async ({ page }) => {
+  await installMiraLinkBridgeStub(page);
+  await page.goto('/');
+  await page.locator('#connect-button').click();
+  const confirmation = page.locator('#confirm-dialog');
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
+  await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
+
+  await page.evaluate(() => { globalThis.__miralinkReceiveFailures = 2; });
+  await page.evaluate(() => {
+    document.querySelector('#read-config-button').click();
+    document.querySelector('#run-diagnostics-button').click();
+  });
+
+  await expect.poll(() => page.evaluate(() => globalThis.__miralinkReceiveFailures)).toBe(0);
+  await expect.poll(() => page.evaluate(() => {
+    const commands = globalThis.__miralinkCommandLog.map(({ command }) => command);
+    return commands.includes(0x03) && commands.includes(0x08);
+  })).toBe(true);
+  await expect(page.locator('#log-view')).toContainText('the command was not resent');
+  const metrics = await page.evaluate(() => globalThis.__miralinkTransportMetrics);
+  expect(metrics.maxConcurrentCalls).toBe(1);
+  expect(metrics.overlappingWrites).toBe(0);
+  await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
+});
+
+test('surfaces persistent polling failures and reopens WebHID only on an explicit recovery action', async ({ page }) => {
+  await installMiraLinkBridgeStub(page);
+  await page.goto('/');
+  await page.locator('#connect-button').click();
+  const confirmation = page.locator('#confirm-dialog');
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
+
+  await page.evaluate(() => { globalThis.__miralinkReceiveFailures = 9; });
+  await expect(page.locator('#global-status-text')).toHaveText('Bridge attention', { timeout: 5000 });
+  await expect(page.locator('#log-view')).toContainText('Controller polling retry 3/3');
+  const before = await page.evaluate(() => ({ ...globalThis.__miralinkTransportMetrics }));
+  expect(before.openCount).toBe(1);
+  expect(before.closeCount).toBe(0);
+
+  await page.locator('#run-diagnostics-button').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__miralinkTransportMetrics.openCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => globalThis.__miralinkTransportMetrics.closeCount)).toBe(1);
+  await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
+  await expect(page.locator('#log-view')).toContainText('reopening the authorised WebHID session');
+  const after = await page.evaluate(() => globalThis.__miralinkTransportMetrics);
+  expect(after.maxConcurrentCalls).toBe(1);
+  expect(after.overlappingWrites).toBe(0);
+});
+
 test('keeps commit, factory reset and explicit USB reconnect as separate confirmed actions', async ({ page }) => {
   await installMiraLinkBridgeStub(page);
   await page.goto('/');
   await page.locator('#connect-button').click();
   const confirmation = page.locator('#confirm-dialog');
-  if (await confirmation.isVisible()) await confirmation.locator('[value="cancel"]').click();
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
 
   await revealSection(page, '#tab-bridge');
   await page.locator('#read-config-button').click();
+  await expect(page.locator('#haptics-gain')).toBeEnabled();
   await expect(page.locator('#audio-buffer')).toBeDisabled();
   await expect(page.locator('#ps-shortcut')).toBeDisabled();
 
@@ -349,6 +453,7 @@ test('keeps commit, factory reset and explicit USB reconnect as separate confirm
     input.value = '1.4';
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
+  await expect(page.locator('#save-config-button')).toBeEnabled();
   await page.locator('#save-config-button').click();
   await expect(confirmation).toBeVisible();
   await confirmation.locator('[value="confirm"]').click();
@@ -378,7 +483,11 @@ test('keeps commit, factory reset and explicit USB reconnect as separate confirm
   await expect(page.locator('#confirm-message')).toContainText('Buffer audio : 96 → 64');
   await expect(page.locator('#confirm-message')).toContainText('Raccourci PS : activé → désactivé');
   await confirmation.locator('[value="confirm"]').click();
-  await expect.poll(() => page.evaluate(() => globalThis.__miralinkCommandLog.some(({ command }) => command === 0x06))).toBe(true);
+  await expect.poll(() => page.evaluate(() => {
+    const commands = globalThis.__miralinkCommandLog.map(({ command }) => command);
+    const resetIndex = commands.lastIndexOf(0x06);
+    return resetIndex >= 0 && commands.slice(resetIndex + 1).includes(0x05);
+  })).toBe(true);
   const resetCommands = await page.evaluate(() => globalThis.__miralinkCommandLog.map(({ command }) => command));
   expect(resetCommands).toContain(0x06);
   expect(resetCommands.slice(resetCommands.lastIndexOf(0x06) + 1)).toContain(0x05);
@@ -393,6 +502,85 @@ test('keeps commit, factory reset and explicit USB reconnect as separate confirm
   await expect(page.locator('#log-view')).toContainText('disconnected temporarily as expected');
   await expect(page.locator('#global-status-text')).toHaveText('Waiting for USB reconnect');
   await expect(page.locator('#usb-reconnect-notice')).toBeHidden();
+});
+
+test('accepts a RECONNECT_USB ACK read failure only when the expected disconnect follows', async ({ page }) => {
+  await installMiraLinkBridgeStub(page);
+  await page.goto('/');
+  await page.locator('#connect-button').click();
+  const confirmation = page.locator('#confirm-dialog');
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
+
+  await page.locator('#read-config-button').click();
+  await expect(page.locator('#haptics-gain')).toBeEnabled();
+  await page.locator('#haptics-gain').evaluate((input) => {
+    input.value = '1.4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('#save-config-button')).toBeEnabled();
+  await page.locator('#save-config-button').click();
+  await confirmation.locator('[value="confirm"]').click();
+  await expect(page.locator('#usb-reconnect-notice')).toBeVisible();
+
+  await page.evaluate(() => { globalThis.__miralinkReconnectReceiveFailures = 3; });
+  await page.locator('#reconnect-usb-button').click();
+  await confirmation.locator('[value="confirm"]').click();
+
+  await expect(page.locator('#log-view')).toContainText('Expected USB disconnect observed after an unreadable RECONNECT_USB acknowledgement');
+  await expect(page.locator('#log-view')).toContainText('WebHID receive failed: Injected RECONNECT_USB ACK read failure');
+  await expect(page.locator('#log-view')).toContainText('disconnected temporarily as expected');
+  await expect(page.locator('#global-status-text')).toHaveText('Waiting for USB reconnect');
+  await expect(page.locator('#usb-reconnect-notice')).toBeHidden();
+  await expect(page.locator('.device-card')).toHaveCount(0);
+
+  await page.waitForTimeout(250);
+  const reconnectCommands = await page.evaluate(() => globalThis.__miralinkCommandLog.filter(({ command }) => command === 0x07).length);
+  expect(reconnectCommands).toBe(1);
+  const commands = await page.evaluate(() => globalThis.__miralinkCommandLog.map(({ command }) => command));
+  expect(commands.at(-1)).toBe(0x07);
+});
+
+test('does not accept an unreadable RECONNECT_USB ACK when no disconnect follows', async ({ page }) => {
+  await installMiraLinkBridgeStub(page);
+  await page.goto('/');
+  await page.locator('#connect-button').click();
+  const confirmation = page.locator('#confirm-dialog');
+  await expect(confirmation).toBeVisible();
+  await confirmation.locator('[value="cancel"]').click();
+
+  await page.locator('#read-config-button').click();
+  await expect(page.locator('#haptics-gain')).toBeEnabled();
+  await page.locator('#haptics-gain').evaluate((input) => {
+    input.value = '1.4';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('#save-config-button')).toBeEnabled();
+  await page.locator('#save-config-button').click();
+  await confirmation.locator('[value="confirm"]').click();
+  await expect(page.locator('#usb-reconnect-notice')).toBeVisible();
+
+  await page.evaluate(() => {
+    globalThis.__miralinkReconnectReceiveFailures = 3;
+    globalThis.__miralinkSuppressReconnectDisconnect = true;
+  });
+  await page.locator('#reconnect-usb-button').click();
+  await confirmation.locator('[value="confirm"]').click();
+
+  await expect(page.locator('#log-view')).toContainText('no USB disconnect followed within 900 ms');
+  await expect(page.locator('#global-status-text')).toHaveText('USB reconnect failed');
+  await expect(page.locator('#usb-reconnect-notice')).toBeVisible();
+  await expect(page.locator('#reconnect-usb-button')).toBeEnabled();
+  await expect(page.locator('.device-card')).toHaveCount(1);
+  await expect(page.locator('#log-view')).not.toContainText('disconnected temporarily as expected');
+
+  await expect.poll(() => page.evaluate(() => {
+    const commands = globalThis.__miralinkCommandLog.map(({ command }) => command);
+    const reconnectIndex = commands.lastIndexOf(0x07);
+    return reconnectIndex >= 0 && commands.slice(reconnectIndex + 1).includes(0x0b);
+  })).toBe(true);
+  const reconnectCommands = await page.evaluate(() => globalThis.__miralinkCommandLog.filter(({ command }) => command === 0x07).length);
+  expect(reconnectCommands).toBe(1);
 });
 
 test('keeps the complete local control shell available from a cold offline cache', async ({ context, page }) => {

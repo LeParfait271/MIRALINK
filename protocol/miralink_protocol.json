@@ -1,6 +1,6 @@
 {
   "product": "MiraLink",
-  "releaseVersion": "0.39",
+  "releaseVersion": "0.40",
   "protocolVersion": 1,
   "implementation": "clean-room",
   "compatibilityTarget": "observable DS5Dongle v0.7.2-hotfix capabilities",
@@ -71,7 +71,8 @@
         "type": "feature",
         "payloadBytes": 64,
         "wireBytes": 65,
-        "purpose": "MiraLink response frame"
+        "purpose": "MiraLink response frame",
+        "readSemantics": "stable until the next MiraLink command report produces a success or error response"
       },
       "0x72": {
         "type": "reserved",
@@ -161,7 +162,7 @@
       "command": "GET_CONTROLLER_STATE",
       "featureRequestReport": "0x70",
       "featureResponseReport": "0x71",
-      "pollIntervalMs": 40,
+      "pollIntervalMs": 100,
       "asynchronousReport": "0x72",
       "asynchronousReportExposed": false
     },

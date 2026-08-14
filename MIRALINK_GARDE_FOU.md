@@ -8,10 +8,11 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier actif vérifié : `C:\Users\MC\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.39`
-- Version firmware alignée au site : `0.39`
+- Version publique actuelle du site : `0.40`
+- Version firmware alignée au site : `0.40`
 - Date de démarrage : `2026-08-12`
-- Livraison locale uniquement tant qu'une publication n'est pas autorisée.
+- Livraison par source GitHub et release firmware manuelle lorsqu'elle est
+  explicitement autorisée ; aucun flash n'est automatique.
 
 ## Règles absolues
 
@@ -35,7 +36,7 @@
 - Thème sombre uniquement.
 - Design original, sobre et futuriste, avec une palette reposante et des accents lumineux parcimonieux ; aucun néon dominant.
 - Inspiration HUD de combat VR uniquement ; aucune copie de ressources protégées.
-- L'interface `0.39` est livrée en français ; l'anglais par défaut et la
+- L'interface `0.40` est livrée en français ; l'anglais par défaut et la
   couverture des langues européennes restent une cible d'architecture future,
   pas une capacité actuellement annoncée.
 - Sauvegardes locales exportables/importables, comparaison avant écriture et restauration.
@@ -60,7 +61,7 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
-Le lot `0.39` vise à atteindre puis dépasser les capacités observables de
+Le lot `0.40` vise à atteindre puis dépasser les capacités observables de
 DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
 expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
 standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
@@ -78,8 +79,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.38` → `0.39`. La version technique du paquet npm utilise `0.39.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.39`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.39.0`, mais le firmware affiché et livré reste `0.39`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.39` → `0.40`. La version technique du paquet npm utilise `0.40.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.40`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.40.0`, mais le firmware affiché et livré reste `0.40`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -191,3 +192,7 @@ automatique.
 - `2026-08-14` — L’interface `0.39` conserve « Système / Configuration / Manettes / Diagnostics / Firmware / Sauvegardes / Journaux » comme une vraie barre d’accès rapide : un clic défile vers la section visible et l’état actif suit la position. Ce ne sont plus des onglets sans changement apparent. La cible produit est le bureau ; aucun parcours mobile dédié n’est revendiqué. La référence Terminal Industries concerne uniquement les principes abstraits de profondeur, rythme, transition, grille et mouvement : MiraLink conserve un code, des ressources, une composition et une identité propres, avec une palette adoucie et des accents lumineux rares.
 - `2026-08-14` — Le test matériel `0.38` a confirmé une seule manette Windows, le pont prêt, un flux Bluetooth enrichi et des boutons/sticks fonctionnels. Après activation du numéro de série USB, le commit a toutefois déclenché une réénumération implicite et la manette n’a plus pu être jointe pendant la session ; le statut `0x04` est un page timeout, pas une preuve de clé corrompue. En `0.39`, `COMMIT_CONFIG` ne coupe jamais l’USB : son ACK versionné signale une réénumération requise et seule une commande séparée confirmée peut la déclencher. Ce correctif reste à retester matériellement.
 - `2026-08-14` — DualShock Tools et DS5 Bridge Config peuvent servir de références fonctionnelles observables pour le Controller Lab et les parcours de configuration. Aucun code, actif, texte, protocole interne ou identité visuelle tiers n’est repris. La calibration permanente, les commandes NVS et le relais arbitraire de Feature reports restent interdits tant qu’une sauvegarde/restauration bornée et un test matériel ciblé n’existent pas.
+- `2026-08-14` — Le test matériel `0.39` a confirmé l’appairage initial, un échantillon d’entrée au test rapide, le Controller Lab, les diagnostics et la lecture de configuration. Après extinction de la manette, la reconnexion depuis la clé mémorisée a échoué et un nouvel appairage a été nécessaire. Les boutons/sticks dans `joy.cpl` et le commit matériel restent des preuves du test `0.38`, pas du journal `0.39`. Ces observations ne valident ni la reconnexion, ni les sorties, ni le réveil, ni l’audio.
+- `2026-08-14` — Le candidat `0.40` laisse une manette mémorisée se reconnecter passivement : aucun `hid_host_connect` automatique ne réserve le seul slot HID-host BTstack ; une connexion sortante reste autorisée uniquement pendant l’inquiry d’une fenêtre d’appairage active, ouverte automatiquement seulement si aucune clé n’existe, sinon à la demande de l’utilisateur. Le page scan n’est configuré qu’après `HCI_STATE_WORKING`, la connectabilité est réarmée après fermeture et la fenêtre d’appairage se ferme au premier `0x31` complet avec CRC valide. Ce correctif reste non validé matériellement avant un nouveau flash et des cycles extinction/réallumage réels.
+- `2026-08-14` — En `0.40`, une réponse Feature `0x71` reste relisible jusqu’au prochain rapport de commande MiraLink produisant une réponse de succès ou d’erreur. L’application sérialise les commandes WebHID dans une FIFO annulable par périphérique, ne renvoie jamais un `SET_REPORT` dont le résultat est ambigu, borne les nouvelles lectures de réponse et vérifie la disparition USB après `RECONNECT_USB`. Le protocole binaire reste en version `1`; une reprise logicielle ne vaut jamais preuve de reconnexion radio matérielle.
+- `2026-08-14` — L'utilisateur a demandé que le lot `0.40` soit commité directement sur `main`, poussé, puis publié comme release GitHub `v0.40` avec les artefacts firmware avant le prochain test. Cette autorisation ne couvre aucun flash automatique ni action sur le Pico distant.

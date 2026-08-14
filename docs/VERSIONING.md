@@ -7,10 +7,10 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.37 → 0.38 → 0.39
+0.10 → 0.11 → 0.12 → … → 0.38 → 0.39 → 0.40
 ```
 
-The current sequence continues through public version `0.39`.
+The current sequence continues through public version `0.40`.
 
 The public site version must be reflected in:
 
@@ -19,28 +19,31 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.39.0`; this is
-packaging metadata for the public site version `0.39`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.40.0`; this is
+packaging metadata for the public site version `0.40`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest currently use `0.39`. CMake uses
-the technical form `0.39.0` only because it requires three numeric segments;
-the firmware reported by the device remains exactly `0.39`.
+UF2 metadata, release folder and manifest currently use `0.40`. CMake uses
+the technical form `0.40.0` only because it requires three numeric segments;
+the firmware reported by the device remains exactly `0.40`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current site and firmware version is `0.39`. It contains the clean-room,
+The current site and firmware version is `0.40`. It contains the clean-room,
 experimental DualSense-family USB persona with one HID interface, one root
 Gamepad Application collection and nested MiraLink Feature management. A
-manual `0.38` Windows test confirmed exactly one controller entry, the enhanced
-Bluetooth input stream, and working buttons/sticks. Version `0.39` separates
-configuration commit from explicit USB re-enumeration and lets the pairing
-window discover supported standard and Edge controllers independently of the
-selected USB persona. Those recovery changes are software-tested but not yet
-physically retested. Sony VID/PID compatibility does not imply Sony firmware,
-endorsement or affiliation. USB audio remains source-only.
+manual `0.38` Windows test confirmed one bridge-owned controller and working
+buttons/sticks in `joy.cpl`. The `0.39` run confirmed initial pairing, a live
+quick-test sample, Controller Lab, diagnostics and configuration read, then
+showed that remembered reconnect failed after controller power-off. Version `0.40` switches remembered controllers to passive incoming
+reconnect, limits outgoing HID connects to an active pairing inquiry, retains
+response `0x71` for bounded re-reads and hardens the WebHID transaction
+lifecycle. These changes are software-tested but not yet physically retested.
+The binary protocol remains version `1`; a product version does not imply a
+protocol-version increment. Sony VID/PID compatibility does not imply Sony
+firmware, endorsement or affiliation. USB audio remains source-only.
 
 Before every commit, read and update `MIRALINK_GARDE_FOU.md` and
 `docs/WORKFLOW.md` when a rule, decision or limit changed. Every work prompt is

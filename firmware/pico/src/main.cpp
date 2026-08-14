@@ -246,6 +246,10 @@ void set_response(std::uint16_t sequence, miralink::Command command, std::uint8_
     // A deferred action belongs only to the response currently occupying the
     // single MiraLink response slot. Replacing it, including with an error,
     // must invalidate an older reconnect intent before the host can read it.
+    // The encoded response itself remains readable until this next SET_REPORT:
+    // host stacks can complete the USB control transfer yet report a transient
+    // receive failure to WebHID, and HID Feature reports are state rather than
+    // a destructive queue.
     g_response_ready = false;
     g_usb_reconnect_after_response = false;
     miralink::Frame frame;
@@ -652,7 +656,8 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
     if (!g_response_ready || reqlen < g_response.size()) return 0;
     std::memcpy(buffer, g_response.data(), g_response.size());
     const bool reconnect_after_read = g_usb_reconnect_after_response;
-    g_response_ready = false;
+    // Keep the current Feature response available for an idempotent retry.
+    // set_response() replaces it synchronously when the next command arrives.
     g_usb_reconnect_after_response = false;
     if (reconnect_after_read) {
         // The 250 ms grace period starts only after TinyUSB has served the
