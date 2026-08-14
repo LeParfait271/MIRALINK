@@ -12,16 +12,18 @@ import {
   decodeDiagnosticsPayload,
   decodeFrame,
   decodeHelloPayload,
+  decodeInfoPayload,
   defaultConfig,
-  encodeConfig
+  encodeConfig,
+  getHidIdentificationOrder
 } from './protocol.js';
 import { calibrationHistory, createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=35-control-room3';
+import { applyTranslations, translate } from './i18n.js?ui=36-dualsense-persona';
 import { parseUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { inspectWebHidAvailability, transactFeatureReport } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, commitCalibrationRestore, createCalibrationRevision, prepareCalibrationRestore } from './controller-lab.js';
-import './site-effects.js?ui=35-control-room3';
+import './site-effects.js?ui=36-dualsense-persona';
 
 const state = {
   devices: new Map(),
@@ -30,7 +32,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.35', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
+  version: { version: '0.36', developer: 'MaruChiwa', lastUpdated: '2026-08-14' }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -197,7 +199,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=35-control-room3', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=36-dualsense-persona', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -264,39 +266,65 @@ function transact(entry, command, payload = new Uint8Array(), timeoutMs = 1400) 
   return run;
 }
 
-async function identify(entry) {
-  if (isDualSenseDevice(entry.device)) {
-    entry.kind = 'controller';
-    entry.kindLabel = 'DualSense controller';
-    entry.transport = 'usb';
-    entry.adapter = createDualSenseAdapter(entry.device, {
-      onSample: (sample) => recordControllerSample(entry, sample),
-      onError: (error) => addLog('error', `${entry.label} input report rejected: ${error.message}`)
-    });
-    entry.adapter.start();
-    entry.state = 'ready';
-    addLog('info', `${entry.label} identified as a DualSense controller. Direct wired input is available; use the Pico 2 W bridge for Bluetooth output features.`);
-    return;
+function identifyAsDirectDualSense(entry) {
+  entry.kind = 'controller';
+  entry.kindLabel = 'DualSense controller';
+  entry.transport = 'usb';
+  entry.adapter = createDualSenseAdapter(entry.device, {
+    onSample: (sample) => recordControllerSample(entry, sample),
+    onError: (error) => addLog('error', `${entry.label} input report rejected: ${error.message}`)
+  });
+  entry.adapter.start();
+  entry.state = 'ready';
+  addLog('info', `${entry.label} identified as a DualSense controller. Direct wired input is available; use the Pico 2 W bridge for Bluetooth output features.`);
+}
+
+async function identifyAsMiraLinkBridge(entry) {
+  const response = await transact(entry, COMMANDS.hello);
+  const hello = decodeHelloPayload(response.payload);
+  entry.kind = 'bridge'; entry.kindLabel = 'MiraLink bridge'; entry.firmwareVersion = `protocol ${hello.protocolVersion}`; entry.hello = hello;
+  entry.transport = 'usb';
+  entry.state = 'ready';
+  try {
+    const infoResponse = await transact(entry, COMMANDS.getInfo, new Uint8Array(), 500);
+    entry.firmwareVersion = decodeInfoPayload(infoResponse.payload).version;
+  } catch (error) {
+    addLog('info', `${entry.label} did not expose a readable firmware version: ${error.message}`);
   }
   try {
-    const response = await transact(entry, COMMANDS.hello);
-    const hello = decodeHelloPayload(response.payload);
-    entry.kind = 'bridge'; entry.kindLabel = 'MiraLink bridge'; entry.firmwareVersion = `protocol ${hello.protocolVersion}`; entry.hello = hello;
-    entry.transport = 'usb';
-    entry.state = 'ready';
-    try {
-      const capabilityResponse = await transact(entry, COMMANDS.getControllerCapabilities, new Uint8Array(), 500);
-      entry.controllerCapabilities = decodeControllerCapabilities(capabilityResponse.payload);
-    } catch (error) {
-      entry.controllerCapabilities = null;
-      addLog('info', `${entry.label} does not expose controller capabilities yet: ${error.message}`);
-    }
-    addLog('info', `${entry.label} identified as MiraLink bridge.`);
-    startBridgePolling(entry);
+    const capabilityResponse = await transact(entry, COMMANDS.getControllerCapabilities, new Uint8Array(), 500);
+    entry.controllerCapabilities = decodeControllerCapabilities(capabilityResponse.payload);
   } catch (error) {
-    entry.kind = 'unknown'; entry.kindLabel = 'Unsupported HID device'; entry.state = 'error'; entry.error = error.message;
-    addLog('error', `${entry.label} is not a MiraLink bridge or supported DualSense: ${error.message}`);
+    entry.controllerCapabilities = null;
+    addLog('info', `${entry.label} does not expose controller capabilities yet: ${error.message}`);
   }
+  addLog('info', `${entry.label} identified as MiraLink bridge.`);
+  startBridgePolling(entry);
+}
+
+async function identify(entry) {
+  const directDualSense = isDualSenseDevice(entry.device);
+  const identificationOrder = getHidIdentificationOrder(entry.device, directDualSense);
+  let bridgeError = null;
+
+  for (const candidate of identificationOrder) {
+    if (candidate === 'bridge') {
+      try {
+        await identifyAsMiraLinkBridge(entry);
+        return;
+      } catch (error) {
+        bridgeError = error;
+      }
+    } else {
+      if (bridgeError) addLog('info', `${entry.label} did not answer the MiraLink HELLO; continuing as a direct DualSense controller.`);
+      identifyAsDirectDualSense(entry);
+      return;
+    }
+  }
+
+  const error = bridgeError || new ProtocolError('Unsupported HID device', 'unsupported_device');
+  entry.kind = 'unknown'; entry.kindLabel = 'Unsupported HID device'; entry.state = 'error'; entry.error = error.message;
+  addLog('error', `${entry.label} is not a MiraLink bridge or supported DualSense: ${error.message}`);
 }
 
 function handleBridgeEvent(entry, event) {
@@ -689,7 +717,7 @@ function init() {
   const initialHidStatus = webHidStatus();
   if (!initialHidStatus.available) addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   if (hasHid()) { navigator.hid.addEventListener('connect', (event) => registerDevice(event.device)); navigator.hid.addEventListener('disconnect', (event) => { const entry = [...state.devices.values()].find((item) => item.device === event.device); if (entry) disconnectEntry(entry.id); }); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=35-control-room3').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=36-dualsense-persona').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

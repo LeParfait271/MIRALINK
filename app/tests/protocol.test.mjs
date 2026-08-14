@@ -5,6 +5,7 @@ import {
   MIRALINK_PRODUCT_ID,
   MIRALINK_USB_FILTER,
   MIRALINK_VENDOR_ID,
+  REPORT_IDS,
   ProtocolError,
   assertValidConfig,
   decodeControllerCapabilities,
@@ -13,6 +14,7 @@ import {
   decodeAudioStatusPayload,
   decodeDiagnosticsPayload,
   decodeHelloPayload,
+  decodeInfoPayload,
   decodeFrame,
   defaultConfig,
   encodeConfig,
@@ -20,7 +22,9 @@ import {
   encodeLightbarRequest,
   encodeMicrophoneMuteRequest,
   encodeControllerOutputRequest,
-  encodeFrame
+  encodeFrame,
+  getHidIdentificationOrder,
+  hasMiraLinkVendorCollection
 } from '../src/protocol.js';
 import { inspectWebHidAvailability, transactFeatureReport } from '../src/hid-transport.js';
 
@@ -52,8 +56,40 @@ test('MiraLink bridge WebHID filter uses the deployed USB identity', () => {
     vendorId: MIRALINK_VENDOR_ID,
     productId: MIRALINK_PRODUCT_ID
   });
-  assert.equal(MIRALINK_VENDOR_ID, 0xcafe);
-  assert.equal(MIRALINK_PRODUCT_ID, 0x4d4c);
+  assert.equal(MIRALINK_VENDOR_ID, 0x054c);
+  assert.equal(MIRALINK_PRODUCT_ID, 0x0ce6);
+});
+
+test('MiraLink management report IDs do not collide with DualSense reports', () => {
+  assert.deepEqual(REPORT_IDS, { command: 0x70, response: 0x71, event: 0x72 });
+  assert.equal(Object.values(REPORT_IDS).includes(0x01), false);
+  assert.equal(Object.values(REPORT_IDS).includes(0x02), false);
+});
+
+test('MiraLink vendor collection detection handles missing, direct and nested collections', () => {
+  assert.equal(hasMiraLinkVendorCollection({}), false);
+  assert.equal(hasMiraLinkVendorCollection({ collections: [{ usagePage: 0x0001 }] }), false);
+  assert.equal(hasMiraLinkVendorCollection({ collections: [{ usagePage: 0xff00 }] }), true);
+  assert.equal(hasMiraLinkVendorCollection({ collections: [{ usagePage: 0x0001, children: [{ usagePage: 0xff00 }] }] }), true);
+});
+
+test('Sony identification probes MiraLink first only when its vendor collection is present', () => {
+  const directDualSense = { vendorId: 0x054c, productId: 0x0ce6, collections: [{ usagePage: 0x0001 }] };
+  const MiraLinkDualSense = { ...directDualSense, collections: [{ usagePage: 0x0001 }, { usagePage: 0xff00 }] };
+  assert.deepEqual(getHidIdentificationOrder(directDualSense, true), ['controller']);
+  assert.deepEqual(getHidIdentificationOrder(MiraLinkDualSense, true), ['bridge', 'controller']);
+  assert.deepEqual(getHidIdentificationOrder({ vendorId: 0xcafe, collections: [] }, false), ['bridge']);
+});
+
+test('GET_INFO exposes the real compact firmware version', () => {
+  const info = decodeInfoPayload(Uint8Array.from([
+    0x4d, 0x69, 0x72, 0x61, 0x4c, 0x69, 0x6e, 0x6b, 0x00, 0x24, 0x00, 0x00
+  ]));
+  assert.deepEqual(info, { product: 'MiraLink', version: '0.36', major: 0, minor: 36, patch: 0 });
+  assert.throws(() => decodeInfoPayload(Uint8Array.from([0x4d, 0x69])), /too short/);
+  assert.throws(() => decodeInfoPayload(Uint8Array.from([
+    0x4e, 0x6f, 0x74, 0x4d, 0x69, 0x72, 0x61, 0x21, 0, 36, 0
+  ])), /signature/);
 });
 
 test('frame round trip preserves sequence, command and payload', () => {
@@ -93,7 +129,7 @@ test('HID bridge commands read delayed feature responses explicitly', async () =
       this.response = encodeFrame({ sequence: 7, command: COMMANDS.hello, flags: 1, payload: Uint8Array.from([1, 1, 1, 0]) });
     },
     async receiveFeatureReport(reportId) {
-      assert.equal(reportId, 2);
+      assert.equal(reportId, REPORT_IDS.response);
       this.reads += 1;
       if (this.reads === 1) throw new Error('feature response not ready');
       return this.response;
@@ -101,7 +137,7 @@ test('HID bridge commands read delayed feature responses explicitly', async () =
   };
 
   const response = await transactFeatureReport(device, { sequence: 7, command: COMMANDS.hello, timeoutMs: 100, pollIntervalMs: 1 });
-  assert.equal(device.sent.reportId, 1);
+  assert.equal(device.sent.reportId, REPORT_IDS.command);
   assert.equal(device.sent.data.length, 64);
   assert.equal(device.reads, 2);
   assert.equal(response.sequence, 7);

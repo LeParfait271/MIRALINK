@@ -4,13 +4,37 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 
 ## 1. Transport
 
-The first transport is a vendor-defined USB HID feature-report channel exposed by the MiraLink Pico 2 W firmware. The USB identity and descriptor values will be assigned to MiraLink and kept in one protocol manifest.
+The first transport is a vendor-defined USB HID Feature-report collection
+inside MiraLink's experimental DualSense-family interface. Firmware 0.36 uses
+Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
+not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
 The browser never sends raw flash commands. It sends typed MiraLink frames; the firmware decides whether a command is allowed.
 
+The single HID interface declares these non-colliding reports:
+
+| ID | Type | Wire bytes | Purpose |
+|---:|---|---:|---|
+| `0x01` | Input | 64 | Native-size controller state |
+| `0x02` | Output | 48 declared; 48 or 63 accepted | Bounded controller output body |
+| `0x05` | Feature | 41 | Synthetic nominal-scale motion calibration fallback |
+| `0x09` | Feature | 20 | Local/unicast bridge identifier required by host drivers |
+| `0x20` | Feature | 64 | MiraLink-marked persona revision |
+| `0x70` | Feature | 65 | MiraLink command frame |
+| `0x71` | Feature | 65 | MiraLink response frame |
+
+When USB serial exposure is disabled, the `0x09` identifier is generated once
+per boot and retained only in RAM. When serial exposure is enabled, it is
+stable and derived locally from the Pico identifier. It never reuses the
+Bluetooth address of the attached controller. The synthetic calibration is a
+safe probe fallback, not the factory calibration of the physical controller;
+motion precision therefore still requires hardware measurement and a future
+calibration pass-through path.
+
 ## 2. Frame
 
-Every feature report is exactly 64 bytes. The frame uses the beginning of the
+MiraLink command `0x70` and response `0x71` Feature payloads are exactly 64
+bytes (65 bytes on the control wire after the report ID). The frame uses the beginning of the
 report and the remaining bytes are required to be zero padding. This keeps the
 browser transport deterministic and avoids silently truncating a USB HID
 feature report.
@@ -90,8 +114,8 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.35 exposes a HID-only USB
-configuration so the control bridge can be discovered reliably by WebHID. The
+claim that a controller is connected. Firmware 0.36 exposes one HID-only USB
+interface with Gamepad and MiraLink vendor collections. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
 descriptor until physical Pico 2 W validation is complete; USB audio counters
 therefore remain inactive in this build. The capture endpoint is not a
@@ -105,13 +129,15 @@ validated DualSense input report has been received.
 
 ### 3.2 Pico controller state payload
 
-`GET_CONTROLLER_STATE` and event report `0x03` use a 48-byte payload for schema
-`2`. The application still accepts the historical 16-byte schema `1`:
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.36
+does not declare or emit an asynchronous management Input report under the
+Sony persona; the application polls this command every 40 ms. It still accepts
+the historical 16-byte schema `1`:
 
 | Offset | Meaning |
 |---:|---|
 | 0 | State schema (`2`) |
-| 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4`, inquiry `5`, connection pending `6` |
+| 1 | Flags: connected `0`, descriptor `1`, input `2`, Bluetooth available `3`, pairing window `4`, inquiry `5`, connection pending `6`, paired controller known `7` |
 | 2 | Controller report ID |
 | 3..6 | Left X/Y and right X/Y, raw bytes `0..255` |
 | 7..8 | Left and right trigger, raw bytes `0..255` |
@@ -128,8 +154,7 @@ validated DualSense input report has been received.
 | 36..43 | Two touch points as little-endian X/Y pairs |
 | 44..47 | Reserved and zero-filled |
 
-The event is persistent only in the current USB transfer; the firmware does
-not record controller input in flash.
+Controller state is transient and is never recorded in flash.
 
 `OPEN_PAIRING_WINDOW` is confirmation-gated by the application when invoked
 manually and lasts five minutes. A fresh Pico with no remembered BTstack key
@@ -172,10 +197,10 @@ compatible-rumble pulse is stopped automatically.
 `SET_CONTROLLER_OUTPUT` accepts exactly `[schema=1, 47-byte USB output body]`.
 The firmware validates the fixed size, copies it into a local queue, preserves
 MiraLink ownership of the Bluetooth report id/sequence/CRC and sends the
-result only when a validated controller link is ready. A HID output report id
-`0x11` carrying the same fixed 47-byte body is accepted on the Pico's host
-interface for compatibility with a local game path. No variable-length or
-arbitrary HID payload is accepted.
+result only when a validated controller link is ready. Native HID output report
+`0x02` accepts the compact 48-byte wire form and the 63-byte Linux form; only
+the first fixed 47-byte common body is relayed. No variable-length or arbitrary
+HID payload is accepted.
 
 `GET_AUDIO_STATUS` accepts no payload and returns 16 bytes:
 `[schema=1, usb-streaming, bluetooth-streaming, bluetooth-link-available,

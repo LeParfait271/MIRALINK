@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.36 - 2026-08-14
+
+- Added an original, clean-room DualSense-family USB persona for the Pico 2 W
+  bridge, using Sony VID `0x054c` with standard/Auto PID `0x0ce6` or Edge PID
+  `0x0df2` for native host-stack compatibility. This experimental identity
+  does not imply Sony firmware, endorsement or affiliation.
+- Consolidated the native gamepad and MiraLink vendor collections on exactly
+  one HID interface, avoiding a second incomplete controller probe on Linux.
+- Added native report `0x01` input (64 wire bytes), bounded report `0x02`
+  output (48-byte compact and 63-byte Linux forms), and Feature reports
+  `0x05`, `0x09`, `0x20`, `0x70` and `0x71`. Reserved report `0x72` is not
+  declared or emitted; controller management state is polled instead.
+- Added host-compatible synthetic calibration and local bridge-identity
+  Feature responses without exposing the attached controller Bluetooth
+  address, plus explicit user-activity filtering for optional USB wake.
+- Updated WebHID discovery to probe the MiraLink vendor collection before the
+  direct-controller fallback, read the actual firmware version through
+  `GET_INFO`, and make the versioned offline shell cache deterministic.
+- Added a repeatable end-of-firmware comparison against DS5Dongle
+  `v0.7.2-hotfix`, separating implementation coverage, proof strength and UF2
+  size instead of presenting binary size as a quality score.
+- Aligned the site, firmware and package metadata to `0.36` / `0.36.0`.
+  Software builds and static checks do not constitute a flash, USB
+  enumeration test or physical Pico 2 W / DualSense validation.
+
 ## 0.35 - 2026-08-14
 
 - Opened the local Bluetooth pairing window automatically when a Pico 2 W has

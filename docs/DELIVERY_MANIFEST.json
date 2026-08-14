@@ -1,12 +1,12 @@
 {
   "product": "MiraLink",
-  "version": "0.35",
-  "firmwareVersion": "0.35",
+  "version": "0.36",
+  "firmwareVersion": "0.36",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-14",
   "delivery": "local-source-only",
   "application": "app/src",
-  "applicationVersion": "0.35",
+  "applicationVersion": "0.36",
   "validatedFirmware": {
     "sourceStatus": "historical-artifact",
     "version": "0.2.0",
@@ -18,36 +18,58 @@
   },
   "sourceBuild": {
     "sourceStatus": "compiled-locally-uf2-packaged",
-    "version": "0.35",
-    "directory": "firmware/pico/build-btstack-8",
+    "version": "0.36",
+    "directory": "firmware/pico/build-audit",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "sdk": "2.3.0",
     "armToolchain": "15.2.1",
-    "opus": "1.5.2-vendored",
+    "opus": "vendored-source; CMake-package-version-unavailable",
     "outputs": ["miralink_pico_firmware.elf", "miralink_pico_firmware.bin", "miralink_pico_firmware.hex", "miralink_pico_firmware.uf2"],
     "hardwareTest": "not-tested",
     "automaticFirstPairing": "source-implemented; hardware-not-tested",
-    "usbConfiguration": "hid-only-vendor-bridge-plus-standard-gamepad",
+    "usbConfiguration": "single-hid-interface-native-dualsense-and-miralink-feature-collections",
+    "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
+    "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
     "usbAudio": "source-only; hardware-enumeration-not-tested",
     "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested"
   },
   "releaseArtifact": {
     "sourceStatus": "local-manual-test-candidate",
-    "version": "0.35",
-    "directory": "firmware/releases/0.35",
-    "uf2": "firmware/releases/0.35/miralink_pico_firmware.uf2",
-    "sha256": "F582A42B5DE51FACCFC79340A68024DB64E0F3188B92F61EAE26B7D3BD582E00",
-    "bytes": 1404928,
+    "version": "0.36",
+    "directory": "firmware/releases/0.36",
+    "uf2": "firmware/releases/0.36/miralink_pico_firmware.uf2",
+    "sha256": "E0BCE0C6D4E0C531E9C334FC54348B143215E1A53BACEB83B20CD48EFB303284",
+    "bytes": 1408000,
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "hardwareTest": "not-tested",
     "automaticFirstPairing": "source-implemented; hardware-not-tested",
-    "usbConfiguration": "hid-only-vendor-bridge-plus-standard-gamepad",
+    "usbConfiguration": "single-hid-interface-native-dualsense-and-miralink-feature-collections",
+    "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
+    "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
     "usbAudio": "source-only; hardware-enumeration-not-tested",
     "usbRemoteWake": "opt-in-valid-controller-input-only; hardware-not-tested",
     "runtimeConfiguration": "speaker-headset-monitor-volume-speaker-gain-trigger-reduction-idle-suspend-optional-serial-safe-status-gpio; hardware-not-tested",
-    "flashAction": "manual-only"
+    "flashAction": "manual-only",
+    "artifacts": {
+      "bin": {
+        "bytes": 703716,
+        "sha256": "505CA3D82B8AE531E6EA0DA58C23A77043209DA8631E58C33C526A2AFA0FF03C"
+      },
+      "elf": {
+        "bytes": 4459312,
+        "sha256": "5A59C58C822C3B517FF7ABEA428AF9F052AE0638875DE768EAD2D78502005CB6"
+      },
+      "hex": {
+        "bytes": 1979437,
+        "sha256": "8D25329F7A0F420B6D2DBBB41395CD433DE8E8A34729CB962A6852EA31003AB3"
+      },
+      "uf2": {
+        "bytes": 1408000,
+        "sha256": "E0BCE0C6D4E0C531E9C334FC54348B143215E1A53BACEB83B20CD48EFB303284"
+      }
+    }
   },
   "hardwareAction": "none"
 }

@@ -21,11 +21,10 @@
 #include "tusb.h"
 
 namespace {
-constexpr std::uint8_t kReportCommand = 0x01;
-constexpr std::uint8_t kReportResponse = 0x02;
-constexpr std::uint8_t kReportEvent = 0x03;
-constexpr std::uint8_t kReportGamepad = 0x10;
-constexpr std::uint8_t kReportControllerOutput = 0x11;
+constexpr auto kBridgeHidInstance = miralink::usb_identity::kBridgeHidInstance;
+constexpr auto kControlHidInstance = miralink::usb_identity::kControlHidInstance;
+constexpr auto kReportCommand = miralink::usb_identity::kControlReportCommand;
+constexpr auto kReportResponse = miralink::usb_identity::kControlReportResponse;
 constexpr std::uint64_t kGamepadHeartbeatUs = 16'000;
 constexpr std::uint8_t kFlagResponse = 1u << 0;
 constexpr std::uint8_t kFlagError = 1u << 1;
@@ -73,14 +72,6 @@ miralink::ConfigStore g_config_store(g_flash_backend);
 std::array<std::uint8_t, miralink::kHidReportBytes> g_response{};
 bool g_response_ready = false;
 bool g_config_was_loaded = false;
-bool g_event_initialized = false;
-std::uint32_t g_last_event_sample_count = 0;
-bool g_last_event_input_available = false;
-bool g_last_event_descriptor_available = false;
-bool g_last_event_bluetooth_available = false;
-bool g_last_event_pairing_window_open = false;
-bool g_last_event_inquiry_active = false;
-bool g_last_event_connection_pending = false;
 bool g_usb_reconnect_pending = false;
 bool g_recovery_pending = false;
 bool g_cyw43_ready = false;
@@ -90,7 +81,12 @@ std::uint32_t g_last_gamepad_sample_count = 0;
 std::uint64_t g_last_gamepad_report_us = 0;
 std::uint64_t g_usb_reconnect_deadline_ms = 0;
 std::uint64_t g_recovery_deadline_ms = 0;
-std::array<std::uint8_t, 11> g_gamepad_report{};
+std::array<std::uint8_t, miralink::dualsense::kUsbInputReportBytes> g_gamepad_report{};
+miralink::dualsense::InputState g_last_wake_input{};
+bool g_wake_input_initialized = false;
+std::uint32_t g_sensor_timestamp_offset = 0;
+std::uint32_t g_last_usb_sensor_timestamp = 0;
+bool g_usb_sensor_timestamp_initialized = false;
 constexpr std::uint8_t kStatusGpioDisabled = 0xff;
 std::uint8_t g_status_gpio_pin = kStatusGpioDisabled;
 bool g_status_gpio_active_low = false;
@@ -145,6 +141,7 @@ void apply_runtime_config() {
     const auto& config = g_config_store.active();
     miralink::audio::apply_config(config);
     miralink::bluetooth::apply_config(config);
+    miralink::usb_identity::set_controller_mode(config.controller_mode);
     miralink::usb_identity::set_unique_serial_enabled(config.enable_usb_serial);
     apply_status_gpio_config(config);
 }
@@ -364,95 +361,56 @@ std::vector<std::uint8_t> audio_status_payload() {
     return payload;
 }
 
-void publish_controller_event() {
-    const auto snapshot = miralink::bluetooth::snapshot();
-    const bool changed = !g_event_initialized
-        || g_last_event_sample_count != snapshot.sample_count
-        || g_last_event_input_available != snapshot.input_available
-        || g_last_event_descriptor_available != snapshot.descriptor_available
-        || g_last_event_bluetooth_available != snapshot.bluetooth_available
-        || g_last_event_pairing_window_open != snapshot.pairing_window_open
-        || g_last_event_inquiry_active != snapshot.inquiry_active
-        || g_last_event_connection_pending != snapshot.connection_pending;
-    if (!changed || !tud_mounted() || !tud_hid_ready()) return;
-
-    miralink::Frame frame;
-    frame.command = miralink::Command::GetControllerState;
-    frame.payload = controller_state_payload(snapshot);
-    const auto encoded = miralink::encode_frame(frame);
-    if (encoded.size() != miralink::kHidReportBytes) return;
-    if (!tud_hid_report(kReportEvent, encoded.data(), static_cast<std::uint16_t>(encoded.size()))) return;
-
-    g_event_initialized = true;
-    g_last_event_sample_count = snapshot.sample_count;
-    g_last_event_input_available = snapshot.input_available;
-    g_last_event_descriptor_available = snapshot.descriptor_available;
-    g_last_event_bluetooth_available = snapshot.bluetooth_available;
-    g_last_event_pairing_window_open = snapshot.pairing_window_open;
-    g_last_event_inquiry_active = snapshot.inquiry_active;
-    g_last_event_connection_pending = snapshot.connection_pending;
-}
-
-std::uint8_t signed_axis(const std::uint8_t value) {
-    const auto centered = std::clamp(static_cast<int>(value) - 128, -127, 127);
-    return static_cast<std::uint8_t>(static_cast<std::int8_t>(centered));
-}
-
 void clear_gamepad_report() {
-    g_gamepad_report.fill(0);
-    // TinyUSB's gamepad template uses 8 as the neutral hat value.
-    g_gamepad_report[6] = 8;
+    miralink::dualsense::InputState neutral{};
+    // Repeating zero after live IMU traffic looks like a huge 32-bit wrap to
+    // host drivers. A neutral heartbeat therefore retains the last timestamp
+    // while making every actual control and sensor value neutral.
+    neutral.sensor_timestamp = g_last_usb_sensor_timestamp;
+    g_gamepad_report = miralink::dualsense::build_usb_input_report(neutral);
     g_gamepad_report_pending = true;
 }
 
-void set_gamepad_button(std::uint32_t& buttons, const std::uint8_t value, const std::uint8_t bit, const std::uint8_t mask) {
-    if (value & mask) buttons |= 1u << bit;
-}
-
-void build_gamepad_report(const miralink::dualsense::InputState& input) {
-    g_gamepad_report[0] = signed_axis(input.left_x);
-    g_gamepad_report[1] = signed_axis(input.left_y);
-    g_gamepad_report[2] = signed_axis(input.right_x);
-    g_gamepad_report[3] = signed_axis(input.right_y);
-    // TinyUSB's template declares all six axes as signed 8-bit values.
-    g_gamepad_report[4] = signed_axis(input.left_trigger);
-    g_gamepad_report[5] = signed_axis(input.right_trigger);
-    const auto dpad = static_cast<std::uint8_t>(input.dpad_face & 0x0f);
-    g_gamepad_report[6] = static_cast<std::uint8_t>(dpad < 8 ? dpad + 1 : 8);
-
-    std::uint32_t buttons = 0;
-    set_gamepad_button(buttons, input.dpad_face, 0, 1u << 4); // square
-    set_gamepad_button(buttons, input.dpad_face, 1, 1u << 5); // cross
-    set_gamepad_button(buttons, input.dpad_face, 2, 1u << 6); // circle
-    set_gamepad_button(buttons, input.dpad_face, 3, 1u << 7); // triangle
-    set_gamepad_button(buttons, input.shoulder, 4, 1u << 0); // L1
-    set_gamepad_button(buttons, input.shoulder, 5, 1u << 1); // R1
-    set_gamepad_button(buttons, input.shoulder, 6, 1u << 2); // L2 digital
-    set_gamepad_button(buttons, input.shoulder, 7, 1u << 3); // R2 digital
-    set_gamepad_button(buttons, input.shoulder, 8, 1u << 6); // L3
-    set_gamepad_button(buttons, input.shoulder, 9, 1u << 7); // R3
-    set_gamepad_button(buttons, input.system, 10, 1u << 4); // create
-    set_gamepad_button(buttons, input.system, 11, 1u << 5); // options
-    set_gamepad_button(buttons, input.system, 12, 1u << 0); // PS
-    set_gamepad_button(buttons, input.system, 13, 1u << 1); // touchpad
-    set_gamepad_button(buttons, input.system, 14, 1u << 2); // mute
-    g_gamepad_report[7] = static_cast<std::uint8_t>(buttons & 0xffu);
-    g_gamepad_report[8] = static_cast<std::uint8_t>((buttons >> 8u) & 0xffu);
-    g_gamepad_report[9] = static_cast<std::uint8_t>((buttons >> 16u) & 0xffu);
-    g_gamepad_report[10] = static_cast<std::uint8_t>((buttons >> 24u) & 0xffu);
+void build_gamepad_report(const miralink::dualsense::InputState& input,
+    const bool start_of_bluetooth_session = false) {
+    auto bridged_input = input;
+    if (!g_usb_sensor_timestamp_initialized) {
+        g_sensor_timestamp_offset = 0;
+        g_usb_sensor_timestamp_initialized = true;
+    } else if (start_of_bluetooth_session) {
+        // A controller timestamp restarts after a Bluetooth reconnect while
+        // the USB device remains enumerated. Rebase the new session so the
+        // host observes a continuous 32-bit clock instead of a giant jump.
+        g_sensor_timestamp_offset = g_last_usb_sensor_timestamp - input.sensor_timestamp;
+    }
+    bridged_input.sensor_timestamp = input.sensor_timestamp + g_sensor_timestamp_offset;
+    g_last_usb_sensor_timestamp = bridged_input.sensor_timestamp;
+    g_gamepad_report = miralink::dualsense::build_usb_input_report(bridged_input);
 }
 
 void publish_gamepad_report() {
     const auto snapshot = miralink::bluetooth::snapshot();
     const auto now_us = time_us_64();
     if (snapshot.input_available && snapshot.sample_count != g_last_gamepad_sample_count) {
-        build_gamepad_report(snapshot.input);
+        build_gamepad_report(snapshot.input, !g_gamepad_was_available);
         // Remote wake is opt-in twice: the saved local profile must enable it
         // and the USB host must have armed the standard USB remote-wakeup
-        // feature.  A validated controller report is the only event that can
-        // request it, so background polling can never wake the computer.
-        if (g_config_store.active().enable_wake && tud_suspended()) {
-            (void)tud_remote_wakeup();
+        // feature. Continuous sensor/sequence packets are not user activity:
+        // only a bounded button, axis, trigger or touch change can wake.
+        const bool usb_suspended = tud_suspended();
+        const bool explicit_activity = g_wake_input_initialized
+            && miralink::dualsense::has_explicit_usb_wake_activity(
+                g_last_wake_input, snapshot.input);
+        bool woke_host = false;
+        if (explicit_activity && g_config_store.active().enable_wake && usb_suspended) {
+            woke_host = tud_remote_wakeup();
+        }
+        // Freeze the reference while suspended so slow stick/trigger/touch
+        // movement accumulates instead of being lost below per-sample
+        // thresholds. Resume tracking after an accepted wake request.
+        if (!g_wake_input_initialized || !usb_suspended || woke_host) {
+            g_last_wake_input = snapshot.input;
+            g_wake_input_initialized = true;
         }
         g_last_gamepad_sample_count = snapshot.sample_count;
         g_gamepad_was_available = true;
@@ -460,10 +418,10 @@ void publish_gamepad_report() {
     } else if (!snapshot.input_available && g_gamepad_was_available) {
         clear_gamepad_report();
         g_gamepad_was_available = false;
+        g_wake_input_initialized = false;
     }
-    // Windows opens the game-controller test page before a Bluetooth report
-    // is necessarily available. Keep the HID gamepad alive with a neutral
-    // report so the device is usable even while the radio is disconnected.
+    // Keep the native-size DualSense input interface alive with a neutral
+    // report while the Bluetooth controller is unavailable.
     if (!g_gamepad_report_pending
         && (g_last_gamepad_report_us == 0 || now_us - g_last_gamepad_report_us >= kGamepadHeartbeatUs)) {
         if (snapshot.input_available) build_gamepad_report(snapshot.input);
@@ -474,8 +432,11 @@ void publish_gamepad_report() {
     const bool interval_elapsed = minimum_interval_us == 0
         || g_last_gamepad_report_us == 0
         || now_us - g_last_gamepad_report_us >= minimum_interval_us;
-    if (g_gamepad_report_pending && interval_elapsed && tud_mounted() && tud_hid_ready()) {
-        if (tud_hid_report(kReportGamepad, g_gamepad_report.data(), static_cast<std::uint16_t>(g_gamepad_report.size()))) {
+    if (g_gamepad_report_pending && interval_elapsed && tud_mounted() && tud_hid_n_ready(kBridgeHidInstance)) {
+        if (tud_hid_n_report(kBridgeHidInstance,
+                miralink::dualsense::kUsbInputReportId,
+                g_gamepad_report.data() + 1,
+                static_cast<std::uint16_t>(g_gamepad_report.size() - 1))) {
             g_gamepad_report_pending = false;
             g_last_gamepad_report_us = now_us;
         }
@@ -504,7 +465,12 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
                     | miralink::kFeatureUsbGamepad)});
             return;
         case miralink::Command::GetInfo:
-            set_response(sequence, decoded.frame.command, 0, {'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k', 0, 35, 0, 0});
+            set_response(sequence, decoded.frame.command, 0, {
+                'M', 'i', 'r', 'a', 'L', 'i', 'n', 'k',
+                static_cast<std::uint8_t>(MIRALINK_VERSION_MAJOR),
+                static_cast<std::uint8_t>(MIRALINK_VERSION_MINOR),
+                static_cast<std::uint8_t>(MIRALINK_VERSION_PATCH),
+                0});
             return;
         case miralink::Command::GetConfig: {
             const auto encoded = miralink::encode_config(g_config_store.active());
@@ -522,13 +488,24 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
             set_response(sequence, decoded.frame.command, 0, {});
             return;
         }
-        case miralink::Command::CommitConfig:
+        case miralink::Command::CommitConfig: {
+            const auto previous = g_config_store.active();
             if (!g_config_store.commit()) { set_error(sequence, decoded.frame.command, "flash verification failed"); return; }
             apply_runtime_config();
             g_config_was_loaded = true;
             append_log("configuration committed");
+            const auto& active = g_config_store.active();
+            if (previous.controller_mode != active.controller_mode
+                || previous.enable_usb_serial != active.enable_usb_serial) {
+                // Let the host fetch this acknowledgement before forcing a
+                // fresh enumeration with the new PID and/or serial policy.
+                append_log("USB identity changed; reconnect scheduled");
+                g_usb_reconnect_pending = true;
+                g_usb_reconnect_deadline_ms = static_cast<std::uint64_t>(now_ms()) + 250;
+            }
             set_response(sequence, decoded.frame.command, 0, {});
             return;
+        }
         case miralink::Command::ResetConfig:
             g_config_store.reset_to_defaults();
             append_log("configuration reset staged");
@@ -637,8 +614,18 @@ void process_frame(const std::uint8_t* buffer, std::uint16_t length) {
 extern "C" {
 
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    (void)instance;
-    if (report_type != HID_REPORT_TYPE_FEATURE || report_id != kReportResponse) return 0;
+    if (instance != kBridgeHidInstance || buffer == nullptr) return 0;
+    if (report_type == HID_REPORT_TYPE_INPUT
+        && report_id == miralink::dualsense::kUsbInputReportId
+        && reqlen >= g_gamepad_report.size() - 1) {
+        std::memcpy(buffer, g_gamepad_report.data() + 1, g_gamepad_report.size() - 1);
+        return static_cast<uint16_t>(g_gamepad_report.size() - 1);
+    }
+    if (report_type != HID_REPORT_TYPE_FEATURE) return 0;
+    if (report_id != kReportResponse) {
+        return static_cast<uint16_t>(miralink::usb_identity::copy_bridge_feature_report(
+            report_id, buffer, reqlen));
+    }
     if (!g_response_ready || reqlen < g_response.size()) return 0;
     std::memcpy(buffer, g_response.data(), g_response.size());
     g_response_ready = false;
@@ -646,20 +633,20 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    (void)instance;
-    if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == kReportControllerOutput) {
-        if (buffer == nullptr) return;
-        const auto* payload = buffer;
-        auto length = static_cast<std::size_t>(bufsize);
-        if (length == miralink::dualsense::kUsbOutputReportBytes && payload[0] == report_id) {
-            ++payload;
-            --length;
-        }
-        if (length == miralink::dualsense::kUsbOutputPayloadBytes) {
-            (void)miralink::bluetooth::send_controller_output(payload, length);
+    if (instance == kBridgeHidInstance && report_type == HID_REPORT_TYPE_OUTPUT) {
+        // Interrupt OUT transfers reach TinyUSB with report_id == 0 and the
+        // report ID kept in the wire buffer. Control SET_REPORT transfers may
+        // instead supply the ID separately. Normalize both forms before
+        // forwarding the fixed 47-byte DualSense output body.
+        const auto normalized = miralink::dualsense::normalize_usb_output_report(
+            report_id, buffer, bufsize);
+        if (normalized.valid) {
+            (void)miralink::bluetooth::send_controller_output(
+                normalized.payload.data(), normalized.payload.size());
         }
         return;
     }
+    if (instance != kControlHidInstance) return;
     if (report_type != HID_REPORT_TYPE_FEATURE || report_id != kReportCommand) return;
     if (buffer == nullptr) {
         set_error(0, miralink::Command::Hello, "empty HID report");
@@ -708,7 +695,6 @@ int main() {
         miralink::bluetooth::poll();
         update_status_led();
         publish_gamepad_report();
-        publish_controller_event();
         service_deferred_actions();
     }
 }

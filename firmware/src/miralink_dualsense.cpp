@@ -132,6 +132,55 @@ bool is_dualsense_usb(const std::uint16_t vendor_id, const std::uint16_t product
         && (product_id == kDualSenseProductId || product_id == kDualSenseEdgeProductId);
 }
 
+NormalizedUsbOutputReport normalize_usb_output_report(const std::uint8_t report_id,
+    const std::uint8_t* bytes, const std::size_t length) {
+    NormalizedUsbOutputReport result{};
+    if (bytes == nullptr
+        || (report_id != 0 && report_id != kUsbOutputReportId)) return result;
+
+    auto effective_report_id = report_id;
+    auto* payload = bytes;
+    auto payload_length = length;
+    if ((length == kUsbOutputReportBytes || length == kUsbStandardOutputReportBytes)
+        && bytes[0] == kUsbOutputReportId) {
+        effective_report_id = bytes[0];
+        ++payload;
+        --payload_length;
+    }
+    if (effective_report_id != kUsbOutputReportId
+        || (payload_length != kUsbOutputPayloadBytes
+            && payload_length != kUsbStandardOutputPayloadBytes)) return result;
+
+    std::copy(payload, payload + result.payload.size(), result.payload.begin());
+    result.valid = true;
+    return result;
+}
+
+std::array<std::uint8_t, kUsbCalibrationFeaturePayloadBytes>
+build_synthetic_usb_calibration_feature() {
+    std::array<std::uint8_t, kUsbCalibrationFeaturePayloadBytes> payload{};
+    const auto write_i16 = [&](const std::size_t offset, const std::int16_t value) {
+        const auto encoded = static_cast<std::uint16_t>(value);
+        payload[offset] = static_cast<std::uint8_t>(encoded & 0xffu);
+        payload[offset + 1] = static_cast<std::uint8_t>(encoded >> 8u);
+    };
+    write_i16(6, 1024);
+    write_i16(8, -1024);
+    write_i16(10, 1024);
+    write_i16(12, -1024);
+    write_i16(14, 1024);
+    write_i16(16, -1024);
+    write_i16(18, 64);
+    write_i16(20, 64);
+    write_i16(22, 8192);
+    write_i16(24, -8192);
+    write_i16(26, 8192);
+    write_i16(28, -8192);
+    write_i16(30, 8192);
+    write_i16(32, -8192);
+    return payload;
+}
+
 InputReportResult parse_usb_input_report(const std::vector<std::uint8_t>& report) {
     InputReportResult result{};
     if (report.empty()) {
@@ -149,6 +198,113 @@ InputReportResult parse_usb_input_report(const std::vector<std::uint8_t>& report
     }
 
     return parse_common_input(report.data(), report.size(), offset, kUsbInputReportId);
+}
+
+std::array<std::uint8_t, kUsbInputReportBytes> build_usb_input_report(const InputState& state) {
+    std::array<std::uint8_t, kUsbInputReportBytes> report{};
+    report[0] = kUsbInputReportId;
+    auto* common = report.data() + 1;
+
+    common[0] = state.left_x;
+    common[1] = state.left_y;
+    common[2] = state.right_x;
+    common[3] = state.right_y;
+    common[4] = state.left_trigger;
+    common[5] = state.right_trigger;
+    common[6] = state.input_sequence;
+    common[7] = state.dpad_face;
+    common[8] = state.shoulder;
+    common[9] = state.system;
+
+    const auto write_i16 = [&](const std::size_t position, const std::int16_t value) {
+        const auto encoded = static_cast<std::uint16_t>(value);
+        common[position] = static_cast<std::uint8_t>(encoded & 0xffu);
+        common[position + 1] = static_cast<std::uint8_t>(encoded >> 8u);
+    };
+    write_i16(15, state.gyro_x);
+    write_i16(17, state.gyro_y);
+    write_i16(19, state.gyro_z);
+    write_i16(21, state.accel_x);
+    write_i16(23, state.accel_y);
+    write_i16(25, state.accel_z);
+    common[27] = static_cast<std::uint8_t>(state.sensor_timestamp & 0xffu);
+    common[28] = static_cast<std::uint8_t>((state.sensor_timestamp >> 8u) & 0xffu);
+    common[29] = static_cast<std::uint8_t>((state.sensor_timestamp >> 16u) & 0xffu);
+    common[30] = static_cast<std::uint8_t>((state.sensor_timestamp >> 24u) & 0xffu);
+
+    for (std::size_t index = 0; index < state.touch.size(); ++index) {
+        const auto touch_offset = kTouchOffset + index * 4;
+        const auto x = static_cast<std::uint16_t>(state.touch[index].x & 0x0fffu);
+        const auto y = static_cast<std::uint16_t>(state.touch[index].y & 0x0fffu);
+        common[touch_offset] = state.touch[index].active ? 0x00u : 0x80u;
+        common[touch_offset + 1] = static_cast<std::uint8_t>(x & 0xffu);
+        common[touch_offset + 2] = static_cast<std::uint8_t>(((x >> 8u) & 0x0fu) | ((y & 0x0fu) << 4u));
+        common[touch_offset + 3] = static_cast<std::uint8_t>(y >> 4u);
+    }
+
+    std::uint8_t battery_status = 0xf0u;
+    if (state.battery_valid) {
+        const auto battery_level = static_cast<std::uint8_t>(
+            std::min<std::uint16_t>(static_cast<std::uint16_t>(state.battery_percent) / 10u, 10u));
+        switch (state.battery_state) {
+        case BatteryState::Discharging:
+            battery_status = battery_level;
+            break;
+        case BatteryState::Charging:
+            battery_status = static_cast<std::uint8_t>(0x10u | battery_level);
+            break;
+        case BatteryState::Full:
+            battery_status = 0x20u;
+            break;
+        case BatteryState::Error:
+            battery_status = 0xa0u;
+            break;
+        case BatteryState::Unknown:
+            break;
+        }
+    }
+    common[kStatusOffset] = battery_status;
+    if (state.headphone_connected) common[kStatusOffset + 1] |= 1u << 0;
+    if (state.microphone_connected) common[kStatusOffset + 1] |= 1u << 1;
+    if (state.microphone_muted) common[kStatusOffset + 1] |= 1u << 2;
+    // This is always a USB-side report, even though its source is the
+    // Bluetooth controller. Native HIDAPI clients use this bit to select the
+    // USB report path.
+    common[kStatusOffset + 1] |= 1u << 3;
+    return report;
+}
+
+bool has_explicit_usb_wake_activity(const InputState& previous, const InputState& current) {
+    if (previous.dpad_face != current.dpad_face
+        || previous.shoulder != current.shoulder
+        || previous.system != current.system) {
+        return true;
+    }
+
+    const auto changed_by = [](const std::uint8_t left, const std::uint8_t right,
+                                const std::uint8_t threshold) {
+        const auto delta = left > right ? left - right : right - left;
+        return delta >= threshold;
+    };
+    if (changed_by(previous.left_x, current.left_x, 16)
+        || changed_by(previous.left_y, current.left_y, 16)
+        || changed_by(previous.right_x, current.right_x, 16)
+        || changed_by(previous.right_y, current.right_y, 16)
+        || changed_by(previous.left_trigger, current.left_trigger, 8)
+        || changed_by(previous.right_trigger, current.right_trigger, 8)) {
+        return true;
+    }
+
+    for (std::size_t index = 0; index < current.touch.size(); ++index) {
+        const auto& before = previous.touch[index];
+        const auto& after = current.touch[index];
+        if (before.active != after.active) return true;
+        if (!after.active) continue;
+        const auto x_delta = before.x > after.x ? before.x - after.x : after.x - before.x;
+        const auto y_delta = before.y > after.y ? before.y - after.y : after.y - before.y;
+        if (x_delta >= 32 || y_delta >= 32) return true;
+    }
+    return false;
 }
 
 std::uint32_t bluetooth_input_crc32(const std::uint8_t* report, const std::size_t length) {

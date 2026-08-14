@@ -9,6 +9,7 @@
 #include <cassert>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 
@@ -101,6 +102,157 @@ void test_dualsense_usb_report_parser() {
     assert(!miralink::dualsense::is_dualsense_usb(miralink::dualsense::kSonyVendorId, 0x0001));
 }
 
+void test_dualsense_usb_input_builder_neutral() {
+    const miralink::dualsense::InputState neutral{};
+    const auto report = miralink::dualsense::build_usb_input_report(neutral);
+    assert(report.size() == miralink::dualsense::kUsbInputReportBytes);
+    assert(report[0] == miralink::dualsense::kUsbInputReportId);
+    assert(report[1] == 0x80);
+    assert(report[2] == 0x80);
+    assert(report[3] == 0x80);
+    assert(report[4] == 0x80);
+    assert(report[8] == 0x08);
+    assert(report[33] == 0x80);
+    assert(report[37] == 0x80);
+
+    const auto parsed = miralink::dualsense::parse_usb_input_report(report.data(), report.size());
+    assert(parsed);
+    assert(parsed.state.report_id == miralink::dualsense::kUsbInputReportId);
+    assert(parsed.state.left_x == 0x80);
+    assert(parsed.state.left_y == 0x80);
+    assert(parsed.state.right_x == 0x80);
+    assert(parsed.state.right_y == 0x80);
+    assert(parsed.state.left_trigger == 0);
+    assert(parsed.state.right_trigger == 0);
+    assert(parsed.state.dpad_face == 0x08);
+    assert(!parsed.state.touch[0].active);
+    assert(!parsed.state.touch[1].active);
+    assert(!parsed.state.battery_valid);
+    assert(parsed.state.battery_percent == 0xff);
+    assert(parsed.state.battery_state == miralink::dualsense::BatteryState::Unknown);
+    assert(!parsed.state.headphone_connected);
+    assert(!parsed.state.microphone_connected);
+    assert(!parsed.state.microphone_muted);
+}
+
+void test_dualsense_usb_input_builder_round_trip() {
+    miralink::dualsense::InputState input{};
+    input.left_x = 1;
+    input.left_y = 254;
+    input.right_x = 17;
+    input.right_y = 239;
+    input.left_trigger = 63;
+    input.right_trigger = 192;
+    input.input_sequence = 0xa7;
+    input.dpad_face = 0xb6;
+    input.shoulder = 0xd5;
+    input.system = 0x0f;
+    input.touchpad_pressed = true;
+    input.gyro_x = -32768;
+    input.gyro_y = -1234;
+    input.gyro_z = 32767;
+    input.accel_x = 2345;
+    input.accel_y = -1;
+    input.accel_z = 0x1234;
+    input.sensor_timestamp = 0x89abcdefu;
+    input.touch[0] = {true, 0x0abc, 0x0123};
+    input.touch[1] = {false, 0x0456, 0x0def};
+    input.battery_valid = true;
+    input.battery_percent = 65;
+    input.battery_state = miralink::dualsense::BatteryState::Charging;
+    input.headphone_connected = true;
+    input.microphone_connected = true;
+    input.microphone_muted = true;
+
+    const auto report = miralink::dualsense::build_usb_input_report(input);
+    assert((report[1 + 53] & 0x08u) != 0);
+    const auto parsed = miralink::dualsense::parse_usb_input_report(report.data(), report.size());
+    assert(parsed);
+    assert(parsed.state.left_x == input.left_x);
+    assert(parsed.state.left_y == input.left_y);
+    assert(parsed.state.right_x == input.right_x);
+    assert(parsed.state.right_y == input.right_y);
+    assert(parsed.state.left_trigger == input.left_trigger);
+    assert(parsed.state.right_trigger == input.right_trigger);
+    assert(parsed.state.input_sequence == input.input_sequence);
+    assert(parsed.state.dpad_face == input.dpad_face);
+    assert(parsed.state.shoulder == input.shoulder);
+    assert(parsed.state.system == input.system);
+    assert(parsed.state.touchpad_pressed == input.touchpad_pressed);
+    assert(parsed.state.gyro_x == input.gyro_x);
+    assert(parsed.state.gyro_y == input.gyro_y);
+    assert(parsed.state.gyro_z == input.gyro_z);
+    assert(parsed.state.accel_x == input.accel_x);
+    assert(parsed.state.accel_y == input.accel_y);
+    assert(parsed.state.accel_z == input.accel_z);
+    assert(parsed.state.sensor_timestamp == input.sensor_timestamp);
+    for (std::size_t index = 0; index < input.touch.size(); ++index) {
+        assert(parsed.state.touch[index].active == input.touch[index].active);
+        assert(parsed.state.touch[index].x == input.touch[index].x);
+        assert(parsed.state.touch[index].y == input.touch[index].y);
+    }
+    assert(parsed.state.battery_valid);
+    assert(parsed.state.battery_percent == input.battery_percent);
+    assert(parsed.state.battery_state == input.battery_state);
+    assert(parsed.state.headphone_connected == input.headphone_connected);
+    assert(parsed.state.microphone_connected == input.microphone_connected);
+    assert(parsed.state.microphone_muted == input.microphone_muted);
+}
+
+void test_dualsense_usb_input_builder_battery_states() {
+    miralink::dualsense::InputState input{};
+    input.battery_valid = true;
+
+    input.battery_percent = 35;
+    input.battery_state = miralink::dualsense::BatteryState::Discharging;
+    auto parsed = miralink::dualsense::parse_usb_input_report(miralink::dualsense::build_usb_input_report(input).data(), miralink::dualsense::kUsbInputReportBytes);
+    assert(parsed);
+    assert(parsed.state.battery_percent == 35);
+    assert(parsed.state.battery_state == miralink::dualsense::BatteryState::Discharging);
+
+    input.battery_percent = 100;
+    input.battery_state = miralink::dualsense::BatteryState::Full;
+    const auto full_report = miralink::dualsense::build_usb_input_report(input);
+    parsed = miralink::dualsense::parse_usb_input_report(full_report.data(), full_report.size());
+    assert(parsed);
+    assert(parsed.state.battery_percent == 100);
+    assert(parsed.state.battery_state == miralink::dualsense::BatteryState::Full);
+
+    input.battery_percent = 77;
+    input.battery_state = miralink::dualsense::BatteryState::Error;
+    const auto error_report = miralink::dualsense::build_usb_input_report(input);
+    parsed = miralink::dualsense::parse_usb_input_report(error_report.data(), error_report.size());
+    assert(parsed);
+    assert(parsed.state.battery_percent == 0);
+    assert(parsed.state.battery_state == miralink::dualsense::BatteryState::Error);
+}
+
+void test_dualsense_explicit_usb_wake_activity() {
+    miralink::dualsense::InputState before{};
+    auto after = before;
+    after.input_sequence = 42;
+    after.sensor_timestamp = 123456;
+    after.gyro_x = 900;
+    after.battery_valid = true;
+    after.battery_percent = 50;
+    assert(!miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+
+    after = before;
+    after.system = 1;
+    assert(miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+    after = before;
+    after.left_x = static_cast<std::uint8_t>(before.left_x + 15);
+    assert(!miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+    after.left_x = static_cast<std::uint8_t>(before.left_x + 16);
+    assert(miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+    after = before;
+    after.right_trigger = 8;
+    assert(miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+    after = before;
+    after.touch[0] = {true, 100, 100};
+    assert(miralink::dualsense::has_explicit_usb_wake_activity(before, after));
+}
+
 void test_dualsense_bluetooth_report_parser() {
     std::vector<std::uint8_t> report(miralink::dualsense::kBluetoothInputReportBytes, 0);
     report[0] = miralink::dualsense::kBluetoothInputReportId;
@@ -183,6 +335,70 @@ void test_dualsense_controller_output_mapping() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+void test_dualsense_usb_output_normalization() {
+    std::array<std::uint8_t, miralink::dualsense::kUsbOutputReportBytes> compact{};
+    compact[0] = miralink::dualsense::kUsbOutputReportId;
+    for (std::size_t index = 1; index < compact.size(); ++index) {
+        compact[index] = static_cast<std::uint8_t>(index);
+    }
+    auto normalized = miralink::dualsense::normalize_usb_output_report(
+        0, compact.data(), compact.size());
+    assert(normalized.valid);
+    assert(normalized.payload.front() == 1);
+    assert(normalized.payload.back() == 47);
+
+    std::array<std::uint8_t, miralink::dualsense::kUsbStandardOutputReportBytes> linux_wire{};
+    std::copy(compact.begin(), compact.end(), linux_wire.begin());
+    std::fill(linux_wire.begin() + compact.size(), linux_wire.end(), 0xee);
+    normalized = miralink::dualsense::normalize_usb_output_report(
+        0, linux_wire.data(), linux_wire.size());
+    assert(normalized.valid);
+    assert(normalized.payload.back() == 47);
+
+    normalized = miralink::dualsense::normalize_usb_output_report(
+        miralink::dualsense::kUsbOutputReportId,
+        compact.data() + 1, compact.size() - 1);
+    assert(normalized.valid);
+    normalized = miralink::dualsense::normalize_usb_output_report(
+        miralink::dualsense::kUsbOutputReportId,
+        linux_wire.data() + 1, linux_wire.size() - 1);
+    assert(normalized.valid);
+    assert(normalized.payload.back() == 47);
+
+    assert(!miralink::dualsense::normalize_usb_output_report(
+        0, compact.data() + 1, compact.size() - 1).valid);
+    assert(!miralink::dualsense::normalize_usb_output_report(
+        3, compact.data(), compact.size()).valid);
+    assert(!miralink::dualsense::normalize_usb_output_report(
+        0, nullptr, compact.size()).valid);
+}
+
+void test_dualsense_synthetic_usb_calibration() {
+    const auto payload = miralink::dualsense::build_synthetic_usb_calibration_feature();
+    const auto read_i16 = [&](const std::size_t offset) {
+        return static_cast<std::int16_t>(static_cast<std::uint16_t>(payload[offset])
+            | (static_cast<std::uint16_t>(payload[offset + 1]) << 8u));
+    };
+    const auto speed_plus = static_cast<std::int32_t>(read_i16(18));
+    const auto speed_minus = static_cast<std::int32_t>(read_i16(20));
+    for (const std::size_t offset : {std::size_t{6}, std::size_t{10}, std::size_t{14}}) {
+        const auto positive = static_cast<std::int32_t>(read_i16(offset));
+        const auto negative = static_cast<std::int32_t>(read_i16(offset + 2));
+        assert(positive == 1024);
+        assert(negative == -1024);
+        const auto sensitivity = (speed_plus + speed_minus) * 1024
+            / (std::abs(positive) + std::abs(negative));
+        assert(sensitivity == 64);
+    }
+    for (const std::size_t offset : {std::size_t{22}, std::size_t{26}, std::size_t{30}}) {
+        const auto positive = static_cast<std::int32_t>(read_i16(offset));
+        const auto negative = static_cast<std::int32_t>(read_i16(offset + 2));
+        assert(positive == 8192);
+        assert(negative == -8192);
+        assert((2 * 8192) / (std::abs(positive) + std::abs(negative)) == 1);
+    }
+}
+
 void test_dualsense_trigger_reduction() {
     std::array<std::uint8_t, miralink::dualsense::kUsbOutputPayloadBytes> payload{};
     payload[miralink::dualsense::kUsbOutputRightTriggerOffset] = 0x02;
@@ -232,6 +448,6 @@ void test_dualsense_audio_report_validation() {
 }
 
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_config_round_trip(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }

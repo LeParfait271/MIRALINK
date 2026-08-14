@@ -6,10 +6,10 @@
 
 - Produit : **MiraLink**
 - Développeur affiché : **MaruChiwa**
-- Dossier unique : `C:\MIRALINK\MIRALINK`
+- Dossier actif vérifié : `C:\Users\MC\MIRALINK`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.35`
-- Version firmware alignée au site : `0.35`
+- Version publique actuelle du site : `0.36`
+- Version firmware alignée au site : `0.36`
 - Date de démarrage : `2026-08-12`
 - Livraison locale uniquement tant qu'une publication n'est pas autorisée.
 
@@ -58,12 +58,26 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
+Le lot `0.36` vise à atteindre puis dépasser les capacités observables de
+DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
+expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
+standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
+de l'utilisateur. Cette identité de compatibilité ne constitue ni un firmware
+Sony, ni une certification, ni une approbation, ni une affiliation avec Sony.
+
+La persona expose exactement une interface HID contenant deux collections de
+haut niveau distinctes : Gamepad et vendor MiraLink. Les rapports exposés sont
+`0x01` (entrée, 64 octets sur le fil), `0x02` (sortie, forme compacte de 48
+octets ou forme Linux de 63 octets), et les rapports Feature `0x05`, `0x09`,
+`0x20`, `0x70` et `0x71`. L'identifiant `0x72` reste réservé, non déclaré et
+non émis ; l'état de gestion de la manette est interrogé par polling.
+
 ## Version et commits
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.34` → `0.35`. La version technique du paquet npm utilise `0.35.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.35`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.35.0`, mais le firmware affiché et livré reste `0.35`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.35` → `0.36`. La version technique du paquet npm utilise `0.36.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.36`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.36.0`, mais le firmware affiché et livré reste `0.36`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -162,3 +176,7 @@ automatique.
 - `2026-08-14` — Le dossier OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est définitivement hors périmètre ; toutes les interventions MiraLink doivent rester dans `C:\MIRALINK\MIRALINK`.
 - `2026-08-14` — Pour une première association, un Pico sans clé BTstack mémorisée ouvre automatiquement sa fenêtre Bluetooth locale et son inquiry au démarrage ; le site WebHID n'est pas requis, et la preuve de fonctionnement reste matérielle.
 - `2026-08-14` — À chaque prompt qui modifie MiraLink, regrouper toutes les modifications du prompt dans un seul commit local complet puis pousser immédiatement vers le dépôt distant configuré ; un prompt purement conversationnel sans modification ne crée ni commit ni push.
+- `2026-08-14` — Le dépôt actif récupéré depuis GitHub et vérifié dans cet environnement est `C:\Users\MC\MIRALINK`. Les anciennes mentions de `C:\MIRALINK\MIRALINK` sont conservées comme historique et ne désignent plus le chemin opérationnel courant.
+- `2026-08-14` — L'objectif est d'atteindre puis dépasser les capacités observables de DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB Sony `054c:0ce6` / `054c:0df2` est explicitement autorisée pour la compatibilité, sans reprendre le code, le binaire ou les structures internes de la référence et sans revendiquer aucune affiliation avec Sony.
+- `2026-08-14` — La release `0.36` expose une seule interface HID avec collections Gamepad et vendor MiraLink, rapports `0x01`, `0x02`, `0x05`, `0x09`, `0x20`, `0x70` et `0x71`; `0x72` reste non exposé et l'état contrôleur est interrogé par polling. Aucun build ou contrôle statique ne vaut flash, énumération réelle ou validation matérielle Pico 2 W / DualSense.
+- `2026-08-14` — Après chaque lot qui modifie le firmware, fournir un petit tableau comparatif avec DS5Dongle `v0.7.2-hotfix` fixé à `100 %`. Le tableau donne les principaux scores fonctionnels et un score global pondéré, explicite la méthode et pénalise les fonctions non validées sur matériel. Un score MiraLink peut dépasser `100 %` seulement pour une capacité démontrée au-delà de la référence. Le ratio de taille UF2 est affiché séparément et ne constitue jamais un score de qualité.

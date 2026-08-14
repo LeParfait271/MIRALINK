@@ -4,23 +4,30 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.35
+## Firmware 0.36
 
-The firmware exposes one HID-only USB configuration:
+The firmware exposes one experimental HID-only DualSense-family persona. It
+uses Sony VID `0x054c` with PID `0x0ce6` (standard/Auto) or `0x0df2` (Edge)
+because the bridge is intended to be consumed by native controller stacks. It
+does not claim to be Sony firmware or a Sony product.
 
-- MiraLink vendor HID feature reports for local configuration, diagnostics,
-  pairing and recovery;
-- a standard USB HID gamepad forwarding validated DualSense input, sending a
-  neutral report on USB mount/disconnection and a bounded heartbeat while the
-  Bluetooth input is unavailable;
-- unique HID report IDs: command `0x01`, response `0x02`, event `0x03`, gamepad
-  `0x10` and controller output `0x11`.
+- one HID interface with a Gamepad collection and a separate vendor-defined
+  MiraLink collection, avoiding a second Sony-matched interface on Linux;
+- native-size input report `0x01` (64 bytes wire) forwarding the fixed
+  DualSense common body, with a neutral report while Bluetooth is unavailable;
+- output report `0x02`, accepting both the compact 48-byte wire form and the
+  63-byte form emitted by Linux, while forwarding only the bounded 47-byte
+  common body;
+- Linux probe Feature reports `0x05`, `0x09` and `0x20`. Calibration is a
+  synthetic nominal-scale fallback, firmware words are marked as MiraLink, and the
+  pairing identifier is ephemeral unless USB serial exposure is opted in;
+- MiraLink command `0x70` and response `0x71` Feature reports. State is polled
+  through the typed protocol; asynchronous `0x72` is reserved but not declared
+  or emitted because gamepad input owns the interrupt endpoint.
 
 The HID-only configuration is intentional for connection recovery. The
-unvalidated UAC2 composite descriptor is no longer active, so Windows and
-WebHID receive only the bridge and gamepad interfaces required by the
-controller workflow. The audio pipeline remains in source and is not exposed
-as a working USB capability.
+unvalidated UAC2 composite descriptor is not active. The audio pipeline remains
+in source and is not exposed as a working USB capability.
 
 ## Functional coverage
 
@@ -49,7 +56,8 @@ as a working USB capability.
 - Optional privacy-preserving USB serial exposure, conservative local
   inactivity suspension, and a disabled-by-default status GPIO on user-facing
   Pico 2 W pins `0..22`. These settings require the existing configuration
-  confirmation; a USB reconnect is required after the serial setting changes.
+  confirmation. A controller-mode or serial change schedules USB
+  re-enumeration after the commit acknowledgement.
 - Optional standard USB remote wake: only a validated controller input can
   request it, and only when both the locally saved profile and the USB host have
   enabled it.
@@ -69,20 +77,21 @@ locally for Pico 2 W / RP2350 ARM Secure targeting.
 
 The first manual 0.35 flash showed that Windows enumerated the Pico but the
 game-controller Properties test failed and no LED blink was observed. The
-rebuilt candidate records corrections for the neutral gamepad report path and
-CYW43 LED path; it has not yet been flashed again. Windows input, Bluetooth
+0.36 candidate replaces that generic gamepad path with the new native-size
+persona; it has not been flashed. Windows/Linux input, Bluetooth
 pairing, rumble, adaptive triggers and reconnection on a real Pico 2 W and
 DualSense remain manual hardware tests, never automatic actions.
 
 ## Local manual-test candidate
 
-`firmware/releases/0.35/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/0.36/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.
 
-The USB VID/PID in `include/miralink_usb_identity.h` is development-only and
-must be replaced by an assigned identity before public distribution.
+The Sony-compatible VID/PID is an explicit experimental compatibility choice,
+not an allocation or endorsement. Public distribution requires a separate
+compatibility, trademark and platform-policy review.
 
 To rebuild the UF2 from the ELF with the local SDK-matched picotool:
 

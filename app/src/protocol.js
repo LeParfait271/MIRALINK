@@ -4,14 +4,16 @@ export const HID_REPORT_BYTES = 64;
 export const FRAME_OVERHEAD_BYTES = 13;
 export const MAX_PAYLOAD = HID_REPORT_BYTES - FRAME_OVERHEAD_BYTES - 3;
 export const HID_USAGE_PAGE = 0xff00;
-export const MIRALINK_VENDOR_ID = 0xcafe;
-export const MIRALINK_PRODUCT_ID = 0x4d4c;
+export const MIRALINK_VENDOR_ID = 0x054c;
+export const MIRALINK_PRODUCT_ID = 0x0ce6;
 export const MIRALINK_USB_FILTER = Object.freeze({
   vendorId: MIRALINK_VENDOR_ID,
   productId: MIRALINK_PRODUCT_ID
 });
 
-export const REPORT_IDS = Object.freeze({ command: 0x01, response: 0x02, event: 0x03 });
+// Keep MiraLink management traffic away from the report IDs used by the
+// DualSense persona (notably 0x01 and 0x02).
+export const REPORT_IDS = Object.freeze({ command: 0x70, response: 0x71, event: 0x72 });
 export const RESPONSE_FLAGS = Object.freeze({ response: 1 << 0, error: 1 << 1 });
 export const COMMANDS = Object.freeze({
   hello: 0x01,
@@ -63,6 +65,38 @@ export class ProtocolError extends Error {
     this.name = 'ProtocolError';
     this.code = code;
   }
+}
+
+export function hasMiraLinkVendorCollection(device) {
+  const pending = Array.isArray(device?.collections) ? [...device.collections] : [];
+  while (pending.length) {
+    const collection = pending.shift();
+    if (collection?.usagePage === HID_USAGE_PAGE) return true;
+    if (Array.isArray(collection?.children)) pending.push(...collection.children);
+  }
+  return false;
+}
+
+export function getHidIdentificationOrder(device, directDualSense = false) {
+  if (!directDualSense) return Object.freeze(['bridge']);
+  return hasMiraLinkVendorCollection(device)
+    ? Object.freeze(['bridge', 'controller'])
+    : Object.freeze(['controller']);
+}
+
+export function decodeInfoPayload(input) {
+  const bytes = bytesOf(input);
+  if (bytes.length < 11) throw new ProtocolError('GET_INFO payload is too short', 'short_info');
+  const signature = String.fromCharCode(...bytes.slice(0, 8));
+  if (signature !== 'MiraLink') throw new ProtocolError('GET_INFO product signature is invalid', 'invalid_info');
+  const [major, minor, patch] = bytes.slice(8, 11);
+  return Object.freeze({
+    product: signature,
+    version: patch === 0 ? `${major}.${minor}` : `${major}.${minor}.${patch}`,
+    major,
+    minor,
+    patch
+  });
 }
 
 function bytesOf(input) {

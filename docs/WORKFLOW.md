@@ -7,7 +7,10 @@ l’utilisateur.
 ## Avant chaque prompt de travail
 
 1. Relire entièrement `MIRALINK_GARDE_FOU.md`.
-2. Vérifier que le dépôt actif est exactement `C:\MIRALINK\MIRALINK` ; le dossier OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` est toujours hors périmètre.
+2. Vérifier que le dépôt actif est exactement `C:\Users\MC\MIRALINK`. Les
+   anciennes mentions de `C:\MIRALINK\MIRALINK` sont historiques ; le dossier
+   OneDrive `C:\Users\kokom\OneDrive\Documents\ChatGPT\MIRALINK` reste hors
+   périmètre.
 3. Inspecter l’état Git et repérer les modifications d’une autre conversation.
 4. Définir le périmètre du prompt avant toute écriture.
 5. Préserver les fichiers visuels travaillés dans une autre conversation.
@@ -22,6 +25,13 @@ l’utilisateur.
 - Pour chaque échange HID, distinguer les rapports d’entrée des rapports de
   fonctionnalité et tester la lecture explicite des réponses avec
   `receiveFeatureReport`.
+- Pour la persona native `0.36`, vérifier qu'il existe exactement une interface
+  HID contenant les collections de haut niveau Gamepad et vendor MiraLink.
+  Inspecter les rapports `0x01`, `0x02`, `0x05`, `0x09`, `0x20`, `0x70` et
+  `0x71`, et vérifier que le rapport réservé `0x72` n'est ni déclaré ni émis.
+- Vérifier séparément la forme de sortie compacte de 48 octets et la forme
+  Linux de 63 octets ; seule la partie commune bornée de 47 octets peut être
+  relayée à la manette.
 - Pour un rapport HID à identifiant non nul, compter l’octet d’identifiant dans
   le tampon de contrôle USB ; vérifier directement le `SET_FEATURE` et le
   `GET_FEATURE` sur Windows lorsque WebHID signale seulement un périphérique
@@ -55,22 +65,28 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.35`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.35.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.35`.
-La source CMake peut employer `0.35.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.35`.
+La version publique actuelle du site est `0.36`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.36.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.36`.
+La source CMake peut employer `0.36.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.36`.
 
-Le correctif de connexion `0.35` ouvre automatiquement pendant cinq minutes la
+La release `0.36` conserve l'ouverture automatique pendant cinq minutes de la
 fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore
 aucune manette. Le premier appairage peut donc se faire après flash en mettant
 la DualSense en mode association, sans connecter le Pico au site. Une manette
 déjà mémorisée conserve la reconnexion directe par clé BTstack.
 
-Le correctif de connexion `0.35` expose uniquement le canal HID MiraLink et la
-collection gamepad standard. Le composite UAC2 reste désactivé jusqu'à une
-validation séparée sur Pico 2 W réel ; un build ou un UF2 ne vaut pas preuve
-d'énumération Windows ou d'échange WebHID.
+La release `0.36` expose une persona USB DualSense-family expérimentale sous le
+VID Sony `0x054c`, avec PID standard/Auto `0x0ce6` ou Edge `0x0df2`. Cette
+compatibilité explicitement autorisée est une implémentation clean-room et ne
+constitue ni un firmware Sony, ni une approbation, ni une affiliation. Une
+seule interface HID contient les collections Gamepad et vendor MiraLink ; le
+composite UAC2 reste désactivé. Les entrées natives passent par `0x01`, les
+sorties bornées par `0x02`, et les commandes de gestion par Feature `0x70` /
+`0x71`. L'état contrôleur est interrogé toutes les 40 ms ; `0x72` n'est pas
+exposé. Un build ou un UF2 ne vaut pas preuve d'énumération, d'échange WebHID,
+de flash ou de fonctionnement sur matériel réel.
 
 Le lot 2.0.0 etend le diagnostic local au schema 4 de 48 octets : derniere
 etape Bluetooth en echec, octet de statut et compteurs d'essais/reconnexion.
@@ -90,7 +106,7 @@ fixe et abandonne le rapport s'il devient obsolete apres une perte de liaison.
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement.
 - Données : locales à l’ordinateur et au Pico 2 W.
 - Publication applicative : uniquement après autorisation explicite ; le push Git de clôture est régi par l'autorisation permanente du 2026-08-14.
-- Les artefacts generes par Codex hors de `C:\MIRALINK\MIRALINK` sont verifies puis
+- Les artefacts générés par Codex hors de `C:\Users\MC\MIRALINK` sont vérifiés puis
   supprimes en fin de tache lorsque l'utilisateur l'a demande ; les fichiers
   preexistants ou appartenant a l'utilisateur ne sont pas supprimes.
 
@@ -103,9 +119,10 @@ La reconnexion Bluetooth automatique doit utiliser uniquement la base locale de
 clés BTstack, rester bornée, ne jamais exporter les adresses radio et ne jamais
 transformer une adresse connue en preuve de connexion matérielle.
 
-La collection HID gamepad standard et le canal vendor MiraLink doivent rester
-séparés ; un rapport gamepad ne peut être envoyé qu'après validation d'un
-rapport DualSense, et toute déconnexion doit remettre les boutons à zéro.
+La collection HID Gamepad et la collection vendor MiraLink doivent rester deux
+collections de haut niveau distinctes dans la même et unique interface HID ;
+un rapport gamepad ne peut être envoyé qu'après validation d'un rapport
+DualSense, et toute déconnexion doit remettre les boutons à zéro.
 
 Un correctif de découverte WebHID qui ne modifie que l'application peut ajouter
 le VID/PID MiraLink au filtre du navigateur sans exiger un nouveau flash si le
@@ -148,10 +165,11 @@ passe à « liaison disponible » qu’après un rapport HID DualSense valide et
 « flux actif » exige un rapport audio effectivement accepté par BTstack. Cette
 implémentation logicielle ne remplace pas la validation d’une DualSense réelle.
 
-Le chemin de sortie contrôleur 1.9.0 accepte un corps USB DualSense fixe de
-47 octets via `SET_CONTROLLER_OUTPUT` ou le rapport HID de sortie id `0x11`.
-MiraLink recalcule l’en-tête Bluetooth et le CRC ; le chemin ne permet pas
-d’injecter une trame HID arbitraire.
+Le chemin de sortie contrôleur courant accepte un corps USB DualSense fixe de
+47 octets via `SET_CONTROLLER_OUTPUT` ou le rapport HID natif `0x02`. Le host
+peut fournir la forme compacte de 48 octets ou la forme Linux de 63 octets ;
+MiraLink ne relaie que le corps commun borné, recalcule l’en-tête Bluetooth et
+le CRC, et ne permet pas d’injecter une trame HID arbitraire.
 
 Pour le lot firmware 1.7.0, la persistance des clés Bluetooth est celle du SDK
 Pico déjà initialisée par `cyw43_arch_init()` ; aucune seconde instance de
@@ -199,7 +217,7 @@ entrée manette validée, avec l'option locale active et l'autorisation de
 l'hôte USB. Elle ne doit jamais être décrite comme testée avant un essai
 physique de veille/réveil sur le Pico 2 W réel.
 
-Le build firmware 0.35 applique les réglages persistants qui peuvent être
+Le build firmware 0.36 applique les réglages persistants qui peuvent être
 mis en oeuvre sans prétendre à une preuve matérielle : volume haut-parleur et
 monitor, gain haut-parleur borné, réduction de gâchettes dans le corps de
 sortie fixe, suspension locale d'inactivité, numéro de série USB optionnel et
@@ -220,3 +238,16 @@ Le build statique doit rester reproductible depuis un clone Git propre. Le
 dossier `app/assets` est optionnel pour l'interface actuelle, mais il conserve
 un marqueur suivi par Git lorsqu'il est vide afin que la copie vers `app/dist`
 ne provoque pas d'erreur `ENOENT` sur Cloudflare Pages.
+
+## Comparaison firmware de fin de lot
+
+Après toute modification du firmware, mettre à jour et présenter un tableau
+court comparant le candidat courant à DS5Dongle `v0.7.2-hotfix`, dont chaque
+catégorie de référence vaut `100 %`. Le tableau doit couvrir au minimum la
+persona USB, Bluetooth, les entrées, les sorties, l'audio/haptique/microphone
+et la gestion/diagnostic, puis fournir un score global pondéré. La pondération
+et les pénalités d'absence de preuve matérielle doivent être visibles et
+reproductibles. Une capacité inactive ou seulement présente dans le source ne
+peut pas être comptée comme fonctionnelle. Un score supérieur à `100 %` est
+réservé à une capacité MiraLink supplémentaire démontrée. Afficher le ratio de
+taille UF2 sur une ligne distincte, sans l'intégrer au score qualité.

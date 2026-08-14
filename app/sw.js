@@ -1,7 +1,7 @@
-const CACHE = 'miralink-shell-0.35-editorial';
+const CACHE = 'miralink-shell-0.36-editorial';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
-  './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
+  './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
   './src/compatibility.js', './src/diagnostics.js', './src/action-guard.js', './src/session-recorder.js',
   './src/health-analysis.js', './manifest.webmanifest', './icon.svg', './assets/visuals/miralink-icon-option-06.png',
   './assets/visuals/banners/miralink-hero-connection.png', './assets/visuals/banners/miralink-banner-observability.png'
@@ -22,10 +22,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request).then((response) => {
       const copy = response.clone();
-      caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-      return response;
+      return caches.open(CACHE)
+        .then((cache) => cache.put(event.request, copy))
+        .then(() => response);
     }))
   );
 });
