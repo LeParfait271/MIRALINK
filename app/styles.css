@@ -431,7 +431,7 @@ h3:last-child {
   position: relative;
   min-width: 0;
   min-height: clamp(24rem, 39vw, 38rem);
-  padding: clamp(2rem, 4vw, 4.5rem) clamp(1.5rem, 4vw, 4rem) 2rem 0;
+  padding: clamp(2rem, 4vw, 4.5rem) clamp(1.5rem, 4vw, 4rem) 8rem 0;
   overflow: hidden;
   border-right: var(--border);
 }
