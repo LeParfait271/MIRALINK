@@ -276,7 +276,7 @@ function showBridgeConnectionDiagnostics(entry) {
   if (!entry || entry.kind !== 'bridge') return;
   const ready = entry.state === 'ready';
   $('[data-diagnostic="usb"]').textContent = ready ? 'READY' : 'DETECTED';
-  for (const name of ['radio', 'audio', 'storage']) $('[data-diagnostic="' + name + '"]').textContent = 'À TESTER';
+  for (const name of ['radio', 'audio', 'storage', 'signal']) $('[data-diagnostic="' + name + '"]').textContent = 'À TESTER';
   const summary = $('#diagnostic-summary');
   if (ready) {
     summary.textContent = `${entry.label} est identifié comme pont MiraLink. Cliquez sur « Lancer les diagnostics » pour vérifier le firmware, la radio et les entrées.`;
@@ -1300,6 +1300,14 @@ async function runDiagnostics() {
     const audioLinked = Boolean(audio?.bluetoothLinkAvailable || diagnostics.audioBluetoothStreaming);
     $('[data-diagnostic="audio"]').textContent = audioStreaming ? 'PASS' : audioLinked ? 'Ready' : 'Not tested';
     $('[data-diagnostic="storage"]').textContent = diagnostics.configLoaded ? 'PASS' : 'Not tested';
+    const signalNode = $('[data-diagnostic="signal"]');
+    if (diagnostics.rssiAvailable && Number.isFinite(diagnostics.rssiDbm)) {
+      signalNode.textContent = `${diagnostics.rssiDbm} dBm`;
+      signalNode.dataset.state = diagnostics.rssiDbm >= -60 ? 'good' : diagnostics.rssiDbm >= -78 ? 'fair' : 'weak';
+    } else {
+      signalNode.textContent = diagnostics.controllerConnected ? 'Mesure…' : '—';
+      delete signalNode.dataset.state;
+    }
     const radioState = diagnostics.bluetoothAvailable
       ? diagnostics.controllerConnected ? 'connected' : diagnostics.pairingWindowOpen ? 'pairing window open' : 'ready'
       : 'unavailable';
@@ -1320,6 +1328,7 @@ async function runDiagnostics() {
     addLog('info', 'Diagnostics completed with capability limits reported.');
   } catch (error) {
     for (const node of $$('[data-diagnostic]')) node.textContent = 'Unavailable';
+    $('[data-diagnostic="signal"]')?.removeAttribute('data-state');
     const guidance = describeWebHidError(error, { bridgeIdentified: true, operation: 'diagnostic' });
     entry.connectionSummary = guidance.summary;
     entry.nextAction = guidance.nextAction;

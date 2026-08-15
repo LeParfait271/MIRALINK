@@ -1027,7 +1027,7 @@ h3:last-child {
 
 .diagnostic-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   min-width: 0;
   border-top: var(--border);
   border-left: var(--border);
@@ -1057,6 +1057,18 @@ h3:last-child {
   font-family: var(--mono);
   font-size: 0.83rem;
   overflow-wrap: anywhere;
+}
+
+.diagnostic-card strong[data-state="good"] {
+  color: var(--acid);
+}
+
+.diagnostic-card strong[data-state="fair"] {
+  color: var(--ink);
+}
+
+.diagnostic-card strong[data-state="weak"] {
+  color: var(--orange);
 }
 
 .log-preview {

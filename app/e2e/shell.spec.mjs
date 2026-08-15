@@ -208,6 +208,7 @@ test('loads an operational shell and keeps WebHID warnings contextual', async ({
 
   await revealSection(page, '#tab-diagnostics');
   await expect(page.locator('#run-diagnostics-button')).toBeVisible();
+  await expect(page.locator('[data-diagnostic="signal"]')).toHaveText('—');
   expect(errors).toEqual([]);
 });
 
