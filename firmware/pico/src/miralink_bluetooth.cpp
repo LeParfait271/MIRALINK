@@ -39,6 +39,7 @@ constexpr std::uint8_t kFeatureMaxAttempts = 4;
 constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 constexpr std::uint32_t kInquiryRetryDelayMs = 1000;
 constexpr std::uint32_t kOutputFlightGuardMs = 4;
+constexpr std::size_t kOutputPacketCapacity = 4;
 constexpr std::uint32_t kIgnoredHidDisconnectRetryMs = 250;
 constexpr std::uint32_t kIgnoredHidDisconnectWindowMs = 10000;
 constexpr std::uint8_t kIgnoredHidDisconnectMaxAttempts = 40;
@@ -98,9 +99,12 @@ bool g_ignored_hid_disconnect_pending = false;
 std::uint8_t g_ignored_hid_disconnect_attempts = 0;
 std::uint64_t g_ignored_hid_disconnect_retry_ms = 0;
 std::uint64_t g_ignored_hid_disconnect_deadline_ms = 0;
-std::array<OutputPacket, 2> g_output_packets{};
+std::array<OutputPacket, kOutputPacketCapacity> g_output_packets{};
 int g_output_in_flight = -1;
-int g_output_queued = -1;
+std::array<int, kOutputPacketCapacity> g_output_queue{};
+std::size_t g_output_queue_head = 0;
+std::size_t g_output_queue_tail = 0;
+std::size_t g_output_queue_count = 0;
 std::uint8_t g_output_sequence = 0;
 bool g_haptic_stop_pending = false;
 std::uint64_t g_haptic_stop_deadline_ms = 0;
@@ -478,7 +482,10 @@ void set_link_state(const LinkState state) {
 void clear_output_queue() {
     g_output_packets = {};
     g_output_in_flight = -1;
-    g_output_queued = -1;
+    g_output_queue.fill(-1);
+    g_output_queue_head = 0;
+    g_output_queue_tail = 0;
+    g_output_queue_count = 0;
     g_output_flight_deadline_ms = 0;
     g_haptic_stop_pending = false;
     g_haptic_stop_deadline_ms = 0;
@@ -626,24 +633,36 @@ void service_feature_bootstrap() {
 
 int output_free_slot() {
     for (std::size_t index = 0; index < g_output_packets.size(); ++index) {
-        if (static_cast<int>(index) != g_output_in_flight && static_cast<int>(index) != g_output_queued) {
+        if (!g_output_packets[index].occupied
+            && static_cast<int>(index) != g_output_in_flight) {
             return static_cast<int>(index);
         }
     }
     return -1;
 }
 
-bool queue_output(const dualsense::OutputRequest& request) {
-    if (!output_link_ready() || g_output_queued >= 0) return false;
+bool enqueue_output_packet(const std::uint8_t report_id,
+    const std::uint8_t* bytes, const std::size_t length) {
+    if (bytes == nullptr || length == 0 || length > g_output_packets[0].bytes.size()
+        || g_output_queue_count >= g_output_packets.size()) return false;
     const auto slot = output_free_slot();
     if (slot < 0) return false;
     g_output_packets[slot].bytes.fill(0);
-    const auto report = dualsense::build_bluetooth_output_report(request, g_output_sequence++ & 0x0fu);
-    std::copy(report.begin(), report.end(), g_output_packets[slot].bytes.begin());
-    g_output_packets[slot].report_id = dualsense::kBluetoothOutputReportId;
-    g_output_packets[slot].length = report.size();
+    std::copy(bytes, bytes + length, g_output_packets[slot].bytes.begin());
+    g_output_packets[slot].report_id = report_id;
+    g_output_packets[slot].length = length;
     g_output_packets[slot].occupied = true;
-    g_output_queued = slot;
+    g_output_queue[g_output_queue_tail] = slot;
+    g_output_queue_tail = (g_output_queue_tail + 1) % g_output_queue.size();
+    ++g_output_queue_count;
+    return true;
+}
+
+bool queue_output(const dualsense::OutputRequest& request) {
+    if (!output_link_ready()) return false;
+    const auto report = dualsense::build_bluetooth_output_report(request, g_output_sequence++ & 0x0fu);
+    if (!enqueue_output_packet(dualsense::kBluetoothOutputReportId,
+        report.data(), report.size())) return false;
     note_activity();
     if (request.usb_output) {
         std::copy(request.usb_output_payload.begin(), request.usb_output_payload.end(), g_controller_state.begin());
@@ -655,17 +674,17 @@ bool queue_output(const dualsense::OutputRequest& request) {
 }
 
 void try_send_output() {
-    if (g_output_queued < 0 || !output_link_ready()) return;
+    if (g_output_queue_count == 0 || !output_link_ready()) return;
 
     // The build-time BTstack overlay only accepts a new interrupt report once
-    // the previous CAN_SEND_NOW callback has copied its payload. Keep both the
-    // old in-flight slot and the replacement queued until that SUCCESS proves
-    // the old caller-owned buffer is no longer referenced by BTstack.
+    // the previous CAN_SEND_NOW callback has copied its payload. Keep the
+    // bounded FIFO intact until that SUCCESS proves the old caller-owned
+    // buffer is no longer referenced by BTstack.
     if (g_output_in_flight >= 0) {
         if (now_ms() < g_output_flight_deadline_ms) return;
     }
 
-    const auto slot = g_output_queued;
+    const auto slot = g_output_queue[g_output_queue_head];
     const auto status = hid_host_send_report(g_hid_cid, g_output_packets[slot].report_id,
         g_output_packets[slot].bytes.data() + 1,
         static_cast<std::uint16_t>(g_output_packets[slot].length - 1));
@@ -680,7 +699,9 @@ void try_send_output() {
         g_output_packets[g_output_in_flight].occupied = false;
     }
     g_output_in_flight = slot;
-    g_output_queued = -1;
+    g_output_queue[g_output_queue_head] = -1;
+    g_output_queue_head = (g_output_queue_head + 1) % g_output_queue.size();
+    --g_output_queue_count;
     g_output_flight_deadline_ms = now_ms() + kOutputFlightGuardMs;
     if (g_output_packets[slot].report_id == dualsense::kBluetoothAudioReportId) {
         critical_section_enter_blocking(&g_state_lock);
@@ -1395,19 +1416,14 @@ bool send_controller_output(const std::uint8_t* payload, const std::size_t lengt
 
 bool send_audio_haptics_report(const std::uint8_t* report, const std::size_t length) {
     if (!static_cast<bool>(dualsense::validate_bluetooth_audio_report(report, length))
-        || !output_link_ready() || g_output_queued >= 0) return false;
-    const auto slot = output_free_slot();
-    if (slot < 0) return false;
-    g_output_packets[slot].bytes.fill(0);
-    std::copy(report, report + length, g_output_packets[slot].bytes.begin());
+        || !output_link_ready()) return false;
+    std::array<std::uint8_t, dualsense::kBluetoothAudioReportBytes> packet{};
+    std::copy(report, report + length, packet.begin());
     // The audio packet carries the most recent complete controller state so a
     // host output report cannot be undone by a later audio frame.
-    std::copy(g_controller_state.begin(), g_controller_state.end(), g_output_packets[slot].bytes.begin() + 13);
-    g_output_packets[slot].report_id = dualsense::kBluetoothAudioReportId;
-    g_output_packets[slot].length = length;
-    g_output_packets[slot].occupied = true;
-    g_output_queued = slot;
-    return true;
+    std::copy(g_controller_state.begin(), g_controller_state.end(), packet.begin() + 13);
+    return enqueue_output_packet(dualsense::kBluetoothAudioReportId,
+        packet.data(), length);
 }
 
 void poll() {

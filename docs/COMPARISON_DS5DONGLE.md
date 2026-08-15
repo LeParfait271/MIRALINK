@@ -28,20 +28,20 @@ source are consulted before MiraLink is changed. The fixed reference asset is
 The comparison is behavioral and clean-room: no DS5Dongle code, binary,
 private protocol or internal structure is reused.
 
-## Current comparison — MiraLink 0.48
+## Current comparison — MiraLink 0.50
 
-| Capability | Weight | DS5Dongle | MiraLink 0.41 candidate | MiraLink 0.46 candidate | MiraLink 0.47 candidate | MiraLink 0.48 candidate | New evidence |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| USB persona / host compatibility | 20% | 100% | 72% | 72% | 72% | 72% | No descriptor change or new host proof |
-| Bluetooth pairing / reconnect | 20% | 100% | 55% | 55% | 55% | 55% | DS5-aligned discoverability restoration is compiled; the reported 0.47 reconnect failure remains untested on 0.48 |
-| Input / motion / touch | 15% | 100% | 77% | 77% | 77% | 77% | Buttons/sticks worked in `joy.cpl` on 0.38 and Controller Lab received live input on 0.39; motion and touch remain unexercised |
-| Rumble / LEDs / triggers / mute | 15% | 100% | 48% | 48% | 48% | 48% | Output normalization remains tested in software; no physical effect is validated |
-| USB audio / HD haptics / microphone | 15% | 100% | 5% | 5% | 5% | 5% | Diagnostics saw an audio link without a stream; the USB Audio class remains disabled |
-| Wake / recovery | 7.5% | 100% | 45% | 45% | 45% | 45% | Idle-resume policy and radio-failure paths are build/static evidence only; suspend/wake and brutal-link-loss recovery remain physically untested |
-| Configuration / diagnostics | 7.5% | 100% | 82% | 82% | 82% | 82% | No new hardware capability proof; foreground recovery and diagnostics remain software-verified |
-| **Weighted proven score** | **100%** | **100%** | **54.4%** | **54.4%** | **54.4%** | **54.4%** | **No score increase without a new hardware retest** |
+| Capability | Weight | DS5Dongle | MiraLink 0.41 candidate | MiraLink 0.46 candidate | MiraLink 0.47 candidate | MiraLink 0.48 candidate | MiraLink 0.50 candidate | New evidence |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| USB persona / host compatibility | 20% | 100% | 72% | 72% | 72% | 72% | 72% | No descriptor change or new host proof |
+| Bluetooth pairing / reconnect | 20% | 100% | 55% | 55% | 55% | 55% | 55% | FIFO does not change reconnect; hardware remains untested |
+| Input / motion / touch | 15% | 100% | 77% | 77% | 77% | 77% | 77% | No input-path change |
+| Rumble / LEDs / triggers / mute | 15% | 100% | 48% | 48% | 48% | 48% | 48% | Four-packet ordered FIFO is compiled; physical effects remain unvalidated |
+| USB audio / HD haptics / microphone | 15% | 100% | 5% | 5% | 5% | 5% | 5% | USB audio class remains disabled |
+| Wake / recovery | 7.5% | 100% | 45% | 45% | 45% | 45% | 45% | No wake/recovery change |
+| Configuration / diagnostics | 7.5% | 100% | 82% | 82% | 82% | 82% | 82% | No configuration change |
+| **Weighted proven score** | **100%** | **100%** | **54.4%** | **54.4%** | **54.4%** | **54.4%** | **54.4%** | **No score increase without a new hardware retest** |
 
-MiraLink 0.48 keeps `76%` raw source coverage. The weighted total is computed
+MiraLink 0.50 keeps `76%` raw source coverage. The weighted total is computed
 directly from the visible weights and equals `54.425%`, displayed as `54.4%`.
 The 0.40 hardware run confirms bridge recovery and radio readiness but explicitly
 fails remembered reconnect after controller power-off and Pico restart. The
@@ -71,8 +71,10 @@ microphone support.
 | MiraLink 0.46 UF2 | 1,415,680 | 92.8% |
 | MiraLink 0.47 UF2 | 1,417,728 | 93.0% |
 | MiraLink 0.48 UF2 | 1,417,728 | 93.0% |
+| MiraLink 0.49 UF2 | 1,417,728 | 93.0% |
+| MiraLink 0.50 UF2 | 1,420,288 | 93.1% |
 
-MiraLink 0.48 size is recorded from the frozen release build. Size alone says
+MiraLink 0.50 size is recorded from the frozen release build. Size alone says
 nothing about compatibility, stability, latency or quality and is excluded from
 the functional score.
 

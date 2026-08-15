@@ -14,7 +14,7 @@ reconnect from the remembered key and had to be paired again. No Bluetooth
 packet capture was made, and motion, touch, outputs, wake and audio were not
 exercised.
 
-Firmware 0.49 keeps the one-root experimental DualSense-family USB persona and
+Firmware 0.50 keeps the one-root experimental DualSense-family USB persona and
 the bounded asynchronous Feature bootstrap introduced in 0.38 (`0x05` → `0x09` → `0x20`)
 after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
 only as link liveness. Only a complete, strictly validated enhanced `0x31`
@@ -39,7 +39,7 @@ inquiry/connection path for DualSense input, bounded diagnostics, local RAM
 logs, USB reconnection, confirmation-token recovery, native-size DualSense
 input/output bridging and opt-in USB remote wake. The UAC2 audio source
 remains in the firmware tree but is disabled from the active USB descriptor
-until a physical Pico 2 W validation is complete. Version `0.49` retains the
+until a physical Pico 2 W validation is complete. Version `0.50` retains the
 `0.39` rule that prevents configuration commits from implicitly disconnecting
 USB, reports a separate
 re-enumeration requirement in the commit acknowledgement, and lets pairing
@@ -61,6 +61,11 @@ post-disconnection lifecycle. It tracks the active ACL handle and drops only a
 stale remembered key after a correlated authentication failure, before a valid
 enhanced input report. This remains a
 software candidate until a new physical Pico 2 W / controller test.
+
+The Bluetooth output path now uses a fixed four-packet FIFO (one packet in
+flight plus three queued packets), preserving haptic, lightbar, trigger and
+audio-output order until BTstack accepts each report. The queue uses static
+storage only and remains bounded under a busy host.
 
 ## Core and hardware builds
 

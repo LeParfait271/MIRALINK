@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.50 - 2026-08-15
+
+- Replaced the single Bluetooth output slot with a bounded four-packet FIFO.
+  Rapid haptic, lightbar, trigger and audio-output requests now remain ordered
+  until BTstack accepts each packet, instead of silently dropping a replacement
+  while the previous report is in flight.
+- Compared the queueing boundary with DS5Dongle's bounded `send_fifo`; no
+  physical Pico 2 W validation is claimed for 0.50.
+
 ## 0.49 - 2026-08-15
 
 - Fixed the inactivity timer: continuous unchanged DualSense reports no longer

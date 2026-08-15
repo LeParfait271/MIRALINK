@@ -7,10 +7,10 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41 → 0.42 → 0.43 → 0.44 → 0.46 → 0.47 → 0.48
+0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41 → 0.42 → 0.43 → 0.44 → 0.46 → 0.47 → 0.48 → 0.49 → 0.50
 ```
 
-The current sequence continues through public version `0.49`.
+The current sequence continues through public version `0.50`.
 
 The public site version must be reflected in:
 
@@ -19,19 +19,19 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.49.0`; this is
-packaging metadata for the public site version `0.49`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.50.0`; this is
+packaging metadata for the public site version `0.50`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest use `0.49`. CMake uses the technical
-form `0.49.0` only because it requires three numeric segments; the firmware
-reported by the device remains exactly `0.49`.
+UF2 metadata, release folder and manifest use `0.50`. CMake uses the technical
+form `0.50.0` only because it requires three numeric segments; the firmware
+reported by the device remains exactly `0.50`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current site and firmware version is `0.49`. It contains the clean-room,
+The current site and firmware version is `0.50`. It contains the clean-room,
 experimental DualSense-family USB persona with one HID interface, one root
 Gamepad Application collection and nested MiraLink Feature management. A
 manual `0.38` Windows test confirmed one bridge-owned controller and working

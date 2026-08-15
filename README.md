@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.49`
-- Current firmware version: `0.49` (counts real controller activity for the inactivity timer; USB audio remains source-only)
+- Current site version: `0.50`
+- Current firmware version: `0.50` (uses a bounded ordered output FIFO; USB audio remains source-only)
 - Last update: `2026-08-15`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: GitHub source and manual firmware release
@@ -65,7 +65,7 @@ DualSense run.
 
 The web application is an original desktop control deck with working WebHID
 discovery, guided diagnostics, local profiles, local UF2 inspection and an
-offline shell. Version `0.49` keeps the quick-access navigation introduced in
+offline shell. Version `0.50` keeps the quick-access navigation introduced in
 `0.39` and hardens WebHID command handling with a cancellable per-device FIFO,
 bounded response-read retries that never resend an ambiguously written
 command, 100 ms controller polling, and explicit USB-disappearance checks for
@@ -78,7 +78,9 @@ softens the palette and uses original motion/depth effects. Controller Lab now
 visualizes local input, battery, motion and touch and computes read-only stick
 analysis. The observable workflows of DualShock Tools and DS5 Bridge Config
 informed this feature inventory, but no third-party code or assets were copied
-and no permanent controller calibration is exposed.
+and no permanent controller calibration is exposed. Firmware 0.50 also keeps a
+four-slot ordered Bluetooth output FIFO so rapid controller output requests are
+not silently replaced while BTstack is transmitting the previous packet.
 
 ## Local build outputs
 
