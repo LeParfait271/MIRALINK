@@ -7,10 +7,10 @@ For every commit that changes the site or application, increase the public
 version by `0.01` and update the date in `VERSION.json`:
 
 ```text
-0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41 → 0.42 → 0.43 → 0.44 → 0.45
+0.10 → 0.11 → 0.12 → … → 0.39 → 0.40 → 0.41 → 0.42 → 0.43 → 0.44 → 0.46
 ```
 
-The current sequence continues through public version `0.45`.
+The current sequence continues through public version `0.46`.
 
 The public site version must be reflected in:
 
@@ -19,19 +19,19 @@ The public site version must be reflected in:
 - the changelog entry;
 - the local delivery manifest.
 
-`app/package.json` uses the valid npm semver representation `0.45.0`; this is
-packaging metadata for the public site version `0.45`, not a separate product
+`app/package.json` uses the valid npm semver representation `0.46.0`; this is
+packaging metadata for the public site version `0.46`, not a separate product
 release.
 
 The firmware and public site share one displayed version. A firmware build is
 released with the exact current public-site version, so the source, embedded
-UF2 metadata, release folder and manifest use `0.45`. CMake uses the technical
-form `0.45.0` only because it requires three numeric segments; the firmware
-reported by the device remains exactly `0.45`.
+UF2 metadata, release folder and manifest use `0.46`. CMake uses the technical
+form `0.46.0` only because it requires three numeric segments; the firmware
+reported by the device remains exactly `0.46`.
 
 The current local delivery manifest is `docs/DELIVERY_MANIFEST.json`.
 
-The current site and firmware version is `0.45`. It contains the clean-room,
+The current site and firmware version is `0.46`. It contains the clean-room,
 experimental DualSense-family USB persona with one HID interface, one root
 Gamepad Application collection and nested MiraLink Feature management. A
 manual `0.38` Windows test confirmed one bridge-owned controller and working
@@ -43,7 +43,7 @@ showed the known controller offline without a new pairing window. Version
 `0.41` kept the passive incoming policy and forced a deferred page-scan rearm
 when BTstack's cached connectable state would otherwise suppress the HCI write.
 `0.42` routes the same scan recovery through the foreground poll when a
-configuration commit resumes local idle suspension. The `0.45` correction
+configuration commit resumes local idle suspension. The `0.46` correction
 compares MiraLink directly with DS5Dongle `v0.7.2-hotfix` and waits for
 `HCI_EVENT_DISCONNECTION_COMPLETE` before requesting the foreground page-scan
 rearm. All reconnect corrections remain software-validated until the manual

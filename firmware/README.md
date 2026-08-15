@@ -14,7 +14,7 @@ reconnect from the remembered key and had to be paired again. No Bluetooth
 packet capture was made, and motion, touch, outputs, wake and audio were not
 exercised.
 
-Firmware 0.45 keeps the one-root experimental DualSense-family USB persona and
+Firmware 0.46 keeps the one-root experimental DualSense-family USB persona and
 the bounded asynchronous Feature bootstrap introduced in 0.38 (`0x05` → `0x09` → `0x20`)
 after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
 only as link liveness. Only a complete, strictly validated enhanced `0x31`
@@ -39,7 +39,7 @@ inquiry/connection path for DualSense input, bounded diagnostics, local RAM
 logs, USB reconnection, confirmation-token recovery, native-size DualSense
 input/output bridging and opt-in USB remote wake. The UAC2 audio source
 remains in the firmware tree but is disabled from the active USB descriptor
-until a physical Pico 2 W validation is complete. Version `0.45` retains the
+until a physical Pico 2 W validation is complete. Version `0.46` retains the
 `0.39` rule that prevents configuration commits from implicitly disconnecting
 USB, reports a separate
 re-enumeration requirement in the commit acknowledgement, and lets pairing
@@ -52,7 +52,7 @@ Source inspection found that BTstack's cached connectable flag can suppress the
 page-scan rearm after a link close. The `0.41` candidate deferred that rearm to
 the foreground poll and forced a fresh page-scan enable transition. The `0.42`
 candidate also routes idle-resume recovery through that foreground path instead
-of calling BTstack from the USB configuration callback. The `0.45` candidate
+of calling BTstack from the USB configuration callback. The `0.46` candidate
 uses the official DS5Dongle `v0.7.2-hotfix` lifecycle boundary as the mandatory
 diagnostic comparator and waits for `HCI_EVENT_DISCONNECTION_COMPLETE` before
 requesting the same foreground rearm. This remains a software candidate until

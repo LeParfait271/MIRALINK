@@ -1,4 +1,4 @@
-const CACHE = 'miralink-shell-0.45-hero-layout';
+const CACHE = 'miralink-shell-0.46-passive-reconnect';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',

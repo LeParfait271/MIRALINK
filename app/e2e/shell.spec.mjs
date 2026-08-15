@@ -35,7 +35,7 @@ async function installMiraLinkBridgeStub(page) {
     };
     const responsePayload = (command) => {
       if (command === 0x01) return Uint8Array.from([1, 1, 1, 0]);
-      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 40, 0]);
+      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 46, 0]);
       if (command === 0x03) return Uint8Array.from([1, 100, 0, 100, 100, 0, 0, 1, 96, 2, 4, 0, 0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
       if (command === 0x05) return Uint8Array.from([1, 1]);
       if (command === 0x0d) return Uint8Array.from([1, 0, 0, 1, 0, 0, 0xb8, 0x0b]);
@@ -213,11 +213,9 @@ test('loads an operational shell and keeps WebHID warnings contextual', async ({
 
 test('blocks connection actions when WebHID is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
-    try {
-      delete navigator.hid;
-    } catch {
-      // The test only needs to model a browser without WebHID.
-    }
+    // Override the shared WebHID stub explicitly; deleting a browser-provided
+    // accessor is not reliable across Chromium versions.
+    Object.defineProperty(navigator, 'hid', { configurable: true, value: undefined });
   });
   await page.goto('/');
 
@@ -326,7 +324,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await page.locator('#connect-button').click();
 
   await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
-  await expect(page.locator('#installed-version')).toHaveText('0.42');
+  await expect(page.locator('#installed-version')).toHaveText('0.46');
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   const confirmation = page.locator('#confirm-dialog');
@@ -362,7 +360,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#audio-buffer')).toHaveValue('96');
   await expect(page.locator('#ps-shortcut')).toBeDisabled();
   await expect(page.locator('#ps-shortcut')).toBeChecked();
-  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.45');
+  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.46');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';

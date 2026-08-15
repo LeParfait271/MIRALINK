@@ -6,7 +6,7 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(miralink_pico_firmware VERSION 0.45.0 LANGUAGES C CXX ASM)
+project(miralink_pico_firmware VERSION 0.46.0 LANGUAGES C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -73,6 +73,22 @@ uint8_t miralink_btstack_hid_host_abort_get_report(uint16_t hid_cid){
         return ERROR_CODE_COMMAND_DISALLOWED;
     }
     connection->state = HID_HOST_CONNECTION_ESTABLISHED;
+    return ERROR_CODE_SUCCESS;
+}
+
+/* MiraLink extension for retiring an HID host slot after ACL teardown. */
+uint8_t miralink_btstack_hid_host_abort_connection(uint16_t hid_cid){
+    hid_host_connection_t * connection = hid_host_get_connection_for_hid_cid(hid_cid);
+    if (!connection) {
+        return ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER;
+    }
+    if (hid_host_sdp_context_control_cid == hid_cid) {
+        hid_host_sdp_context_control_cid = 0;
+    }
+    // HCI has already confirmed that the ACL is gone. Finalize regardless of
+    // whether L2CAP delivered its close event; hid_host_finalize_connection()
+    // disconnects any still-recorded channels before releasing the slot.
+    hid_host_finalize_connection(connection);
     return ERROR_CODE_SUCCESS;
 }
 ]=])
@@ -166,7 +182,7 @@ target_link_libraries(miralink_pico_firmware PRIVATE
 )
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
-pico_set_program_version(miralink_pico_firmware "0.45")
+pico_set_program_version(miralink_pico_firmware "0.46")
 pico_enable_stdio_uart(miralink_pico_firmware 0)
 pico_enable_stdio_usb(miralink_pico_firmware 0)
 pico_add_extra_outputs(miralink_pico_firmware)

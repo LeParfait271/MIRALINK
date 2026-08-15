@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.46 - 2026-08-15
+
+- Compared the failed 0.45 PS-only reconnect with the official DS5Dongle
+  `v0.7.2-hotfix` lifecycle.
+- Retire a stale BTstack HID/SDP host slot after authoritative ACL teardown,
+  then rearm passive page scan from the foreground poll.
+- Keep the hardware score at `54.4%` until a fresh manual reconnect test passes.
+
 ## 0.45 - 2026-08-15
 
 - Made the official DS5Dongle `v0.7.2-hotfix` UF2 and source a mandatory

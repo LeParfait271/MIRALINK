@@ -15,6 +15,7 @@
 #include <cstring>
 
 extern "C" std::uint8_t miralink_btstack_hid_host_abort_get_report(std::uint16_t hid_cid);
+extern "C" std::uint8_t miralink_btstack_hid_host_abort_connection(std::uint16_t hid_cid);
 
 namespace miralink::bluetooth {
 bool open_pairing_window();
@@ -63,6 +64,9 @@ bool g_pairing_requested = false;
 bool g_inquiry_active = false;
 bool g_connection_pending = false;
 bool g_page_scan_rearm_pending = false;
+// HCI reports ACL teardown before every HID-host state has necessarily
+// emitted its close event; the foreground poll retires any stale host slot.
+bool g_hci_disconnection_recovery_pending = false;
 std::array<std::array<std::uint8_t, 6>, kMaxRememberedControllers> g_paired_addresses{};
 std::size_t g_paired_address_count = 0;
 struct ActiveControllerAttempt {
@@ -682,6 +686,23 @@ void set_connection_closed() {
 
 void service_page_scan_rearm() {
     if (!g_page_scan_rearm_pending) return;
+
+    // DS5Dongle treats HCI_EVENT_DISCONNECTION_COMPLETE as the authoritative
+    // lifecycle boundary. BTstack's HID host can still retain a CID while an
+    // SDP query is finalized, so waiting for HID_SUBEVENT_CONNECTION_CLOSED
+    // can leave its sole host slot reserved forever. Retire that slot from
+    // the foreground context before rearming passive page scan.
+    if (g_hci_disconnection_recovery_pending
+        && g_hci_working && !g_idle_suspended) {
+        if (g_hid_cid != 0) {
+            (void) miralink_btstack_hid_host_abort_connection(g_hid_cid);
+        }
+        // Also normalize the snapshot when a late HID close already cleared
+        // the local CID without passing through the normal state path.
+        set_connection_closed();
+        g_hci_disconnection_recovery_pending = false;
+    }
+
     const bool hid_link_active = g_hid_cid != 0 || g_connection_pending;
     if (!reconnect::should_rearm_page_scan(g_hci_working, g_idle_suspended, hid_link_active)) {
         // A HID close can precede the ACL teardown event. Keep the request
@@ -819,6 +840,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 reset_feature_bootstrap();
                 g_protocol_handshake_pending = false;
                 g_idle_suspended = false;
+                g_hci_disconnection_recovery_pending = false;
                 g_last_activity_ms = now_ms();
                 clear_ignored_hid_teardown();
                 clear_controller_attempt();
@@ -862,6 +884,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_pairing_requested = false;
                 g_connection_pending = false;
                 g_hid_cid = 0;
+                g_hci_disconnection_recovery_pending = false;
                 clear_ignored_hid_teardown();
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
@@ -890,6 +913,9 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             // lifecycle boundary. MiraLink records the same boundary here,
             // then performs all BTstack writes from the foreground poll so
             // the HCI callback cannot race the SDK's state transition.
+            g_hci_disconnection_recovery_pending = reconnect::should_recover_after_hci_disconnection(
+                g_hci_working, g_idle_suspended,
+                g_hid_cid != 0 || g_connection_pending);
             g_page_scan_rearm_pending = reconnect::should_rearm_after_hci_disconnection(
                 g_hci_working, g_idle_suspended);
             break;
