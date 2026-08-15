@@ -79,6 +79,26 @@ MiraLink 0.51 size is recorded from the frozen release build. Size alone says
 nothing about compatibility, stability, latency or quality and is excluded from
 the functional score.
 
+## MiraLink 0.58 delta
+
+The 0.58 source change removes the HID admission prerequisite that still
+depended on the pairing window, remembered-address cache, or a pre-recorded
+ACL flag. This follows the DS5Dongle sequence: accept the gamepad ACL first,
+then let authenticated HID setup and the strict enhanced report decide whether
+the controller becomes usable. No physical 0.58 run exists yet, so the proven
+score is deliberately unchanged.
+
+| Capability | DS5Dongle | MiraLink 0.57 | MiraLink 0.58 | New evidence |
+| --- | ---: | ---: | ---: | --- |
+| USB persona / host compatibility | 100% | 72% | 72% | No USB descriptor change |
+| Bluetooth pairing / reconnect | 100% | 55% | 55% | ACL + HID admission gates aligned in source; hardware untested |
+| Input / motion / touch | 100% | 77% | 77% | No input report change |
+| Rumble / LEDs / triggers / mute | 100% | 48% | 48% | No new physical-output evidence |
+| USB audio / HD haptics / microphone | 100% | 5% | 5% | USB audio remains disabled |
+| Wake / recovery | 100% | 45% | 45% | No new hardware evidence |
+| Configuration / diagnostics | 100% | 82% | 82% | No configuration change |
+| **Weighted proven score** | **100%** | **54.4%** | **54.4%** | Score stays frozen until hardware validation |
+
 For every later firmware modification, preserve the weights and publish the
 compact form `Capability | DS5Dongle | MiraLink before | MiraLink after | New
 evidence`, keeping DS5Dongle fixed at `100%`.

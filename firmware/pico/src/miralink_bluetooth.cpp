@@ -1025,8 +1025,12 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 gap_discoverable_control(0);
                 gap_set_local_name("MiraLink Pico 2 W");
                 gap_set_class_of_device(0x2508);
-                gap_set_default_link_policy_settings(LM_LINK_POLICY_ENABLE_SNIFF_MODE | LM_LINK_POLICY_ENABLE_ROLE_SWITCH);
-                hci_set_master_slave_policy(HCI_ROLE_MASTER);
+                // Keep the passive reconnect link policy aligned with
+                // DS5Dongle: the controller pages us and remains the slave.
+                // Do not force sniff/role-switch here; those negotiations can
+                // race the HID service opening on a PS-only reconnect.
+                gap_set_default_link_policy_settings(0);
+                hci_set_master_slave_policy(HCI_ROLE_SLAVE);
                 gap_ssp_set_io_capability(SSP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
                 gap_ssp_set_auto_accept(0);
                 critical_section_enter_blocking(&g_state_lock);
@@ -1392,31 +1396,32 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     bd_addr_t address{};
                     hid_subevent_incoming_connection_get_address(packet, address);
                     const bool address_is_remembered = paired_address_known(address);
-                    if (reconnect::accepts_incoming_controller(
-                            pairing_window_active(), address_is_remembered,
-                            g_acl_address_valid)) {
-                        begin_controller_attempt(address);
-                        note_activity();
-                        stop_inquiry();
-                        record_connection_attempt(address_is_remembered);
-                        g_hid_cid = cid;
-                        g_connection_pending = true;
-                        reset_feature_bootstrap();
-                        g_protocol_handshake_pending = false;
-                        critical_section_enter_blocking(&g_state_lock);
-                        g_snapshot.connection_pending = true;
-                        critical_section_exit(&g_state_lock);
-                        const auto accept_status = hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
-                        if (accept_status == ERROR_CODE_SUCCESS) {
-                            g_protocol_handshake_pending = true;
-                            g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
-                            set_link_state(LinkState::Starting);
-                        } else {
-                            record_connection_failure(ConnectionError::HidAccept, accept_status);
-                            set_connection_closed();
-                        }
+                    // HCI_EVENT_CONNECTION_REQUEST has already restricted the ACL
+                    // to a gamepad class.  Do not gate the following HID service
+                    // admission on the pairing window or RAM bond cache: after a
+                    // reboot a valid bonded controller can arrive before those
+                    // caches are rebuilt, and DS5Dongle accepts the HID channel at
+                    // this point.  Descriptor validation plus the CRC-checked 0x31
+                    // report remain the trust boundary.
+                    begin_controller_attempt(address);
+                    note_activity();
+                    stop_inquiry();
+                    record_connection_attempt(address_is_remembered);
+                    g_hid_cid = cid;
+                    g_connection_pending = true;
+                    reset_feature_bootstrap();
+                    g_protocol_handshake_pending = false;
+                    critical_section_enter_blocking(&g_state_lock);
+                    g_snapshot.connection_pending = true;
+                    critical_section_exit(&g_state_lock);
+                    const auto accept_status = hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
+                    if (accept_status == ERROR_CODE_SUCCESS) {
+                        g_protocol_handshake_pending = true;
+                        g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
+                        set_link_state(LinkState::Starting);
                     } else {
-                        hid_host_decline_connection(cid);
+                        record_connection_failure(ConnectionError::HidAccept, accept_status);
+                        set_connection_closed();
                     }
                     break;
                 }

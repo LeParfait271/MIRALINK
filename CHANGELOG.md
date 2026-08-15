@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.58 - 2026-08-16
+
+- Keep bonded DualSense reconnects passive: accept the gamepad ACL and HID
+  service before consulting the rebuilt RAM bond cache, matching DS5Dongle's
+  post-reboot path. Descriptor validation and CRC-checked enhanced input remain
+  the trust boundary.
+- Do not force a master/sniff policy that can compete with the controller's
+  PS-only page; restore connectable/page-scannable state after teardown.
+
 ## 0.57 - 2026-08-16
 
 - Match DS5Dongle's ACL admission policy: accept a Bluetooth gamepad request

@@ -1,4 +1,4 @@
-const CACHE = 'miralink-shell-0.57-acl-admission';
+const CACHE = 'miralink-shell-0.58-hid-admission';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',

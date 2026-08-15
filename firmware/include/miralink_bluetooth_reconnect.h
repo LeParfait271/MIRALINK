@@ -29,16 +29,6 @@ constexpr bool allows_outgoing_hid_connect(const RadioAction action) {
     return action == RadioAction::ExplicitPairingInquiry;
 }
 
-// DS5Dongle accepts an incoming gamepad ACL first and lets the authenticated
-// HID lifecycle establish whether it is a usable controller. A remembered
-// address is the normal path, but an active ACL must also be admitted while
-// authentication/descriptor events are still in flight; gating this event on
-// the rebuilt RAM address cache can reject a valid bond after reboot.
-constexpr bool accepts_incoming_controller(const bool pairing_window_active,
-    const bool address_is_remembered, const bool acl_link_present) {
-    return pairing_window_active || address_is_remembered || acl_link_present;
-}
-
 // DS5Dongle handles the Classic ACL request explicitly before the HID
 // services are opened.  The Bluetooth Class of Device uses bits 8..11 for
 // the major device class; 0x05 is the gamepad/peripheral class.  Keep this
@@ -139,10 +129,6 @@ constexpr bool completes_pairing_window(const bool pairing_window_active,
 }
 
 static_assert(!allows_outgoing_hid_connect(RadioAction::PassiveReconnect));
-static_assert(accepts_incoming_controller(false, true, false));
-static_assert(accepts_incoming_controller(true, false, false));
-static_assert(accepts_incoming_controller(false, false, true));
-static_assert(!accepts_incoming_controller(false, false, false));
 static_assert(is_gamepad_class_of_device(0x000508u));
 static_assert(!is_gamepad_class_of_device(0x000400u));
 static_assert(accepts_connection_request(0x000508u));

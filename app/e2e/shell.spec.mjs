@@ -35,7 +35,7 @@ async function installMiraLinkBridgeStub(page) {
     };
     const responsePayload = (command) => {
       if (command === 0x01) return Uint8Array.from([1, 1, 1, 0]);
-      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 57, 0]);
+      if (command === 0x02) return Uint8Array.from([...new TextEncoder().encode('MiraLink'), 0, 58, 0]);
       if (command === 0x03) return Uint8Array.from([1, 100, 0, 100, 100, 0, 0, 1, 96, 2, 4, 0, 0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
       if (command === 0x05) return Uint8Array.from([1, 1]);
       if (command === 0x0d) return Uint8Array.from([1, 0, 0, 1, 0, 0, 0xb8, 0x0b]);
@@ -325,7 +325,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await page.locator('#connect-button').click();
 
   await expect(page.locator('.device-meta').first()).toContainText('MiraLink bridge');
-  await expect(page.locator('#installed-version')).toHaveText('0.57');
+  await expect(page.locator('#installed-version')).toHaveText('0.58');
   await expect(page.locator('#hid-warning')).toBeHidden();
 
   const confirmation = page.locator('#confirm-dialog');
