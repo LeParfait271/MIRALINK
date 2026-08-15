@@ -449,6 +449,14 @@ void test_dualsense_bluetooth_reconnect_policy() {
     assert(!reconnect::should_drop_key_after_auth_failure(true, false, false));
     assert(!reconnect::should_drop_key_after_auth_failure(true, true, true));
 
+    // Authentication persists the Bluetooth bond independently from the
+    // enhanced-input trust gate.  A bootstrap failure must not force a new
+    // web pairing after a successful bond.
+    assert(reconnect::should_drop_unvalidated_key(false, false, false));
+    assert(!reconnect::should_drop_unvalidated_key(true, false, false));
+    assert(!reconnect::should_drop_unvalidated_key(false, true, false));
+    assert(!reconnect::should_drop_unvalidated_key(false, false, true));
+
     assert(reconnect::completes_pairing_window(true, true));
     assert(!reconnect::completes_pairing_window(true, false));
     assert(!reconnect::completes_pairing_window(false, true));

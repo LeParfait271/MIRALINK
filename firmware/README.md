@@ -18,8 +18,10 @@ Firmware 0.51 keeps the one-root experimental DualSense-family USB persona and
 the bounded asynchronous Feature bootstrap introduced in 0.38 (`0x05` → `0x09` → `0x20`)
 after the Bluetooth HID descriptor is accepted. A minimal `0x01` report counts
 only as link liveness. Only a complete, strictly validated enhanced `0x31`
-report can mark the controller connected and make a new Bluetooth address
-trusted. A remembered controller now reconnects passively: automatic
+report can mark the controller connected and trust it for input. Bluetooth
+authentication establishes the remembered bond independently, so a
+bootstrap failure does not force a web re-pair. A remembered controller now
+reconnects passively: automatic
 remembered-key `hid_host_connect` calls no longer reserve BTstack's only HID
 host slot, while outgoing connects remain available only during an active
 pairing inquiry. The first such window opens automatically when no key exists;

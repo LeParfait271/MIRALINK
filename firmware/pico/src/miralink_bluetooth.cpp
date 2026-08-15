@@ -64,6 +64,7 @@ hci_con_handle_t g_acl_handle = HCI_CON_HANDLE_INVALID;
 std::array<std::uint8_t, 6> g_acl_address{};
 bool g_acl_address_valid = false;
 bool g_acl_address_known_before_attempt = false;
+bool g_acl_authenticated = false;
 std::uint64_t g_pairing_window_deadline_ms = 0;
 bool g_initialized = false;
 bool g_hci_working = false;
@@ -80,6 +81,7 @@ struct ActiveControllerAttempt {
     std::array<std::uint8_t, 6> address{};
     bool address_valid = false;
     bool address_known_before_attempt = false;
+    bool link_authenticated = false;
     bool input_validated = false;
 };
 ActiveControllerAttempt g_active_controller_attempt{};
@@ -139,6 +141,7 @@ void service_initial_state_output();
 void service_feature_bootstrap();
 void service_page_scan_rearm();
 void set_connection_closed();
+void remember_paired_address(const bd_addr_t address);
 
 void record_connection_attempt(const bool reconnect) {
     g_connection_failure_recorded = false;
@@ -330,15 +333,6 @@ bool paired_address_known(const bd_addr_t address) {
     return false;
 }
 
-constexpr bool should_drop_unvalidated_key(const bool address_known_before_attempt,
-    const bool input_validated) {
-    return !address_known_before_attempt && !input_validated;
-}
-
-static_assert(should_drop_unvalidated_key(false, false));
-static_assert(!should_drop_unvalidated_key(true, false));
-static_assert(!should_drop_unvalidated_key(false, true));
-
 void begin_controller_attempt(const bd_addr_t address) {
     if (address == nullptr) return;
     if (g_active_controller_attempt.address_valid
@@ -353,6 +347,14 @@ void begin_controller_attempt(const bd_addr_t address) {
     // This lets failure cleanup distinguish a new, unvalidated association
     // from every controller that was already remembered at attempt start.
     g_active_controller_attempt.address_known_before_attempt = paired_address_known(address);
+    g_active_controller_attempt.link_authenticated = g_acl_authenticated
+        && g_acl_address_valid
+        && bd_addr_cmp(address, g_acl_address.data()) == 0;
+    if (g_active_controller_attempt.link_authenticated) {
+        // Authentication is the bond boundary.  The report parser still
+        // withholds input until a complete CRC-valid 0x31 arrives.
+        remember_paired_address(address);
+    }
 }
 
 void clear_controller_attempt() {
@@ -380,11 +382,14 @@ void clear_acl_context() {
     g_acl_address.fill(0);
     g_acl_address_valid = false;
     g_acl_address_known_before_attempt = false;
+    g_acl_authenticated = false;
 }
 
 void discard_unvalidated_controller_attempt() {
     if (g_active_controller_attempt.address_valid
-        && should_drop_unvalidated_key(g_active_controller_attempt.address_known_before_attempt,
+        && reconnect::should_drop_unvalidated_key(
+            g_active_controller_attempt.address_known_before_attempt,
+            g_active_controller_attempt.link_authenticated,
             g_active_controller_attempt.input_validated)) {
         bd_addr_t address{};
         std::memcpy(address, g_active_controller_attempt.address.data(), sizeof(address));
@@ -979,6 +984,15 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 gap_set_page_scan_activity(kPageScanInterval, kPageScanWindow);
                 gap_set_page_scan_type(PAGE_SCAN_MODE_INTERLACED);
                 gap_connectable_control(1);
+                // Make the bond policy explicit instead of relying on
+                // BTstack defaults.  DS5Dongle enables Secure Simple Pairing
+                // with general bonding, which is what lets a PS-only wake
+                // reuse the stored link key after a Pico reboot.
+                gap_ssp_set_enable(1);
+                gap_secure_connections_enable(true);
+                gap_set_bondable_mode(1);
+                gap_ssp_set_authentication_requirement(
+                    SSP_IO_AUTHREQ_MITM_PROTECTION_NOT_REQUIRED_GENERAL_BONDING);
                 // Reapply the controller scan state from the foreground poll
                 // as well; this covers a BTstack reset where its cached
                 // connectable flag survives the radio transition.
@@ -1058,6 +1072,17 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             const auto handle = hci_event_authentication_complete_get_connection_handle(packet);
             const bool handle_matches = g_acl_handle != HCI_CON_HANDLE_INVALID
                 && handle == g_acl_handle;
+            if (status == ERROR_CODE_SUCCESS && handle_matches && g_acl_address_valid) {
+                g_acl_authenticated = true;
+                if (g_active_controller_attempt.address_valid
+                    && bd_addr_cmp(g_active_controller_attempt.address.data(), g_acl_address.data()) == 0) {
+                    g_active_controller_attempt.link_authenticated = true;
+                    // Persist the address at the same lifecycle boundary as
+                    // the link key.  A later HID/feature failure must not
+                    // turn a valid bond into a mandatory web re-pair.
+                    remember_paired_address(g_acl_address.data());
+                }
+            }
             if (status != ERROR_CODE_SUCCESS
                 && reconnect::should_drop_key_after_auth_failure(
                     handle_matches,
@@ -1071,6 +1096,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 gap_drop_link_key_for_bd_addr(address);
                 forget_paired_address(address);
                 clear_controller_attempt();
+                g_acl_authenticated = false;
             }
             if (status != ERROR_CODE_SUCCESS && handle_matches) {
                 record_connection_failure(ConnectionError::ConnectionOpen, status);

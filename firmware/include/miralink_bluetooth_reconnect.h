@@ -92,6 +92,17 @@ constexpr bool should_drop_key_after_auth_failure(const bool handle_matches,
     return handle_matches && address_known_before_attempt && !input_validated;
 }
 
+// A link key is a bond credential, not an input-validation token.  Keep a
+// newly authenticated address even when HID descriptor/bootstrap traffic is
+// interrupted; input remains gated separately until a CRC-valid enhanced
+// report is received.  The third argument preserves the defensive behavior
+// for a controller that managed to send valid input before the auth event was
+// observed by the application.
+constexpr bool should_drop_unvalidated_key(const bool address_known_before_attempt,
+    const bool link_authenticated, const bool input_validated) {
+    return !address_known_before_attempt && !link_authenticated && !input_validated;
+}
+
 constexpr bool completes_pairing_window(const bool pairing_window_active,
     const bool first_valid_enhanced_input) {
     return pairing_window_active && first_valid_enhanced_input;
@@ -117,5 +128,9 @@ static_assert(should_drop_key_after_auth_failure(true, true, false));
 static_assert(!should_drop_key_after_auth_failure(false, true, false));
 static_assert(!should_drop_key_after_auth_failure(true, false, false));
 static_assert(!should_drop_key_after_auth_failure(true, true, true));
+static_assert(should_drop_unvalidated_key(false, false, false));
+static_assert(!should_drop_unvalidated_key(true, false, false));
+static_assert(!should_drop_unvalidated_key(false, true, false));
+static_assert(!should_drop_unvalidated_key(false, false, true));
 
 } // namespace miralink::bluetooth::reconnect

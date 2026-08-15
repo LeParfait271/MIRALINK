@@ -73,19 +73,21 @@ physical PS-only reconnect test passes.
   discoverability are restored for the short PS-only page window; unknown
   incoming controllers remain declined outside an active pairing window, and
   that window closes after the first complete CRC-valid enhanced `0x31` report.
-- A newly observed Bluetooth address is kept provisional until its first valid
-  DualSense input report. If that new attempt closes before validation, only
-  the new unvalidated link key is discarded; keys that predated the attempt
-  are preserved.
+- A newly observed Bluetooth address becomes a remembered bond after
+  successful Bluetooth authentication, matching the DS5Dongle lifecycle. The
+  input path remains provisional until its first valid DualSense report, so a
+  HID/bootstrap failure cannot force a web re-pair while malformed input is
+  still rejected.
 - After the Bluetooth HID descriptor is accepted, a bounded asynchronous
   bootstrap requests Feature reports `0x05`, `0x09` and `0x20` in order. Only
   one request is in flight, transient BTstack busy/not-ready responses are
   handled without blocking callbacks, and a bounded neutral-output fallback is
   available if the Feature path does not activate the enhanced input stream.
 - Minimal Bluetooth input report `0x01` is treated as liveness evidence only.
-  It cannot mark the controller connected, populate game input or persist a
-  provisional controller. Those transitions require a complete enhanced
-  report `0x31` with the expected size and a valid CRC.
+  It cannot mark the controller connected or populate game input. Those
+  transitions require a complete enhanced report `0x31` with the expected
+  size and a valid CRC; bond persistence is intentionally independent of that
+  input trust gate.
 - CYW43 and BTstack use the SDK polling async context. The main loop services
   USB first, dispatches radio/BTstack work, then advances the Bluetooth state
   machine, avoiding foreground/background BTstack races.
