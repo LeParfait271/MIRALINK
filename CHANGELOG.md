@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.47 - 2026-08-15
+
+- Compared DS5Dongle's authentication-failure path before changing MiraLink.
+- Track the active ACL handle and address through HCI connection events.
+- Drop a remembered Bluetooth key only when that exact controller fails
+  authentication before a valid enhanced `0x31` input crosses the trust
+  boundary; brand-new and already validated associations are preserved.
+- Keep the hardware score at `54.4%` until a fresh manual reconnect and
+  re-pair test passes.
+
 ## 0.46 - 2026-08-15
 
 - Compared the failed 0.45 PS-only reconnect with the official DS5Dongle

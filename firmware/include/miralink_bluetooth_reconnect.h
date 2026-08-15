@@ -59,6 +59,16 @@ constexpr bool should_recover_after_hci_disconnection(const bool hci_working,
     return hci_working && !idle_suspended && hid_link_active;
 }
 
+// DS5Dongle drops a remembered link key after a controller-authentication
+// failure. MiraLink applies that recovery only when the HCI handle is the
+// active controller, the address was already remembered before this attempt,
+// and no valid enhanced input has crossed the trust boundary yet. A transient
+// failure for a brand-new pairing must not erase anything else.
+constexpr bool should_drop_key_after_auth_failure(const bool handle_matches,
+    const bool address_known_before_attempt, const bool input_validated) {
+    return handle_matches && address_known_before_attempt && !input_validated;
+}
+
 constexpr bool completes_pairing_window(const bool pairing_window_active,
     const bool first_valid_enhanced_input) {
     return pairing_window_active && first_valid_enhanced_input;
@@ -73,5 +83,9 @@ static_assert(!should_rearm_after_hci_disconnection(true, true));
 static_assert(should_recover_after_hci_disconnection(true, false, true));
 static_assert(!should_recover_after_hci_disconnection(true, false, false));
 static_assert(!should_recover_after_hci_disconnection(true, true, true));
+static_assert(should_drop_key_after_auth_failure(true, true, false));
+static_assert(!should_drop_key_after_auth_failure(false, true, false));
+static_assert(!should_drop_key_after_auth_failure(true, false, false));
+static_assert(!should_drop_key_after_auth_failure(true, true, true));
 
 } // namespace miralink::bluetooth::reconnect

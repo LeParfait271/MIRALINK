@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.46`
-- Current firmware version: `0.46` (retires a stale HID host slot after HCI teardown; USB audio remains source-only)
+- Current site version: `0.47`
+- Current firmware version: `0.47` (drops a stale remembered Bluetooth key after correlated authentication failure; USB audio remains source-only)
 - Last update: `2026-08-15`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: GitHub source and manual firmware release
@@ -54,15 +54,18 @@ its cached `connectable` flag true after the controller disables page scan, so a
 later `gap_connectable_control(1)` call does nothing. Candidate `0.41` deferred
 the rearm to the foreground poll and forced a fresh page-scan enable command.
 Candidate `0.42` applies the same foreground-only rule when a configuration
-commit resumes the radio from local idle suspension. Candidate `0.46` now uses
+commit resumes the radio from local idle suspension. Candidate `0.46` used
 the official DS5Dongle `v0.7.2-hotfix` behavior as a mandatory diagnostic
 reference and queues passive page-scan recovery at
-`HCI_EVENT_DISCONNECTION_COMPLETE`. These corrections remain
-software-validated until a new manual Pico 2 W/DualSense run.
+`HCI_EVENT_DISCONNECTION_COMPLETE`. Candidate `0.47` extends the same
+comparison to authentication failures: only a remembered address on the
+active ACL handle, still unvalidated by enhanced input, can be dropped.
+These corrections remain software-validated until a new manual Pico 2 W/
+DualSense run.
 
 The web application is an original desktop control deck with working WebHID
 discovery, guided diagnostics, local profiles, local UF2 inspection and an
-offline shell. Version `0.46` keeps the quick-access navigation introduced in
+offline shell. Version `0.47` keeps the quick-access navigation introduced in
 `0.39` and hardens WebHID command handling with a cancellable per-device FIFO,
 bounded response-read retries that never resend an ambiguously written
 command, 100 ms controller polling, and explicit USB-disappearance checks for

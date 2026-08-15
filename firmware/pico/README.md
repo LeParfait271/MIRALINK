@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.46
+## Firmware 0.47
 
 The firmware exposes one experimental HID-only DualSense-family persona. It
 uses Sony VID `0x054c` with PID `0x0ce6` (standard/Auto) or `0x0df2` (Edge)
@@ -74,12 +74,16 @@ in source and is not exposed as a working USB capability.
 - CYW43 and BTstack use the SDK polling async context. The main loop services
   USB first, dispatches radio/BTstack work, then advances the Bluetooth state
   machine, avoiding foreground/background BTstack races.
-- In the compiled `0.46` candidate, a build-generated SDK source patch also
+- In the compiled `0.47` candidate, a build-generated SDK source patch also
   keeps the relevant Bluetooth output path inside that serialization boundary.
   This is software evidence only until exercised on a real Pico 2 W.
 - A stale HID CID released for explicit pairing is tombstoned until its close;
   late descriptor, protocol and input events from it cannot overwrite the new
   pairing state.
+- HCI authentication failures are correlated to the active ACL handle. Only a
+  remembered address that fails before a valid enhanced input report can have
+  its stale BTstack key dropped; ordinary disconnects and new associations do
+  not erase keys.
 - Validated input forwarding with battery, headset/mic state, motion and touch
   data after a complete Bluetooth report.
 - Bounded rumble, lightbar, player LED, microphone-mute and fixed 47-byte
@@ -121,7 +125,7 @@ or source-only paths and must not be presented as active capabilities.
 The source is built locally with Pico SDK `2.3.0`, Arm GNU Toolchain `15.2.1`,
 vendored Opus and picotool. The HID-only configuration descriptor is checked at
 compile time, and the UF2 is inspected locally for Pico 2 W / RP2350 ARM Secure
-targeting. The Windows host-test executable is not launched during the 0.46
+targeting. The Windows host-test executable is not launched during the 0.47
 pass; its new pure assertions are compiled separately and the complete Pico
 cross-build remains the release gate.
 
@@ -161,17 +165,17 @@ after Pico reboot. Firmware `0.41` kept that policy and deferred page-scan
 rearming after a HID close. Firmware `0.42` applies the same foreground-only
 rearm when a configuration commit resumes local idle suspension, without
 changing the report table, command identifiers or binary protocol version `1`.
-Firmware `0.46` compares the reconnect lifecycle with the official DS5Dongle
+Firmware `0.47` compares the reconnect and authentication lifecycles with the official DS5Dongle
 `v0.7.2-hotfix` source and defers the passive rearm request until
 `HCI_EVENT_DISCONNECTION_COMPLETE`; the actual BTstack writes remain in the
 foreground poll. Reconnect after power-off, after Pico reboot and after abrupt
 range/power loss, idle-resume recovery, plus explicit USB re-enumeration,
 motion, touch, rumble, adaptive triggers and wake still require a fresh manual
-`0.46` hardware test.
+`0.47` hardware test.
 
 ## Local manual-test candidate
 
-`firmware/releases/0.46/` contains ELF, BIN, HEX, UF2 and SHA-256 values
+`firmware/releases/0.47/` contains ELF, BIN, HEX, UF2 and SHA-256 values
 created from the current source. To test, enter BOOTSEL mode on a Pico 2 W and
 manually copy only `miralink_pico_firmware.uf2` to the `RPI-RP2` volume. The
 firmware never flashes a board automatically.
@@ -179,7 +183,7 @@ firmware never flashes a board automatically.
 The release UF2 is 1,415,680 bytes, covers `0x10000000..0x100acbbc`, and has
 SHA-256
 `B1B9DDBF916E5C9EA48C2E99C848C62CF468B1D7DD6169749E73A9EC4D538826`.
-These values establish artifact identity only; firmware `0.46` remains
+These values establish artifact identity only; firmware `0.47` remains
 materially unvalidated until the manual reconnect matrix is complete.
 
 The Sony-compatible VID/PID is an explicit experimental compatibility choice,

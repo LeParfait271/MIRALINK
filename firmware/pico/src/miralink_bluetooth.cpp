@@ -57,6 +57,10 @@ btstack_packet_callback_registration_t g_hci_event_registration{};
 critical_section_t g_state_lock{};
 Snapshot g_snapshot{};
 std::uint16_t g_hid_cid = 0;
+hci_con_handle_t g_acl_handle = HCI_CON_HANDLE_INVALID;
+std::array<std::uint8_t, 6> g_acl_address{};
+bool g_acl_address_valid = false;
+bool g_acl_address_known_before_attempt = false;
 std::uint64_t g_pairing_window_deadline_ms = 0;
 bool g_initialized = false;
 bool g_hci_working = false;
@@ -331,6 +335,29 @@ void begin_controller_attempt(const bd_addr_t address) {
 
 void clear_controller_attempt() {
     g_active_controller_attempt = {};
+}
+
+void forget_paired_address(const bd_addr_t address) {
+    if (address == nullptr) return;
+    for (std::size_t index = 0; index < g_paired_address_count; ++index) {
+        if (bd_addr_cmp(address, g_paired_addresses[index].data()) != 0) continue;
+        for (std::size_t move = index; move + 1 < g_paired_address_count; ++move) {
+            g_paired_addresses[move] = g_paired_addresses[move + 1];
+        }
+        g_paired_addresses[g_paired_address_count - 1].fill(0);
+        --g_paired_address_count;
+        critical_section_enter_blocking(&g_state_lock);
+        g_snapshot.paired_controller_known = g_paired_address_count != 0;
+        critical_section_exit(&g_state_lock);
+        return;
+    }
+}
+
+void clear_acl_context() {
+    g_acl_handle = HCI_CON_HANDLE_INVALID;
+    g_acl_address.fill(0);
+    g_acl_address_valid = false;
+    g_acl_address_known_before_attempt = false;
 }
 
 void discard_unvalidated_controller_attempt() {
@@ -841,6 +868,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_protocol_handshake_pending = false;
                 g_idle_suspended = false;
                 g_hci_disconnection_recovery_pending = false;
+                clear_acl_context();
                 g_last_activity_ms = now_ms();
                 clear_ignored_hid_teardown();
                 clear_controller_attempt();
@@ -885,6 +913,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_connection_pending = false;
                 g_hid_cid = 0;
                 g_hci_disconnection_recovery_pending = false;
+                clear_acl_context();
                 clear_ignored_hid_teardown();
                 g_connection_deadline_ms = 0;
                 g_inquiry_retry_deadline_ms = 0;
@@ -908,6 +937,47 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             }
             break;
 
+        case HCI_EVENT_CONNECTION_COMPLETE: {
+            const auto status = hci_event_connection_complete_get_status(packet);
+            if (status == ERROR_CODE_SUCCESS) {
+                const auto handle = hci_event_connection_complete_get_connection_handle(packet);
+                bd_addr_t address{};
+                hci_event_connection_complete_get_bd_addr(packet, address);
+                g_acl_handle = handle;
+                std::memcpy(g_acl_address.data(), address, g_acl_address.size());
+                g_acl_address_valid = true;
+                g_acl_address_known_before_attempt = paired_address_known(address);
+            } else {
+                clear_acl_context();
+            }
+            break;
+        }
+
+        case HCI_EVENT_AUTHENTICATION_COMPLETE: {
+            const auto status = hci_event_authentication_complete_get_status(packet);
+            const auto handle = hci_event_authentication_complete_get_connection_handle(packet);
+            const bool handle_matches = g_acl_handle != HCI_CON_HANDLE_INVALID
+                && handle == g_acl_handle;
+            if (status != ERROR_CODE_SUCCESS
+                && reconnect::should_drop_key_after_auth_failure(
+                    handle_matches,
+                    g_acl_address_known_before_attempt,
+                    g_active_controller_attempt.input_validated)
+                && g_acl_address_valid) {
+                bd_addr_t address{};
+                std::memcpy(address, g_acl_address.data(), sizeof(address));
+                // This mirrors DS5Dongle's stale-bond recovery, but only for
+                // the active controller handle and before valid input trust.
+                gap_drop_link_key_for_bd_addr(address);
+                forget_paired_address(address);
+                clear_controller_attempt();
+            }
+            if (status != ERROR_CODE_SUCCESS && handle_matches) {
+                record_connection_failure(ConnectionError::ConnectionOpen, status);
+            }
+            break;
+        }
+
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             // DS5Dongle re-enables its connectable/discoverable state at this
             // lifecycle boundary. MiraLink records the same boundary here,
@@ -918,6 +988,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_hid_cid != 0 || g_connection_pending);
             g_page_scan_rearm_pending = reconnect::should_rearm_after_hci_disconnection(
                 g_hci_working, g_idle_suspended);
+            clear_acl_context();
             break;
 
         case HCI_EVENT_PIN_CODE_REQUEST: {
