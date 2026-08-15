@@ -68,6 +68,14 @@ constexpr bool should_recover_after_hci_disconnection(const bool hci_working,
     return hci_working && !idle_suspended && hid_link_active;
 }
 
+// An ACL page attempt can fail before BTstack emits any HID-host event. The
+// caller must release its pending attempt and return to page-scan/inquiry;
+// otherwise the single HID-host slot remains logically busy until timeout.
+constexpr bool should_recover_after_acl_failure(const bool hci_working,
+    const bool idle_suspended, const bool connection_pending) {
+    return hci_working && !idle_suspended && connection_pending;
+}
+
 // HCI_EVENT_DISCONNECTION_COMPLETE is emitted for every ACL link handled by
 // the controller.  Only the handle belonging to MiraLink's active DualSense
 // may tear down its HID state; an unrelated Bluetooth device must be ignored.
@@ -120,6 +128,9 @@ static_assert(!should_restore_discoverable(true, true));
 static_assert(should_recover_after_hci_disconnection(true, false, true));
 static_assert(!should_recover_after_hci_disconnection(true, false, false));
 static_assert(!should_recover_after_hci_disconnection(true, true, true));
+static_assert(should_recover_after_acl_failure(true, false, true));
+static_assert(!should_recover_after_acl_failure(true, false, false));
+static_assert(!should_recover_after_acl_failure(true, true, true));
 static_assert(matches_active_acl_disconnection(true, 0x0042, 0x0042, true));
 static_assert(!matches_active_acl_disconnection(true, 0x0042, 0x0043, true));
 static_assert(matches_active_acl_disconnection(false, 0xffff, 0x0043, true));

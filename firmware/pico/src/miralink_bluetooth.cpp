@@ -1094,6 +1094,18 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     (void) hci_send_cmd(&hci_authentication_requested, handle);
                 }
             } else {
+                const bool hid_attempt_pending = g_connection_pending;
+                if (hid_attempt_pending) {
+                    // A page timeout (commonly status 0x04) may arrive before
+                    // HID host emits CONNECTION_OPENED/CLOSED. Release the
+                    // pending attempt immediately instead of waiting for the
+                    // 10 s HID deadline, then let the normal foreground radio
+                    // re-arm return the Pico to passive PS reconnect/inquiry.
+                    record_connection_failure(ConnectionError::ConnectionOpen, status);
+                    set_connection_closed();
+                    g_page_scan_rearm_pending = reconnect::should_recover_after_acl_failure(
+                        g_hci_working, g_idle_suspended, hid_attempt_pending);
+                }
                 clear_acl_context();
             }
             break;

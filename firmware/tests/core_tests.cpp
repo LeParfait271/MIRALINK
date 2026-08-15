@@ -440,6 +440,9 @@ void test_dualsense_bluetooth_reconnect_policy() {
     assert(reconnect::should_recover_after_hci_disconnection(true, false, true));
     assert(!reconnect::should_recover_after_hci_disconnection(true, false, false));
     assert(!reconnect::should_recover_after_hci_disconnection(true, true, true));
+    assert(reconnect::should_recover_after_acl_failure(true, false, true));
+    assert(!reconnect::should_recover_after_acl_failure(true, false, false));
+    assert(!reconnect::should_recover_after_acl_failure(true, true, true));
     assert(reconnect::matches_active_acl_disconnection(true, 0x0042, 0x0042, true));
     assert(!reconnect::matches_active_acl_disconnection(true, 0x0042, 0x0043, true));
     assert(reconnect::matches_active_acl_disconnection(false, 0xffff, 0x0043, true));
