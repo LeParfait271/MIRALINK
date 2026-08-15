@@ -1069,7 +1069,17 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             break;
         }
 
-        case HCI_EVENT_DISCONNECTION_COMPLETE:
+        case HCI_EVENT_DISCONNECTION_COMPLETE: {
+            const auto disconnected_handle =
+                hci_event_disconnection_complete_get_connection_handle(packet);
+            const bool acl_handle_valid = g_acl_handle != HCI_CON_HANDLE_INVALID;
+            const bool hid_link_active = g_hid_cid != 0 || g_connection_pending;
+            if (!reconnect::matches_active_acl_disconnection(
+                    acl_handle_valid, g_acl_handle, disconnected_handle, hid_link_active)) {
+                // Other Bluetooth ACL links must not clear the active
+                // DualSense state or consume its reconnect recovery request.
+                break;
+            }
             // DS5Dongle re-enables its connectable/discoverable state at this
             // lifecycle boundary. This event is the controller's last
             // authoritative teardown edge; deferring the first scan-enable
@@ -1090,6 +1100,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_hci_working, g_idle_suspended);
             clear_acl_context();
             break;
+        }
 
         case HCI_EVENT_PIN_CODE_REQUEST: {
             bd_addr_t address;

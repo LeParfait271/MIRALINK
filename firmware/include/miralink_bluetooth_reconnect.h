@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 namespace miralink::bluetooth::reconnect {
 
@@ -67,6 +68,20 @@ constexpr bool should_recover_after_hci_disconnection(const bool hci_working,
     return hci_working && !idle_suspended && hid_link_active;
 }
 
+// HCI_EVENT_DISCONNECTION_COMPLETE is emitted for every ACL link handled by
+// the controller.  Only the handle belonging to MiraLink's active DualSense
+// may tear down its HID state; an unrelated Bluetooth device must be ignored.
+// If BTstack delivered the event before the ACL handle was recorded, an active
+// HID/pending link is the conservative fallback and is still eligible for
+// recovery.  With no active link, an unknown handle is never actionable.
+constexpr bool matches_active_acl_disconnection(const bool acl_handle_valid,
+    const std::uint16_t active_acl_handle,
+    const std::uint16_t disconnected_acl_handle,
+    const bool hid_link_active) {
+    if (acl_handle_valid) return active_acl_handle == disconnected_acl_handle;
+    return hid_link_active;
+}
+
 // DS5Dongle drops a remembered link key after a controller-authentication
 // failure. MiraLink applies that recovery only when the HCI handle is the
 // active controller, the address was already remembered before this attempt,
@@ -94,6 +109,10 @@ static_assert(!should_restore_discoverable(true, true));
 static_assert(should_recover_after_hci_disconnection(true, false, true));
 static_assert(!should_recover_after_hci_disconnection(true, false, false));
 static_assert(!should_recover_after_hci_disconnection(true, true, true));
+static_assert(matches_active_acl_disconnection(true, 0x0042, 0x0042, true));
+static_assert(!matches_active_acl_disconnection(true, 0x0042, 0x0043, true));
+static_assert(matches_active_acl_disconnection(false, 0xffff, 0x0043, true));
+static_assert(!matches_active_acl_disconnection(false, 0xffff, 0x0043, false));
 static_assert(should_drop_key_after_auth_failure(true, true, false));
 static_assert(!should_drop_key_after_auth_failure(false, true, false));
 static_assert(!should_drop_key_after_auth_failure(true, false, false));
