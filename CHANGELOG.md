@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.54 - 2026-08-15
+
+- Re-arm a bounded tombstone teardown when the user explicitly opens pairing
+  again after a stale HID/SDP connection outlives its first retry window.
+- Keep the passive reconnect path unchanged; this is a recovery action, not a
+  background reconnect loop. Physical validation remains pending.
+
 ## 0.53 - 2026-08-15
 
 - Compared bonded inbound admission with the official DS5Dongle lifecycle.

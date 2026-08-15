@@ -6,7 +6,7 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(miralink_pico_firmware VERSION 0.53.0 LANGUAGES C CXX ASM)
+project(miralink_pico_firmware VERSION 0.54.0 LANGUAGES C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -196,7 +196,7 @@ if(MIRALINK_AUDIO_BACKEND_ENABLED)
 endif()
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
-pico_set_program_version(miralink_pico_firmware "0.53")
+pico_set_program_version(miralink_pico_firmware "0.54")
 pico_enable_stdio_uart(miralink_pico_firmware 0)
 pico_enable_stdio_usb(miralink_pico_firmware 0)
 pico_add_extra_outputs(miralink_pico_firmware)

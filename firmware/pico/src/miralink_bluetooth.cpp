@@ -1510,6 +1510,12 @@ bool open_pairing_window() {
     gap_connectable_control(1);
     gap_discoverable_control(1);
 
+    // An old HID CID can outlive the bounded tombstone retry window when
+    // BTstack is still finishing SDP. A new explicit pairing action is the
+    // safe user-controlled boundary to resume those retries; passive polling
+    // must not loop forever or disturb a new inbound controller.
+    if (g_ignored_hid_cid != 0) arm_ignored_hid_disconnect();
+
     // A controller can remain at the HID-descriptor stage after a failed or
     // interrupted reconnect.  That stale CID prevents a new inquiry from
     // starting and makes the pairing window look open while the radio is
