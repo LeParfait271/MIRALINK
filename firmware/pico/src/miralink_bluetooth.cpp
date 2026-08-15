@@ -1061,6 +1061,13 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 std::memcpy(g_acl_address.data(), address, g_acl_address.size());
                 g_acl_address_valid = true;
                 g_acl_address_known_before_attempt = paired_address_known(address);
+                // DS5Dongle explicitly starts the Classic authentication
+                // phase after the ACL is complete.  Keep that lifecycle
+                // boundary explicit here too; HID admission is still gated
+                // separately by the remembered-address/pairing-window policy.
+                if (pairing_window_active() || g_acl_address_known_before_attempt) {
+                    (void) hci_send_cmd(&hci_authentication_requested, handle);
+                }
             } else {
                 clear_acl_context();
             }
@@ -1082,6 +1089,11 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     // turn a valid bond into a mandatory web re-pair.
                     remember_paired_address(g_acl_address.data());
                 }
+                // Authentication completes before the controller's HID
+                // channels are opened. Request encryption explicitly, as the
+                // reference firmware does, while BTstack still owns the
+                // authenticated ACL handle.
+                (void) hci_send_cmd(&hci_set_connection_encryption, handle, 1);
             }
             if (status != ERROR_CODE_SUCCESS
                 && reconnect::should_drop_key_after_auth_failure(

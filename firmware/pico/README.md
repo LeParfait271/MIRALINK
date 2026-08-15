@@ -73,6 +73,8 @@ physical PS-only reconnect test passes.
   discoverability are restored for the short PS-only page window; unknown
   incoming controllers remain declined outside an active pairing window, and
   that window closes after the first complete CRC-valid enhanced `0x31` report.
+- ACL security is explicit: an admitted connection requests authentication
+  and then link encryption on its active handle before HID traffic is trusted.
 - A newly observed Bluetooth address becomes a remembered bond after
   successful Bluetooth authentication, matching the DS5Dongle lifecycle. The
   input path remains provisional until its first valid DualSense report, so a
