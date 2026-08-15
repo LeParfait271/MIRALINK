@@ -356,11 +356,9 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#read-config-button')).toBeEnabled();
   await page.locator('#read-config-button').click();
   await expect(page.locator('#haptics-gain')).toBeEnabled();
-  await expect(page.locator('#audio-buffer')).toBeDisabled();
-  await expect(page.locator('#audio-buffer')).toHaveValue('96');
-  await expect(page.locator('#ps-shortcut')).toBeDisabled();
-  await expect(page.locator('#ps-shortcut')).toBeChecked();
-  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.51');
+  await expect(page.locator('.capability-row')).toHaveCount(2);
+  await expect(page.locator('.capability-row').first()).toContainText('Audio USB');
+  await expect(page.locator('.capability-row').last()).toContainText('Raccourci PS');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';
@@ -461,8 +459,7 @@ test('keeps commit, factory reset and explicit USB reconnect as separate confirm
   await revealSection(page, '#tab-bridge');
   await page.locator('#read-config-button').click();
   await expect(page.locator('#haptics-gain')).toBeEnabled();
-  await expect(page.locator('#audio-buffer')).toBeDisabled();
-  await expect(page.locator('#ps-shortcut')).toBeDisabled();
+  await expect(page.locator('.capability-row')).toHaveCount(2);
 
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';

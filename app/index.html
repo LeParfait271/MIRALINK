@@ -9,7 +9,7 @@
   <title>MiraLink — Centre de contrôle local</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=51-reconnect-bootstrap">
+  <link rel="stylesheet" href="styles.css?ui=51-focus-config">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Aller au contenu</a>
@@ -44,15 +44,14 @@
     <section class="operations-hero" id="top" aria-labelledby="page-title">
       <div class="stage-index" aria-hidden="true">
         <span>ML / 001</span>
-        <span>TRANSPORT LOCAL</span>
-        <span>48.8566° N / 2.3522° E</span>
+        <span>DESKTOP / LOCAL</span>
       </div>
 
       <div class="operations-grid">
         <div class="hero-copy">
           <p class="eyebrow" data-i18n="heroEyebrow">CONNEXION LOCALE</p>
           <h1 id="page-title" data-i18n="title">Connectez.<br>Contrôlez.<br><em>Vérifiez.</em></h1>
-          <p class="hero-lede" data-i18n="heroLede">Un poste de commande local pour le bridge MiraLink, la manette et le firmware.</p>
+          <p class="hero-lede" data-i18n="heroLede">Bridge, manette, firmware. Tout reste local.</p>
           <div class="signal-map" aria-hidden="true">
             <span class="signal-node node-host">HOST</span>
             <i class="signal-line line-a"></i>
@@ -72,7 +71,7 @@
             </div>
             <span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span>
           </div>
-          <p class="connection-copy">Autorisez ce navigateur à communiquer avec le Pico 2 W. Aucune donnée du périphérique n’est téléversée.</p>
+          <p class="connection-copy">WebHID local. Aucune donnée du périphérique n’est téléversée.</p>
           <div class="connection-surface-actions">
             <button class="button primary" id="connect-button" type="button" data-i18n="connect" disabled>Connecter un appareil</button>
             <button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh" disabled>Actualiser</button>
@@ -129,38 +128,38 @@
 
     <div class="system-rail" aria-label="Repères de l’application">
       <span><b>03</b> ESPACE DE TRAVAIL</span>
-      <span>WEBHID / BLUETOOTH / USB</span>
+      <span>WEBHID / BLUETOOTH</span>
       <span class="system-rail-live"><i aria-hidden="true"></i>TRAITEMENT LOCAL</span>
     </div>
 
     <section class="tab-panel content-section" id="tab-overview" data-panel="overview" data-section-index="04">
       <div class="section-heading">
-        <div><p class="eyebrow" data-i18n="overviewEyebrow">VUE SYSTÈME</p><h2 data-i18n="overviewTitle">Un parcours court.<br>Des états lisibles.</h2></div>
+        <div><p class="eyebrow" data-i18n="overviewEyebrow">VUE SYSTÈME</p><h2 data-i18n="overviewTitle">Les trois gestes essentiels.</h2></div>
         <span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span>
       </div>
       <div class="workflow-grid">
         <article class="workflow-card">
           <div class="workflow-index"><span>01</span><i></i><span>ACQUÉRIR</span></div>
           <h3>Relier le matériel</h3>
-          <p>Le navigateur parle au bridge via WebHID. Le bridge gère ensuite la liaison Bluetooth avec la manette.</p>
+          <p>WebHID relie le navigateur au Pico. Le Pico gère le Bluetooth.</p>
           <button class="text-action" type="button" data-sequence-tab="overview" data-route-target="#workspace">Revenir à la connexion <span aria-hidden="true">↗</span></button>
         </article>
         <article class="workflow-card">
           <div class="workflow-index"><span>02</span><i></i><span>AJUSTER</span></div>
           <h3>Régler le bridge</h3>
-          <p>Les paramètres restent en brouillon jusqu’à leur validation explicite sur le Pico 2 W.</p>
+          <p>Les réglages restent locaux jusqu’à confirmation.</p>
           <button class="text-action" type="button" data-sequence-tab="bridge" data-route-target="#tab-bridge">Ouvrir la configuration <span aria-hidden="true">↗</span></button>
         </article>
         <article class="workflow-card workflow-card-accent">
           <div class="workflow-index"><span>03</span><i></i><span>OBSERVER</span></div>
           <h3>Isoler le signal</h3>
-          <p>USB, radio, audio et flash sont distingués pour identifier le point de blocage sans fausse promesse.</p>
+          <p>Chaque couche est vérifiée séparément.</p>
           <button class="text-action" type="button" data-sequence-tab="diagnostics" data-route-target="#tab-diagnostics">Lire le protocole <span aria-hidden="true">↗</span></button>
         </article>
       </div>
       <div class="callout emerald">
         <span class="callout-icon" aria-hidden="true">+</span>
-        <div><h3 data-i18n="safetyTitle">Chaque action importante reste visible.</h3><p data-i18n="safetyBody">Les brouillons restent locaux et les écritures sont confirmées avant modification.</p></div>
+        <div><h3 data-i18n="safetyTitle">Aucune écriture silencieuse.</h3><p data-i18n="safetyBody">Un brouillon local. Une confirmation. Puis seulement l’écriture.</p></div>
       </div>
     </section>
 
@@ -182,7 +181,7 @@
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">02</span><div><h3 data-i18n="performanceTitle">Performance</h3><p data-i18n="performanceCopy">Fréquence d’interrogation et rythme audio.</p></div></div>
           <label class="field" for="polling-mode"><span class="field-label" data-i18n="pollingMode">Mode d’interrogation</span><select id="polling-mode" disabled><option value="0">250 Hz</option><option value="1">500 Hz</option><option value="2">Temps réel</option></select></label>
-          <label class="field unavailable-field" for="audio-buffer"><span class="field-label" data-i18n="audioBuffer">Tampon audio</span><span class="field-value" id="audio-buffer-value">64</span><input id="audio-buffer" type="range" min="16" max="127" step="1" value="64" aria-describedby="audio-buffer-hint" disabled><span class="field-hint" id="audio-buffer-hint">Indisponible en 0.51 — transport audio USB non exposé.</span></label>
+          <div class="capability-row" role="note"><span class="capability-state">NON EXPOSÉ</span><div><strong>Audio USB</strong><span>Le transport audio n’est pas activé dans le firmware actuel.</span></div></div>
         </article>
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">03</span><div><h3 data-i18n="powerTitle">Énergie et témoins</h3><p data-i18n="powerCopy">Veille, lumière et réveil de l’hôte.</p></div></div>
@@ -194,7 +193,7 @@
           <div class="card-heading"><span class="card-kicker">04</span><div><h3 data-i18n="compatibilityTitle">Compatibilité</h3><p data-i18n="compatibilityCopy">Mode manette et comportement USB.</p></div></div>
           <label class="field" for="controller-mode"><span class="field-label" data-i18n="controllerMode">Mode manette</span><select id="controller-mode" disabled><option value="0">DualSense</option><option value="1">DualSense Edge</option><option value="2">Automatique</option></select></label>
           <label class="switch-field"><input id="enable-usb-sn" type="checkbox" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="enableUsbSerial">Activer le numéro de série USB</span></label>
-          <label class="switch-field unavailable-field"><input id="ps-shortcut" type="checkbox" aria-describedby="ps-shortcut-hint" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="psShortcut">Activer le raccourci PS</span><span class="field-hint" id="ps-shortcut-hint">Indisponible en 0.51 — commande non exposée par le firmware actuel.</span></label>
+          <div class="capability-row" role="note"><span class="capability-state">NON EXPOSÉ</span><div><strong>Raccourci PS</strong><span>La commande n’est pas exposée par le firmware actuel.</span></div></div>
         </article>
       </div>
       <div class="notice warning usb-reconnect-notice" id="usb-reconnect-notice" role="status" hidden>
@@ -212,7 +211,7 @@
       <section class="controller-lab-console" id="controller-lab-console" aria-labelledby="controller-lab-console-title">
         <div class="controller-lab-heading">
           <div>
-            <p class="section-overline">TÉLÉMÉTRIE D’ENTRÉE / LECTURE SEULE</p>
+            <p class="section-overline">ENTRÉE / LECTURE SEULE</p>
             <h3 id="controller-lab-console-title">Controller Lab</h3>
           </div>
           <div class="controller-stream-state" aria-label="État du flux de contrôleur">
@@ -226,12 +225,12 @@
           <div><span>Batterie</span><span id="controller-lab-battery">—</span></div>
           <div><span>Casque</span><span id="controller-lab-headset">En attente d’un rapport</span></div>
           <div><span>Microphone</span><span id="controller-lab-microphone">En attente d’un rapport</span></div>
-          <p>États reçus uniquement ; aucune commande audio n’est exposée.</p>
+          <p>Lecture uniquement · audio non exposé.</p>
         </div>
 
         <div class="controller-lab-layout">
           <section class="controller-live-inputs" aria-labelledby="controller-live-inputs-title">
-            <div class="controller-subheading"><span>01</span><div><h4 id="controller-live-inputs-title">Entrées en direct</h4><p>Valeurs normalisées du dernier rapport valide.</p></div></div>
+            <div class="controller-subheading"><span>01</span><div><h4 id="controller-live-inputs-title">Entrées en direct</h4><p>Dernier rapport valide.</p></div></div>
 
             <div class="controller-stick-grid">
               <article class="controller-stick-module">
@@ -287,7 +286,7 @@
 
           <div class="controller-data-column">
             <section class="controller-sensor-panel" aria-labelledby="controller-sensor-title">
-              <div class="controller-subheading"><span>02</span><div><h4 id="controller-sensor-title">Mouvement et tactile</h4><p>Lecture brute, sans correction ni écriture.</p></div></div>
+              <div class="controller-subheading"><span>02</span><div><h4 id="controller-sensor-title">Mouvement et tactile</h4><p>Lecture brute.</p></div></div>
               <dl class="controller-sensor-grid">
                 <div><dt>Gyroscope</dt><dd><span id="controller-gyro-value">X — / Y — / Z —</span></dd></div>
                 <div><dt>Accéléromètre</dt><dd><span id="controller-accelerometer-value">X — / Y — / Z —</span></dd></div>
@@ -297,7 +296,7 @@
             </section>
 
             <section class="controller-analysis-panel" aria-labelledby="controller-analysis-title">
-              <div class="controller-subheading"><span>03</span><div><h4 id="controller-analysis-title">Analyse locale, aucune calibration écrite</h4><p id="controller-analysis-summary">En attente d’échantillons locaux.</p></div></div>
+              <div class="controller-subheading"><span>03</span><div><h4 id="controller-analysis-title">Analyse locale</h4><p id="controller-analysis-summary">En attente d’échantillons.</p></div></div>
               <table class="controller-analysis-table">
                 <caption>Mesures calculées sur les entrées conservées localement</caption>
                 <thead><tr><th scope="col">Axe</th><th scope="col">Centre</th><th scope="col">Amplitude</th><th scope="col">Circularité</th></tr></thead>
@@ -306,29 +305,29 @@
                   <tr><th scope="row">Stick droit</th><td><span id="controller-analysis-right-center">—</span></td><td><span id="controller-analysis-right-amplitude">—</span></td><td><span id="controller-analysis-right-circularity">—</span></td></tr>
                 </tbody>
               </table>
-              <p class="controller-analysis-footnote">Cette vue observe les échantillons déjà reçus. Elle ne modifie ni le Pico 2 W, ni la manette.</p>
+              <p class="controller-analysis-footnote">Lecture seule · aucune calibration écrite.</p>
             </section>
           </div>
         </div>
       </section>
       <div class="feature-grid">
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">01</span><h3 data-i18n="calibrationTitle">Analyse locale</h3><p data-i18n="calibrationCopy">Analysez les entrées reçues et créez un instantané de session qui n’est jamais appliqué au firmware.</p><button class="button quiet" type="button" id="open-calibration-button" data-i18n="openWorkspace">Ouvrir l’analyse</button></article>
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">02</span><h3 data-i18n="quickTestTitle">Test des entrées</h3><p data-i18n="quickTestCopy">Vérifiez sticks, gâchettes et boutons reçus, sans envoyer de vibration, d’audio ni d’autre sortie.</p><button class="button quiet" type="button" id="run-quick-test-button" data-i18n="runTest">Lancer le test</button></article>
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">03</span><h3 data-i18n="historyTitle">Instantanés de session</h3><p data-i18n="historyCopy">Comparez localement des analyses éphémères ; rien n’est restauré ni appliqué au firmware.</p><button class="button quiet" type="button" id="open-history-button" data-i18n="viewHistory">Voir les instantanés</button></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">01</span><h3 data-i18n="calibrationTitle">Analyse locale</h3><p data-i18n="calibrationCopy">Centre, amplitude et circularité des entrées reçues.</p><button class="button quiet" type="button" id="open-calibration-button" data-i18n="openWorkspace">Ouvrir l’analyse</button></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">02</span><h3 data-i18n="quickTestTitle">Test des entrées</h3><p data-i18n="quickTestCopy">Sticks, gâchettes et boutons. Aucun output envoyé.</p><button class="button quiet" type="button" id="run-quick-test-button" data-i18n="runTest">Lancer le test</button></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">03</span><h3 data-i18n="historyTitle">Instantanés</h3><p data-i18n="historyCopy">Comparaison locale, sans restauration firmware.</p><button class="button quiet" type="button" id="open-history-button" data-i18n="viewHistory">Voir les instantanés</button></article>
       </div>
       <div class="notice info"><strong data-i18n="controllerNoticeTitle">Le travail sur la manette reste local.</strong><span data-i18n="controllerNoticeBody">MiraLink ne téléverse ni numéro de série, ni adresse Bluetooth, ni échantillon de calibration.</span></div>
     </section>
 
     <section class="tab-panel content-section" id="tab-diagnostics" data-panel="diagnostics" data-section-index="07">
-      <div class="section-heading"><div><p class="eyebrow" data-i18n="diagnosticEyebrow">OBSERVER / VÉRIFIER / RÉCUPÉRER</p><h2 data-i18n="diagnosticTitle">Comprendre le trajet du signal</h2></div><span class="panel-status">LECTURE SEULE</span></div>
+      <div class="section-heading"><div><p class="eyebrow" data-i18n="diagnosticEyebrow">OBSERVER / VÉRIFIER</p><h2 data-i18n="diagnosticTitle">Diagnostic</h2></div><span class="panel-status">LECTURE SEULE</span></div>
       <div class="protocol-map" aria-label="Chemin diagnostique">
-        <article><span>01 / HÔTE</span><strong>Navigateur</strong><p>Autorisation WebHID et transport USB local.</p></article>
+        <article><span>01 / HÔTE</span><strong>Navigateur</strong><p>WebHID local.</p></article>
         <i aria-hidden="true">→</i>
-        <article><span>02 / PONT</span><strong>Pico 2 W</strong><p>Firmware, stockage flash et liaison radio.</p></article>
+        <article><span>02 / PONT</span><strong>Pico 2 W</strong><p>Firmware, flash, radio.</p></article>
         <i aria-hidden="true">→</i>
-        <article><span>03 / CIBLE</span><strong>DualSense</strong><p>Entrées, audio et état de la connexion.</p></article>
+        <article><span>03 / CIBLE</span><strong>DualSense</strong><p>Entrées et état du lien.</p></article>
       </div>
-      <div class="callout diagnostic-callout"><span class="callout-icon" aria-hidden="true">?</span><div><h3>Les résultats actifs restent en haut.</h3><p>Le tableau de diagnostic est toujours visible près de la connexion pour comparer immédiatement l’état avant et après une action.</p><a class="text-link" href="#diagnostic-console">Revenir au diagnostic <span aria-hidden="true">↑</span></a></div></div>
+      <div class="callout diagnostic-callout"><span class="callout-icon" aria-hidden="true">?</span><div><h3>Les résultats sont en haut.</h3><p>Revenez au panneau live pour comparer avant/après.</p><a class="text-link" href="#diagnostic-console">Revenir au diagnostic <span aria-hidden="true">↑</span></a></div></div>
     </section>
 
     <section class="tab-panel content-section" id="tab-firmware" data-panel="firmware" data-section-index="08">
@@ -337,7 +336,7 @@
         <div class="firmware-current"><span class="metric-label" data-i18n="installedVersion">Version installée</span><strong id="installed-version">—</strong><span id="installed-version-note" data-i18n="connectForVersion">Connectez un Pico 2 W pour la lire.</span></div>
         <div class="firmware-inspect">
           <label class="button primary file-button" for="firmware-file"><span>Vérifier un fichier .UF2</span><input id="firmware-file" type="file" accept=".uf2,application/octet-stream"></label>
-          <p>Le fichier est analysé localement avant toute manipulation du Pico 2 W.</p>
+          <p>Analyse locale. Aucun flash.</p>
         </div>
           <a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/tag/v0.51" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a>
         <div id="firmware-result" class="verification-result" hidden aria-live="polite"></div>
@@ -347,9 +346,9 @@
     <section class="tab-panel content-section" id="tab-backups" data-panel="backups" data-section-index="09">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="backupEyebrow">LOCAL / PORTABLE / VERSIONNÉ</p><h2 data-i18n="backupTitle">Sauvegardes et profils</h2></div><span class="panel-status" data-i18n="noCloud">AUCUN CLOUD</span></div>
       <div class="backup-grid">
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">↓</span><h3 data-i18n="exportTitle">Exporter</h3><p data-i18n="exportCopy">Enregistrez un fichier de configuration versionné sur cet ordinateur.</p><button class="button primary" id="export-button" type="button" data-i18n="exportButton">Exporter la sauvegarde</button></article>
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">↑</span><h3 data-i18n="importTitle">Importer</h3><p data-i18n="importCopy">Chargez une sauvegarde locale dans un brouillon à contrôler.</p><label class="button quiet file-button" for="backup-file"><span data-i18n="chooseBackup">Choisir une sauvegarde</span><input id="backup-file" type="file" accept="application/json,.json"></label></article>
-        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">≋</span><h3 data-i18n="profileTitle">Profils</h3><p data-i18n="profileCopy">Conservez des profils locaux nommés avant de confirmer sur le Pico 2 W.</p><button class="button quiet" id="profiles-button" type="button" data-i18n="manageProfiles">Gérer les profils</button></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">↓</span><h3 data-i18n="exportTitle">Exporter</h3><p data-i18n="exportCopy">Un fichier local, versionné.</p><button class="button primary" id="export-button" type="button" data-i18n="exportButton">Exporter la sauvegarde</button></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">↑</span><h3 data-i18n="importTitle">Importer</h3><p data-i18n="importCopy">Charger dans un brouillon.</p><label class="button quiet file-button" for="backup-file"><span data-i18n="chooseBackup">Choisir une sauvegarde</span><input id="backup-file" type="file" accept="application/json,.json"></label></article>
+        <article class="feature-card"><span class="feature-glyph" aria-hidden="true">≋</span><h3 data-i18n="profileTitle">Profils</h3><p data-i18n="profileCopy">Nommés, locaux, confirmés avant écriture.</p><button class="button quiet" id="profiles-button" type="button" data-i18n="manageProfiles">Gérer les profils</button></article>
       </div>
       <div class="notice info"><strong data-i18n="backupNoticeTitle">Les sauvegardes restent sous votre contrôle.</strong><span data-i18n="backupNoticeBody">MiraLink ne les synchronise et ne les téléverse jamais.</span></div>
     </section>
@@ -373,6 +372,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="src/app.js?ui=51-reconnect-bootstrap"></script>
+  <script type="module" src="src/app.js?ui=51-focus-config"></script>
 </body>
 </html>

@@ -1455,19 +1455,44 @@ select {
   margin-bottom: 0;
 }
 
-.unavailable-field {
-  border-color: color-mix(in srgb, var(--orange) 46%, var(--line));
-  background: linear-gradient(90deg, rgba(181, 139, 91, 0.055), transparent 72%);
+.capability-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.8rem;
+  min-width: 0;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: var(--border);
 }
 
-.unavailable-field .field-label {
+.capability-row > div {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.capability-row strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
+.capability-row span:not(.capability-state) {
   color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  line-height: 1.45;
 }
 
-.unavailable-field input,
-.unavailable-field .switch-ui {
-  filter: saturate(0.35);
-  opacity: 0.62;
+.capability-state {
+  padding: 0.28rem 0.38rem;
+  border: 1px solid color-mix(in srgb, var(--orange) 60%, var(--line));
+  color: var(--orange);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .field-hint {

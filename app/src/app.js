@@ -19,7 +19,7 @@ import {
   inspectMiraLinkHidIdentity
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=51-reconnect-bootstrap';
+import { applyTranslations, translate } from './i18n.js?ui=51-focus-config';
 import { inspectUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { commitProfileApplication, createBuiltInProfiles, createProfile, diffConfig, previewProfileApplication } from './profiles.js';
@@ -40,7 +40,7 @@ import {
   transactFeatureReport
 } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, compareControllerAnalyses, createCalibrationRevision } from './controller-lab.js';
-import { scrollToRouteTarget } from './site-effects.js?ui=51-reconnect-bootstrap';
+import { scrollToRouteTarget } from './site-effects.js?ui=51-focus-config';
 
 const state = {
   devices: new Map(),
@@ -377,8 +377,6 @@ function updateUiForActiveDevice() {
   const pendingChanges = configurationEditable && state.draft ? diffConfig(state.savedConfig, state.draft) : [];
   const controls = $$('#tab-bridge input, #tab-bridge select');
   controls.forEach((control) => { control.disabled = !configurationEditable; });
-  $('#audio-buffer').disabled = true;
-  $('#ps-shortcut').disabled = true;
   $('#read-config-button').disabled = !bridgeReady;
   $('#save-config-button').disabled = !configurationEditable || !pendingChanges.length;
   $('#reset-config-button').disabled = !configurationEditable || !pendingChanges.length;
@@ -386,8 +384,6 @@ function updateUiForActiveDevice() {
   const reconnectRequired = Boolean(entry?.usbReenumerationRequired);
   setElementVisibility($('#usb-reconnect-notice'), reconnectRequired);
   $('#reconnect-usb-button').disabled = !bridgeReady || !reconnectRequired;
-  setText('#audio-buffer-hint', translate('audioBufferUnavailableHint'));
-  setText('#ps-shortcut-hint', translate('psShortcutUnavailableHint'));
   const pairingButton = $('#open-pairing-button');
   if (pairingButton) pairingButton.disabled = !readyBridgeEntry();
   $('#bridge-device-status').textContent = bridgeReady ? entry.label : entry?.kind === 'bridge' ? `Pont détecté · ${deviceStateLabel(entry.state)}` : translate('selectDevice');
@@ -410,15 +406,12 @@ function renderConfig(config) {
   $('#trigger-reduce').value = value.triggerReduce;
   $('#trigger-reduce-value').textContent = `${value.triggerReduce}%`;
   $('#polling-mode').value = value.pollingMode;
-  $('#audio-buffer').value = value.audioBufferLength;
-  $('#audio-buffer-value').textContent = value.audioBufferLength;
   $('#inactive-time').value = value.inactiveMinutes;
   $('#inactive-time-value').textContent = `${value.inactiveMinutes} min`;
   $('#disable-led').checked = value.disableLed;
   $('#enable-wake').checked = value.enableWake;
   $('#controller-mode').value = value.controllerMode;
   $('#enable-usb-sn').checked = value.enableUsbSerial;
-  $('#ps-shortcut').checked = value.psShortcut;
   const changed = state.savedConfig && JSON.stringify(assertValidConfig(value)) !== JSON.stringify(assertValidConfig(state.savedConfig));
   $('#draft-status').textContent = changed ? 'Modifications locales en attente de validation.' : translate('noDraft');
 }
@@ -443,7 +436,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=51-reconnect-bootstrap', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=51-focus-config', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -1586,7 +1579,7 @@ function init() {
     showHidWarning(initialHidStatus);
     addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=51-reconnect-bootstrap').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=51-focus-config').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

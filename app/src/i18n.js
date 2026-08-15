@@ -22,19 +22,46 @@ const NAVIGATION_FR = Object.freeze({
   tabLogs: 'Journaux'
 });
 
-const RUNTIME_EN = Object.freeze({
-  audioBufferUnavailableHint: 'Unavailable in 0.51 — USB audio transport is not exposed.',
-  psShortcutUnavailableHint: 'Unavailable in 0.51 — the current firmware does not expose this command.'
+// The desktop deck keeps explanatory copy short. Details remain available in
+// diagnostics and logs instead of repeating the same caveat in every card.
+const COMPACT_EN = Object.freeze({
+  heroLede: 'Bridge, controller, firmware. Local only.',
+  overviewTitle: 'Three essential steps.',
+  safetyTitle: 'No silent writes.',
+  safetyBody: 'Local draft. Confirmation. Then write.',
+  calibrationCopy: 'Center, amplitude and circularity of received input.',
+  quickTestCopy: 'Sticks, triggers and buttons. No output sent.',
+  historyTitle: 'Snapshots',
+  historyCopy: 'Local comparison, never restored to firmware.',
+  diagnosticEyebrow: 'OBSERVE / VERIFY',
+  diagnosticTitle: 'Diagnostics',
+  controllerNoticeBody: 'No serial, Bluetooth address or calibration sample leaves this computer.',
+  exportCopy: 'A local, versioned file.',
+  importCopy: 'Load into a draft.',
+  profileCopy: 'Named, local, confirmed before write.',
+  backupNoticeBody: 'Never synchronized or uploaded.'
 });
 
-const RUNTIME_FR = Object.freeze({
-  audioBufferUnavailableHint: 'Indisponible en 0.51 — le transport audio USB n’est pas exposé.',
-  psShortcutUnavailableHint: 'Indisponible en 0.51 — cette commande n’est pas exposée par le firmware actuel.'
+const COMPACT_FR = Object.freeze({
+  heroLede: 'Bridge, manette, firmware. Tout reste local.',
+  overviewTitle: 'Les trois gestes essentiels.',
+  safetyTitle: 'Aucune écriture silencieuse.',
+  safetyBody: 'Un brouillon local. Une confirmation. Puis l’écriture.',
+  calibrationCopy: 'Centre, amplitude et circularité des entrées reçues.',
+  quickTestCopy: 'Sticks, gâchettes et boutons. Aucun output envoyé.',
+  historyTitle: 'Instantanés',
+  historyCopy: 'Comparaison locale, sans restauration firmware.',
+  diagnosticEyebrow: 'OBSERVER / VÉRIFIER',
+  diagnosticTitle: 'Diagnostic',
+  controllerNoticeBody: 'Aucun numéro de série, adresse Bluetooth ou échantillon ne quitte cet ordinateur.',
+  exportCopy: 'Un fichier local, versionné.',
+  importCopy: 'Charger dans un brouillon.',
+  profileCopy: 'Nommés, locaux, confirmés avant écriture.',
+  backupNoticeBody: 'Jamais synchronisées ni téléversées.'
 });
 
 const EN = Object.freeze({
   ...NAVIGATION_EN,
-  ...RUNTIME_EN,
   skip: 'Skip to content', brandSubtitle: 'Pico 2 W control center', language: 'Language', statusReady: 'Ready', eyebrow: 'LOCAL / HARDWARE / CONTROL', title: 'Make every connection intentional.', heroLede: 'A focused workspace for your bridge, controllers and firmware state. Your data stays on this computer.', workspace: 'WORKSPACE', devices: 'Connected devices', connect: 'Connect device', refresh: 'Refresh', webhidMissingTitle: 'MiraLink bridge unavailable.', webhidMissingBody: 'MiraLink uses WebHID to reach the Pico 2 W bridge; Bluetooth pairing is handled by the bridge.', webhidInsecureTitle: 'Secure connection required.', webhidInsecureBody: 'Open MiraLink over HTTPS or localhost before connecting the Pico 2 W bridge.', webhidPolicyTitle: 'WebHID is blocked by the page policy.', webhidPolicyBody: 'The deployment must allow WebHID with Permissions-Policy hid=(self).', webhidContextTitle: 'Desktop bridge connection unavailable.', webhidContextBody: 'This browser context does not expose WebHID. Use desktop Chrome or Edge to connect the Pico 2 W bridge; the controller is paired by the bridge.', noDevices: 'No device connected', noDevicesCopy: 'Connect a MiraLink device to begin.', overviewEyebrow: 'SYSTEM VIEW', overviewTitle: 'Everything in one place.', localOnly: 'LOCAL ONLY', metricBridge: 'Bridge', metricController: 'Controller', metricFirmware: 'Firmware', notConnected: 'Not connected', awaitingDevice: 'Awaiting device', safetyTitle: 'A calm interface for risky actions.', safetyBody: 'MiraLink keeps drafts local, shows changes before flash writes and never sends device data away.', bridgeEyebrow: 'PICO 2 W / PERSISTENT SETTINGS', bridgeTitle: 'Bridge configuration', selectDevice: 'Select a device', readOnlyTitle: 'Read-only state', readOnlyBody: 'Connect a MiraLink Pico 2 W to edit persistent settings.', feedbackTitle: 'Feedback', feedbackCopy: 'Tactile response and trigger comfort.', hapticsGain: 'Haptics gain', triggerReduce: 'Trigger reduction', performanceTitle: 'Performance', performanceCopy: 'Polling and audio timing.', pollingMode: 'Polling mode', audioBuffer: 'Audio buffer', powerTitle: 'Power and indicators', powerCopy: 'Sleep, light and wake behavior.', inactiveTime: 'Inactive timeout', disableLed: 'Disable Pico LED', enableWake: 'Enable host wake', compatibilityTitle: 'Compatibility', compatibilityCopy: 'Controller mode and safe host behavior.', controllerMode: 'Controller mode', enableUsbSerial: 'Enable USB serial', psShortcut: 'Enable PS shortcut', draftStatus: 'DRAFT STATUS', noDraft: 'No local changes.', readConfig: 'Read from Pico 2 W', saveConfig: 'Save to Pico 2 W', resetConfig: 'Reset draft', controllerEyebrow: 'INPUT / CALIBRATION / HISTORY', controllerTitle: 'Controller workspace', desktopOnly: 'DESKTOP ONLY', calibrationTitle: 'Calibration', calibrationCopy: 'Center, range and fine adjustment with a visible before/after state.', openWorkspace: 'Open workspace', quickTestTitle: 'Quick tests', quickTestCopy: 'Check sticks, buttons, haptics, audio and inputs without writing anything.', runTest: 'Run test', historyTitle: 'History', historyCopy: 'Keep local snapshots and restore a known-good calibration.', viewHistory: 'View history', controllerNoticeTitle: 'Controller work is local.', controllerNoticeBody: 'MiraLink will never upload a serial number, Bluetooth address or calibration sample.', diagnosticEyebrow: 'OBSERVE / VERIFY / RECOVER', diagnosticTitle: 'Diagnostics', runDiagnostics: 'Run diagnostics', diagUsb: 'USB transport', diagRadio: 'Radio transport', diagAudio: 'Audio path', diagStorage: 'Flash storage', diagnosticIdle: 'Diagnostics have not run yet.', firmwareEyebrow: 'VERIFY / RECOVER / UPDATE', firmwareTitle: 'Firmware center', manualUpdate: 'MANUAL UPDATE', installedVersion: 'Installed version', chooseUf2: 'Choose a UF2 file', verifyLocal: 'It will be inspected locally before anything else.', backupEyebrow: 'LOCAL / PORTABLE / VERSIONED', backupTitle: 'Backups and profiles', noCloud: 'NO CLOUD', exportTitle: 'Export', exportCopy: 'Save a versioned configuration file on this computer.', exportButton: 'Export backup', importTitle: 'Import', importCopy: 'Load a local backup into a draft for review.', chooseBackup: 'Choose backup', profileTitle: 'Profiles', profileCopy: 'Keep named local profiles without changing the Pico 2 W until you confirm.', manageProfiles: 'Manage profiles', backupNoticeTitle: 'Backups are user-controlled.', backupNoticeBody: 'MiraLink does not sync or upload them.', logsEyebrow: 'LOCAL EVENT TRAIL', logsTitle: 'Logs', clearLogs: 'Clear logs', confirmation: 'CONFIRMATION', confirmTitle: 'Confirm action', cancel: 'Cancel', confirm: 'Confirm'
 });
 
@@ -62,7 +89,7 @@ const MESSAGES = Object.freeze({
   fr: Object.freeze({
     ...FR,
     ...NAVIGATION_FR,
-    ...RUNTIME_FR,
+    ...COMPACT_FR,
     webhidMissingTitle: 'Pont MiraLink indisponible.',
     webhidMissingBody: 'MiraLink utilise WebHID uniquement pour atteindre le pont Pico 2 W ; l’appairage Bluetooth est géré par le pont.',
     webhidInsecureTitle: 'Connexion sécurisée requise.',
@@ -84,9 +111,10 @@ const MESSAGES = Object.freeze({
     historyCopy: 'Comparez localement des analyses éphémères ; rien n’est restauré ni appliqué au firmware.',
     viewHistory: 'Voir les instantanés',
     installedVersion: 'Version installée',
-    connectForVersion: 'Connectez un Pico 2 W pour la lire.'
+    connectForVersion: 'Connectez un Pico 2 W pour la lire.',
+    ...COMPACT_FR
   }),
-  en: ENGLISH
+  en: Object.freeze({ ...ENGLISH, ...COMPACT_EN })
 });
 let current = 'fr';
 
