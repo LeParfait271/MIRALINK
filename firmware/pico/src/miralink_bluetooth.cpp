@@ -539,7 +539,16 @@ void disconnect_after_bootstrap_failure(const ConnectionError error,
 
 void service_initial_state_output() {
     if (!g_initial_state_output_pending || g_hid_cid == 0
-        || g_protocol_handshake_pending) return;
+        || g_protocol_handshake_pending
+        // DS5Dongle primes the controller with its Feature reads before the
+        // native 0x32 state packet.  Do not let the state packet race the
+        // first GET_REPORT when BTstack is still ready to issue it.
+        || g_feature_bootstrap.phase == bootstrap::Phase::FeatureRequestReady) return;
+    bool descriptor_available = false;
+    critical_section_enter_blocking(&g_state_lock);
+    descriptor_available = g_snapshot.descriptor_available;
+    critical_section_exit(&g_state_lock);
+    if (!descriptor_available) return;
 
     const auto current_ms = now_ms();
     if (current_ms < g_initial_state_output_retry_deadline_ms) return;
@@ -1513,8 +1522,11 @@ void poll() {
     if (!g_initialized) return;
     service_ignored_hid_disconnect();
     service_page_scan_rearm();
-    service_initial_state_output();
+    // Keep the first Feature GET ahead of the native state packet, matching
+    // DS5Dongle's HID-open lifecycle and avoiding two control/interrupt
+    // transactions competing during the compact-to-enhanced transition.
     service_feature_bootstrap();
+    service_initial_state_output();
     const auto inactive_minutes = configured_inactive_minutes();
     if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {
         const auto current = snapshot();
