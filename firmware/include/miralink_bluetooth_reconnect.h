@@ -102,14 +102,15 @@ constexpr bool matches_active_acl_disconnection(const bool acl_handle_valid,
     return hid_link_active;
 }
 
-// DS5Dongle drops a remembered link key after a controller-authentication
-// failure. MiraLink applies that recovery only when the HCI handle is the
-// active controller, the address was already remembered before this attempt,
-// and no valid enhanced input has crossed the trust boundary yet. A transient
-// failure for a brand-new pairing must not erase anything else.
+// DS5Dongle drops the active link key after a controller-authentication
+// failure. The failed ACL is already scoped to the gamepad handle accepted by
+// the radio policy; deleting its key is safe even when the RAM address cache
+// was not rebuilt after reboot. A brand-new attempt has no key to delete,
+// while a stale key must not block the next explicit pair.
 constexpr bool should_drop_key_after_auth_failure(const bool handle_matches,
     const bool address_known_before_attempt, const bool input_validated) {
-    return handle_matches && address_known_before_attempt && !input_validated;
+    (void)address_known_before_attempt;
+    return handle_matches && !input_validated;
 }
 
 // A link key is a bond credential, not an input-validation token.  Keep a
@@ -133,6 +134,8 @@ static_assert(is_gamepad_class_of_device(0x000508u));
 static_assert(!is_gamepad_class_of_device(0x000400u));
 static_assert(accepts_connection_request(0x000508u));
 static_assert(!accepts_connection_request(0x000400u));
+static_assert(should_drop_key_after_auth_failure(true, false, false));
+static_assert(!should_drop_key_after_auth_failure(true, false, true));
 static_assert(should_rearm_after_hci_disconnection(true, false));
 static_assert(!should_rearm_after_hci_disconnection(false, false));
 static_assert(!should_rearm_after_hci_disconnection(true, true));
@@ -151,7 +154,7 @@ static_assert(matches_active_acl_disconnection(false, 0xffff, 0x0043, true));
 static_assert(!matches_active_acl_disconnection(false, 0xffff, 0x0043, false));
 static_assert(should_drop_key_after_auth_failure(true, true, false));
 static_assert(!should_drop_key_after_auth_failure(false, true, false));
-static_assert(!should_drop_key_after_auth_failure(true, false, false));
+static_assert(should_drop_key_after_auth_failure(true, false, false));
 static_assert(!should_drop_key_after_auth_failure(true, true, true));
 static_assert(should_drop_unvalidated_key(false, false, false));
 static_assert(!should_drop_unvalidated_key(true, false, false));

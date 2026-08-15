@@ -74,8 +74,10 @@ microphone support.
 | MiraLink 0.49 UF2 | 1,417,728 | 93.0% |
 | MiraLink 0.50 UF2 | 1,420,288 | 93.1% |
 | MiraLink 0.51 UF2 | 1,422,848 | 93.3% |
+| MiraLink 0.58 UF2 | 905,216 | 59.4% |
+| MiraLink 0.59 UF2 | 905,216 | 59.4% |
 
-MiraLink 0.51 size is recorded from the frozen release build. Size alone says
+MiraLink 0.59 size is recorded from the frozen release build. Size alone says
 nothing about compatibility, stability, latency or quality and is excluded from
 the functional score.
 
@@ -102,3 +104,23 @@ score is deliberately unchanged.
 For every later firmware modification, preserve the weights and publish the
 compact form `Capability | DS5Dongle | MiraLink before | MiraLink after | New
 evidence`, keeping DS5Dongle fixed at `100%`.
+
+## MiraLink 0.59 delta
+
+The 0.59 source change closes the remaining ACL lifecycle gaps found in the
+side-by-side DS5Dongle comparison: the incoming gamepad page is tracked before
+HID exists, SSP/PIN responses do not depend on the RAM cache, authentication
+failure removes the active stale key, and the handshake deadline can terminate
+an ACL with no HID CID. No physical 0.59 run exists, so the proven score stays
+unchanged.
+
+| Capability | DS5Dongle | MiraLink 0.58 | MiraLink 0.59 | New evidence |
+| --- | ---: | ---: | ---: | --- |
+| USB persona / host compatibility | 100% | 72% | 72% | No USB descriptor change |
+| Bluetooth pairing / reconnect | 100% | 55% | 55% | ACL, SSP/PIN, stale-key and raw-ACL timeout paths aligned in source; hardware untested |
+| Input / motion / touch | 100% | 77% | 77% | No input report change |
+| Rumble / LEDs / triggers / mute | 100% | 48% | 48% | No new physical-output evidence |
+| USB audio / HD haptics / microphone | 100% | 5% | 5% | USB audio remains disabled |
+| Wake / recovery | 100% | 45% | 45% | No new hardware evidence |
+| Configuration / diagnostics | 100% | 82% | 82% | No configuration change |
+| **Weighted proven score** | **100%** | **54.4%** | **54.4%** | Score stays frozen until hardware validation |

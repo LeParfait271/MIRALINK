@@ -445,7 +445,7 @@ void test_dualsense_bluetooth_reconnect_policy() {
     assert(!reconnect::matches_active_acl_disconnection(false, 0xffff, 0x0043, false));
     assert(reconnect::should_drop_key_after_auth_failure(true, true, false));
     assert(!reconnect::should_drop_key_after_auth_failure(false, true, false));
-    assert(!reconnect::should_drop_key_after_auth_failure(true, false, false));
+    assert(reconnect::should_drop_key_after_auth_failure(true, false, false));
     assert(!reconnect::should_drop_key_after_auth_failure(true, true, true));
 
     // Authentication persists the Bluetooth bond independently from the

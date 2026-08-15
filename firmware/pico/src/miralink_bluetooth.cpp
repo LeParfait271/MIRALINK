@@ -1133,6 +1133,20 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 hci_event_connection_request_get_class_of_device(packet);
             if (reconnect::accepts_connection_request(class_of_device)) {
                 stop_inquiry();
+                const bool address_is_remembered = paired_address_known(address);
+                // The ACL page is already a live reconnect attempt even
+                // though BTstack has not opened the HID services yet. Track
+                // that intermediate state so a page timeout (0x04) or an ACL
+                // teardown can release the slot and re-arm passive scan.
+                begin_controller_attempt(address);
+                record_connection_attempt(address_is_remembered);
+                g_connection_pending = true;
+                g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
+                critical_section_enter_blocking(&g_state_lock);
+                g_snapshot.connection_pending = true;
+                g_snapshot.pairing_window_open = pairing_window_active();
+                g_snapshot.state = LinkState::Starting;
+                critical_section_exit(&g_state_lock);
                 hci_send_cmd(&hci_accept_connection_request, address, HCI_ROLE_SLAVE);
             } else {
                 // Reject non-gamepad ACL requests before they can reserve the
@@ -1185,8 +1199,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 && g_acl_address_valid) {
                 bd_addr_t address{};
                 std::memcpy(address, g_acl_address.data(), sizeof(address));
-                // This mirrors DS5Dongle's stale-bond recovery, but only for
-                // the active controller handle and before valid input trust.
+                // This mirrors DS5Dongle's stale-bond recovery, scoped to the
+                // active controller handle and before valid input trust.
                 gap_drop_link_key_for_bd_addr(address);
                 forget_paired_address(address);
                 clear_controller_attempt();
@@ -1267,25 +1281,26 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
         case HCI_EVENT_PIN_CODE_REQUEST: {
             bd_addr_t address;
             hci_event_pin_code_request_get_bd_addr(packet, address);
-            // Some DualSense revisions still fall back to legacy PIN pairing.
-            // Only accept the fixed controller PIN during the explicit local
-            // pairing window or for an address already stored by BTstack.
-            if (pairing_window_active() || paired_address_known(address)) {
-                gap_pin_code_response(address, "0000");
-            } else {
-                gap_pin_code_negative(address);
-            }
+            // DS5Dongle answers the controller's legacy fallback PIN request
+            // regardless of whether the web pairing window is open. The ACL
+            // was already restricted to a gamepad class; the stored link key
+            // and the strict HID/0x31 input checks remain the trust boundary.
+            // Gating this response on a RAM cache breaks PS-only reconnect
+            // after a reboot and can leave the controller flashing once.
+            gap_pin_code_response(address, "0000");
             break;
         }
 
         case HCI_EVENT_USER_CONFIRMATION_REQUEST: {
             bd_addr_t address;
             hci_event_user_confirmation_request_get_bd_addr(packet, address);
-            if (pairing_window_active() || paired_address_known(address)) {
-                gap_ssp_confirmation_response(address);
-            } else {
-                gap_ssp_confirmation_negative(address);
-            }
+            // Match DS5Dongle's no-interaction SSP path. A confirmation
+            // request can occur during a bonded reconnect as well as during
+            // the explicit pairing flow; refusing it because the local RAM
+            // address list is not rebuilt yet prevents the PS-only path from
+            // reaching HID. The accepted ACL's gamepad class, BTstack key
+            // exchange and CRC-checked enhanced report provide the gates.
+            gap_ssp_confirmation_response(address);
             break;
         }
 
@@ -1406,7 +1421,7 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     begin_controller_attempt(address);
                     note_activity();
                     stop_inquiry();
-                    record_connection_attempt(address_is_remembered);
+                    if (!g_connection_pending) record_connection_attempt(address_is_remembered);
                     g_hid_cid = cid;
                     g_connection_pending = true;
                     reset_feature_bootstrap();
@@ -1722,13 +1737,24 @@ void poll() {
     }
     if (g_connection_deadline_ms != 0 && now_ms() >= g_connection_deadline_ms) {
         const auto current = snapshot();
-        if (!current.input_available && g_hid_cid != 0) {
-            // A controller that never completes its descriptor/report
-            // handshake must not hold the radio forever. The close event
-            // returns the radio to the passive reconnect path.
+        if (!current.input_available && (g_hid_cid != 0 || g_connection_pending)) {
+            // A controller that never completes its ACL, descriptor, or
+            // enhanced-report handshake must not hold the radio forever. The
+            // HID close or ACL disconnection event returns the radio to the
+            // passive reconnect path. Earlier code only handled the CID case,
+            // leaving an authenticated-but-not-yet-HID ACL pending forever.
             g_connection_deadline_ms = 0;
             record_connection_failure(ConnectionError::Timeout);
-            hid_host_disconnect(g_hid_cid);
+            if (g_hid_cid != 0) {
+                hid_host_disconnect(g_hid_cid);
+            } else if (g_acl_handle != HCI_CON_HANDLE_INVALID) {
+                hci_send_cmd(&hci_disconnect, g_acl_handle,
+                    ERROR_CODE_REMOTE_USER_TERMINATED_CONNECTION);
+            } else {
+                set_connection_closed();
+                g_page_scan_rearm_pending = reconnect::should_recover_after_acl_failure(
+                    g_hci_working, g_idle_suspended, true);
+            }
         } else if (current.input_available) {
             g_connection_deadline_ms = 0;
         }

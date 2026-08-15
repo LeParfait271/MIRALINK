@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.59 - 2026-08-16
+
+- Keep the ACL attempt visible from the incoming gamepad page through HID
+  service admission so page timeout `0x04`, authentication failure and stalled
+  L2CAP setup all release the radio and re-arm passive scan.
+- Match DS5Dongle's controller security lifecycle: answer gamepad SSP/PIN
+  prompts without depending on the rebuilt RAM address list and drop the
+  active stale link key after authentication failure.
+
 ## 0.58 - 2026-08-16
 
 - Keep bonded DualSense reconnects passive: accept the gamepad ACL and HID
