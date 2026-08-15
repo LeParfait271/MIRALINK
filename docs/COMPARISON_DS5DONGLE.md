@@ -76,8 +76,9 @@ microphone support.
 | MiraLink 0.51 UF2 | 1,422,848 | 93.3% |
 | MiraLink 0.58 UF2 | 905,216 | 59.4% |
 | MiraLink 0.59 UF2 | 905,216 | 59.4% |
+| MiraLink 0.60 UF2 | 905,216 | 59.4% |
 
-MiraLink 0.59 size is recorded from the frozen release build. Size alone says
+MiraLink 0.60 size is recorded from the frozen release build. Size alone says
 nothing about compatibility, stability, latency or quality and is excluded from
 the functional score.
 
@@ -118,6 +119,27 @@ unchanged.
 | --- | ---: | ---: | ---: | --- |
 | USB persona / host compatibility | 100% | 72% | 72% | No USB descriptor change |
 | Bluetooth pairing / reconnect | 100% | 55% | 55% | ACL, SSP/PIN, stale-key and raw-ACL timeout paths aligned in source; hardware untested |
+| Input / motion / touch | 100% | 77% | 77% | No input report change |
+| Rumble / LEDs / triggers / mute | 100% | 48% | 48% | No new physical-output evidence |
+| USB audio / HD haptics / microphone | 100% | 5% | 5% | USB audio remains disabled |
+| Wake / recovery | 100% | 45% | 45% | No new hardware evidence |
+| Configuration / diagnostics | 100% | 82% | 82% | No configuration change |
+| **Weighted proven score** | **100%** | **54.4%** | **54.4%** | Score stays frozen until hardware validation |
+
+## MiraLink 0.60 delta
+
+The 0.60 source change removes a confirmed state-machine deadlock on the
+incoming HID path. BTstack does not emit `SET_PROTOCOL` for an incoming
+Report-mode connection; 0.59 nevertheless marked that response pending, which
+blocked the native activation report and Feature bootstrap used to reach the
+DualSense 0x31 stream. 0.60 clears the flag for that path and keeps the
+bootstrap gated by descriptor/encryption/report validation. No physical 0.60
+run has been performed, so the proven score remains unchanged.
+
+| Capability | DS5Dongle | MiraLink 0.59 | MiraLink 0.60 | New evidence |
+| --- | ---: | ---: | ---: | --- |
+| USB persona / host compatibility | 100% | 72% | 72% | No USB descriptor change |
+| Bluetooth pairing / reconnect | 100% | 55% | 55% | Incoming Report-mode handshake deadlock removed in source; hardware untested |
 | Input / motion / touch | 100% | 77% | 77% | No input report change |
 | Rumble / LEDs / triggers / mute | 100% | 48% | 48% | No new physical-output evidence |
 | USB audio / HD haptics / microphone | 100% | 5% | 5% | USB audio remains disabled |

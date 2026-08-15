@@ -81,13 +81,13 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.59`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.59.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.51`.
+La version publique actuelle du site est `0.60`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.60.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.60`.
 La source CMake peut employer `0.51.0`, mais la métadonnée du Pico et l'UF2
 livré utilisent exactement `0.51`.
 
-La correction firmware `0.59` vient d'une comparaison directe avec DS5Dongle
+La correction firmware `0.60` vient d'une comparaison directe avec DS5Dongle
 `v0.7.2-hotfix` : la référence réactive le page scan après
 `HCI_EVENT_DISCONNECTION_COMPLETE`. MiraLink enregistre désormais cette frontière
 dans le callback puis réalise la transition `0 -> 1` depuis le polling foreground.

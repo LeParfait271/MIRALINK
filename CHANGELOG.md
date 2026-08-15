@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.60 - 2026-08-16
+
+- Fix the passive PS-only reconnect deadlock: BTstack's incoming HID Report-mode
+  path does not emit `SET_PROTOCOL`, so the firmware no longer waits forever for
+  a response that cannot exist before starting descriptor/bootstrap traffic.
+- No hardware validation has been performed yet for 0.60.
+
 ## 0.59 - 2026-08-16
 
 - Keep the ACL attempt visible from the incoming gamepad page through HID

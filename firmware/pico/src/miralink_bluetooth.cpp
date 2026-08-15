@@ -1431,7 +1431,16 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     critical_section_exit(&g_state_lock);
                     const auto accept_status = hid_host_accept_connection(cid, HID_PROTOCOL_MODE_REPORT);
                     if (accept_status == ERROR_CODE_SUCCESS) {
-                        g_protocol_handshake_pending = true;
+                        // For an incoming HID connection requested in Report
+                        // mode, BTstack goes directly from the accepted
+                        // control/interrupt channels to SDP descriptor
+                        // discovery. It does not emit a SET_PROTOCOL response
+                        // (that transaction is only scheduled for Boot mode
+                        // or the corresponding outgoing path). Leaving this
+                        // flag set here deadlocks the passive PS-only
+                        // reconnect: feature bootstrap and the native state
+                        // output both wait for an event that can never arrive.
+                        g_protocol_handshake_pending = false;
                         g_connection_deadline_ms = now_ms() + kConnectionHandshakeTimeoutMs;
                         set_link_state(LinkState::Starting);
                     } else {
