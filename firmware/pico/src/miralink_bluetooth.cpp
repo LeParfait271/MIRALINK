@@ -66,6 +66,7 @@ std::array<std::uint8_t, 6> g_acl_address{};
 bool g_acl_address_valid = false;
 bool g_acl_address_known_before_attempt = false;
 bool g_acl_authenticated = false;
+bool g_acl_encrypted = false;
 std::uint64_t g_pairing_window_deadline_ms = 0;
 bool g_initialized = false;
 bool g_hci_working = false;
@@ -386,6 +387,7 @@ void clear_acl_context() {
     g_acl_address_valid = false;
     g_acl_address_known_before_attempt = false;
     g_acl_authenticated = false;
+    g_acl_encrypted = false;
     g_rssi_next_poll_ms = 0;
     if (g_initialized) {
         critical_section_enter_blocking(&g_state_lock);
@@ -548,7 +550,7 @@ void clear_output_queue() {
 bool output_link_ready() {
     if (!g_initialized) return false;
     critical_section_enter_blocking(&g_state_lock);
-    const bool ready = g_hid_cid != 0 && g_snapshot.descriptor_available
+    const bool ready = g_hid_cid != 0 && g_acl_encrypted && g_snapshot.descriptor_available
         && g_snapshot.state == LinkState::Connected
         && !g_protocol_handshake_pending
         && bootstrap::output_safe(g_feature_bootstrap)
@@ -568,6 +570,7 @@ void disconnect_after_bootstrap_failure(const ConnectionError error,
 
 void service_initial_state_output() {
     if (!g_initial_state_output_pending || g_hid_cid == 0
+        || !g_acl_encrypted
         || g_protocol_handshake_pending
         || !bootstrap::initial_state_output_safe(g_feature_bootstrap)) return;
     bool descriptor_available = false;
@@ -612,7 +615,7 @@ void service_initial_state_output() {
 }
 
 void service_feature_bootstrap() {
-    if (g_hid_cid == 0 || g_protocol_handshake_pending) return;
+    if (g_hid_cid == 0 || !g_acl_encrypted || g_protocol_handshake_pending) return;
     const auto current_ms = now_ms();
 
     if (g_feature_bootstrap.phase == bootstrap::Phase::FeatureResponsePending) {
@@ -1083,6 +1086,8 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 std::memcpy(g_acl_address.data(), address, g_acl_address.size());
                 g_acl_address_valid = true;
                 g_acl_address_known_before_attempt = paired_address_known(address);
+                g_acl_authenticated = false;
+                g_acl_encrypted = false;
                 // DS5Dongle explicitly starts the Classic authentication
                 // phase after the ACL is complete. Keep that lifecycle
                 // boundary explicit here too; HID input remains gated by
@@ -1158,7 +1163,40 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_acl_authenticated = false;
             }
             if (status != ERROR_CODE_SUCCESS && handle_matches) {
+                g_acl_encrypted = false;
                 record_connection_failure(ConnectionError::ConnectionOpen, status);
+            }
+            break;
+        }
+
+        case HCI_EVENT_ENCRYPTION_CHANGE: {
+            const auto status = hci_event_encryption_change_get_status(packet);
+            const auto handle = hci_event_encryption_change_get_connection_handle(packet);
+            const auto enabled = hci_event_encryption_change_get_encryption_enabled(packet);
+            const bool handle_matches = g_acl_handle != HCI_CON_HANDLE_INVALID
+                && handle == g_acl_handle;
+            if (!handle_matches) break;
+
+            if (status == ERROR_CODE_SUCCESS && enabled != 0) {
+                // DS5Dongle opens its HID data path only after the ACL is
+                // encrypted. Keep the same boundary for Feature GETs, the
+                // native activation report and all controller outputs.
+                g_acl_encrypted = true;
+                if (g_hid_cid != 0 && !g_protocol_handshake_pending) {
+                    g_initial_state_output_retry_deadline_ms = now_ms();
+                    g_feature_retry_deadline_ms = now_ms();
+                }
+            } else {
+                g_acl_encrypted = false;
+                record_connection_failure(ConnectionError::ConnectionOpen, status);
+                const bool hid_attempt_pending = g_hid_cid != 0 || g_connection_pending;
+                if (g_hid_cid != 0) {
+                    hid_host_disconnect(g_hid_cid);
+                } else if (hid_attempt_pending) {
+                    set_connection_closed();
+                }
+                g_page_scan_rearm_pending = reconnect::should_recover_after_acl_failure(
+                    g_hci_working, g_idle_suspended, hid_attempt_pending);
             }
             break;
         }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.55 - 2026-08-15
+
+- Gate the native Bluetooth activation report, Feature bootstrap and controller
+  outputs until the active ACL reports encryption enabled.
+- Handle encryption failure as a connection failure and return to the existing
+  bounded passive-reconnect recovery path.
+- Physical validation remains pending.
+
 ## 0.54 - 2026-08-15
 
 - Re-arm a bounded tombstone teardown when the user explicitly opens pairing

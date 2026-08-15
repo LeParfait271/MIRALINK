@@ -29,14 +29,28 @@ std::array<std::uint8_t, kConfigEncodedBytes> encode_config(const Config& config
     std::array<std::uint8_t, kConfigEncodedBytes> bytes{};
     bytes[0] = config.schema;
     const auto gain = static_cast<std::uint16_t>(std::lround(config.haptics_gain * 100.0f));
-    bytes[1] = static_cast<std::uint8_t>(gain & 0xff); bytes[2] = static_cast<std::uint8_t>((gain >> 8) & 0xff);
-    bytes[3] = config.speaker_volume; bytes[4] = config.headset_volume; bytes[5] = config.speaker_gain;
-    bytes[6] = config.inactive_minutes; bytes[7] = config.polling_mode; bytes[8] = config.audio_buffer_length; bytes[9] = config.controller_mode;
+    bytes[1] = static_cast<std::uint8_t>(gain & 0xff);
+    bytes[2] = static_cast<std::uint8_t>((gain >> 8) & 0xff);
+    bytes[3] = config.speaker_volume;
+    bytes[4] = config.headset_volume;
+    bytes[5] = config.speaker_gain;
+    bytes[6] = config.inactive_minutes;
+    bytes[7] = config.polling_mode;
+    bytes[8] = config.audio_buffer_length;
+    bytes[9] = config.controller_mode;
     std::uint16_t flags = 0;
-    if (config.disable_led) flags |= kFlagDisableLed; if (config.enable_usb_serial) flags |= kFlagEnableUsbSerial; if (config.ps_shortcut) flags |= kFlagPsShortcut;
-    if (config.disable_mic) flags |= kFlagDisableMic; if (config.disable_speaker) flags |= kFlagDisableSpeaker; if (config.enable_wake) flags |= kFlagEnableWake; if (config.lock_volume) flags |= kFlagLockVolume;
-    bytes[10] = static_cast<std::uint8_t>(flags & 0xff); bytes[11] = static_cast<std::uint8_t>((flags >> 8) & 0xff);
-    bytes[12] = config.trigger_reduce; bytes[13] = config.status_gpio_pin; bytes[14] = config.status_gpio_mode;
+    if (config.disable_led) flags |= kFlagDisableLed;
+    if (config.enable_usb_serial) flags |= kFlagEnableUsbSerial;
+    if (config.ps_shortcut) flags |= kFlagPsShortcut;
+    if (config.disable_mic) flags |= kFlagDisableMic;
+    if (config.disable_speaker) flags |= kFlagDisableSpeaker;
+    if (config.enable_wake) flags |= kFlagEnableWake;
+    if (config.lock_volume) flags |= kFlagLockVolume;
+    bytes[10] = static_cast<std::uint8_t>(flags & 0xff);
+    bytes[11] = static_cast<std::uint8_t>((flags >> 8) & 0xff);
+    bytes[12] = config.trigger_reduce;
+    bytes[13] = config.status_gpio_pin;
+    bytes[14] = config.status_gpio_mode;
     return bytes;
 }
 

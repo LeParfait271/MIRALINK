@@ -1,13 +1,13 @@
 {
   "product": "MiraLink",
-  "version": "0.54",
-  "firmwareVersion": "0.54",
+  "version": "0.55",
+  "firmwareVersion": "0.55",
   "developer": "MaruChiwa",
   "lastUpdated": "2026-08-15",
   "delivery": "github-source-and-manual-firmware-release",
   "publicationStatus": "github-release-manual-test-candidate",
   "application": "app/src",
-  "applicationVersion": "0.54",
+  "applicationVersion": "0.55",
   "applicationValidation": {
     "syntaxCheck": "passed-direct-node-syntax-check",
     "unitTests": {
@@ -26,7 +26,7 @@
       "directory": "app/dist",
       "files": 29,
       "bytes": 320281,
-      "status": "passed-current-0.54-build"
+      "status": "passed-current-0.55-build"
     },
     "sourceDistributionComparison": {
       "matched": 28,
@@ -46,7 +46,7 @@
   "sourceBuild": {
     "sourceStatus": "compiled-locally-uf2-packaged",
     "distributionStatus": "github-release-manual-test-candidate",
-    "version": "0.54",
+    "version": "0.55",
     "directory": "firmware/pico/build-audit",
     "buildType": "Release",
     "board": "pico2_w",
@@ -65,7 +65,7 @@
     "armSyntaxOnlyCoreTests": "native-core-target-compiled-with-llvm-mingw; executable-not-launched",
     "nativeCoreTest": "not-run-by-rule-windows-llvm-runtime",
     "hardwareTest": "0.38-joy-cpl-buttons-sticks-and-configuration-commit; 0.39-pairing-live-quick-test-sample-controller-lab-diagnostics-and-configuration-read-observed-with-isolated-webhid-errors-and-power-off-reconnect-failure; 0.40-usb-bridge-radio-flash-pass-after-pico-restart-known-dualsense-offline-passive-reconnect-after-controller-power-off-and-pico-restart-failed-repair-required; 0.41-not-flashed-or-tested; 0.42-not-flashed-or-tested; 0.45-manual-passive-reconnect-failed; 0.46-not-flashed-or-tested; 0.47-manual-initial-pairing-and-controller-lab-pass-but-three-ps-only-reconnects-and-pico-restart-failed; 0.48-not-flashed-or-tested; 0.49-not-flashed-or-tested; 0.50-not-flashed-or-tested; 0.51-v0.51-release-flashed-and-ps-only-reconnect-failed; 0.52-not-flashed-or-tested; 0.53-not-flashed-or-tested",
-    "automaticFirstPairing": "bounded-five-minute-window-retained; closes-after-first-strict-length-crc-valid-enhanced-input-31; 0.54-hardware-not-tested",
+    "automaticFirstPairing": "bounded-five-minute-window-retained; closes-after-first-strict-length-crc-valid-enhanced-input-31; 0.55-hardware-not-tested",
     "usbConfiguration": "single-hid-interface-single-gamepad-top-level-with-nested-miralink-feature-collection",
     "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
     "usbIdentityMapping": "standard-and-auto-share-0x0ce6; edge-uses-0x0df2",
@@ -75,29 +75,29 @@
     "usbFeatureResponse71": "stable-until-next-command-report-produces-success-or-error-response; reconnect-intent-consumed-on-first-read; supports-receive-only-reread",
     "usbReconnect": "explicit-command-only; intent-bound-to-response-71; 250ms-delay-after-first-response-read; command-never-resent-after-ambiguous-send",
     "usbAudio": "source-only; USB-class-disabled; no-audio-stream-implemented-or-validated",
-    "usbRemoteWake": "opt-in-valid-controller-input-only; 0.54-hardware-not-tested",
+    "usbRemoteWake": "opt-in-valid-controller-input-only; 0.55-hardware-not-tested",
     "radioExecution": "single-main-loop-poll-with-sha-locked-btstack-output-overlay; build-verified",
     "bluetoothDiscovery": "supported-standard-and-edge-independent-of-usb-persona-during-bounded-pairing-window",
-    "bluetoothReconnect": "passive-for-remembered-keys-candidate; authenticated-inbound-acl-admission-before-ram-address-cache-rebuild; outgoing-hid-connect-during-active-pairing-window-only; immediate-and-foreground-interlaced-page-scan-rearm-at-hci-disconnection; discoverability-restored-after-acl-teardown; hardware-not-tested",
+    "bluetoothReconnect": "passive-for-remembered-keys-candidate; authenticated-inbound-acl-admission-before-ram-address-cache-rebuild; explicit-stale-cid-rearm-on-pairing-window; outgoing-hid-connect-during-active-pairing-window-only; immediate-and-foreground-interlaced-page-scan-rearm-at-hci-disconnection; discoverability-restored-after-acl-teardown; encryption-gated-bootstrap-and-output; hardware-not-tested",
     "bluetoothInputBootstrap": "strict-01-liveness-only; one-neutral-crc-protected-native-state-32-after-set-protocol; bounded-feature-05-09-20; neutral-output-fallback; strict-length-crc-valid-31-required",
     "flashSafety": "pico-sdk-flash-safe-execute; 64-bit-deadlines; safe-radio-init-failure"
   },
   "releaseArtifact": {
     "sourceStatus": "github-release-manual-test-candidate",
-    "version": "0.54",
-    "directory": "firmware/releases/0.54",
-    "uf2": "firmware/releases/0.54/miralink_pico_firmware.uf2",
-    "sha256": "E497C984AF845CED5BADF900EB88D16F986D12780157FC5E4C6ECC38B877C4F1",
-    "bytes": 904704,
+    "version": "0.55",
+    "directory": "firmware/releases/0.55",
+    "uf2": "firmware/releases/0.55/miralink_pico_firmware.uf2",
+    "sha256": "287D17005E9CE30798764B3544DCC4C18A00CC32A596C8D41C70A95673DC98D6",
+    "bytes": 905216,
     "buildType": "Release",
     "board": "pico2_w",
     "target": "RP2350 ARM Secure",
     "family": "rp2350-arm-s",
     "sdk": "2.3.0",
-    "binaryRange": "0x10000000..0x1006e51c",
+    "binaryRange": "0x10000000..0x1006e6cc",
     "extraSecurity": "not-enabled",
-    "hardwareTest": "0.45-manual-passive-reconnect-failed; v0.51-release-flashed-and-ps-only-reconnect-failed; 0.52-not-flashed-or-tested; 0.53-not-flashed-or-tested; 0.54-not-flashed-or-tested; 0.40-usb-bridge-radio-flash-pass-after-pico-restart-known-dualsense-offline-passive-reconnect-after-controller-power-off-and-pico-restart-failed-repair-required; historical-0.38-0.39-evidence-retained",
-    "automaticFirstPairing": "bounded-five-minute-window-retained; closes-after-first-valid-enhanced-input; 0.54-hardware-not-tested",
+    "hardwareTest": "0.45-manual-passive-reconnect-failed; v0.51-release-flashed-and-ps-only-reconnect-failed; 0.52-not-flashed-or-tested; 0.53-not-flashed-or-tested; 0.54-not-flashed-or-tested; 0.55-not-flashed-or-tested; 0.40-usb-bridge-radio-flash-pass-after-pico-restart-known-dualsense-offline-passive-reconnect-after-controller-power-off-and-pico-restart-failed-repair-required; historical-0.38-0.39-evidence-retained",
+    "automaticFirstPairing": "bounded-five-minute-window-retained; closes-after-first-valid-enhanced-input; 0.55-hardware-not-tested",
     "usbConfiguration": "single-hid-interface-single-gamepad-top-level-with-nested-miralink-feature-collection",
     "usbIdentity": "experimental-sony-054c:0ce6-standard-auto-or-054c:0df2-edge; no-affiliation",
     "usbReports": "input-01-wire64; output-02-wire48-or-63; features-05-09-20-70-71; 72-not-exposed",
@@ -106,9 +106,9 @@
     "usbFeatureResponse71": "stable-until-next-command-report-produces-success-or-error-response; reconnect-intent-one-shot-after-first-read",
     "usbReconnect": "separate-explicit-command; deferred-until-ack-first-read; host-observes-device-disappearance-without-command-resend",
     "usbAudio": "source-only; USB-class-disabled; no-audio-stream",
-    "usbRemoteWake": "opt-in-valid-controller-input-only; 0.54-hardware-not-tested",
-    "radioExecution": "single-main-loop-poll-with-sha-locked-btstack-output-overlay; build-verified; 0.54-hardware-not-tested; bounded-four-packet-output-fifo",
-    "bluetoothReconnect": "passive-remembered-key-reconnect-candidate; authenticated-inbound-acl-admission-before-ram-address-cache-rebuild; immediate-hci-disconnection-page-scan-rearm-plus-foreground-fallback; discoverability-restored-after-acl-teardown; correlated-auth-failure-drops-only-stale-known-key; outgoing-only-during-active-pairing-window; hardware-not-tested",
+    "usbRemoteWake": "opt-in-valid-controller-input-only; 0.55-hardware-not-tested",
+    "radioExecution": "single-main-loop-poll-with-sha-locked-btstack-output-overlay; build-verified; 0.55-hardware-not-tested; bounded-four-packet-output-fifo",
+    "bluetoothReconnect": "passive-remembered-key-reconnect-candidate; authenticated-inbound-acl-admission-before-ram-address-cache-rebuild; explicit-stale-cid-rearm-on-pairing-window; immediate-hci-disconnection-page-scan-rearm-plus-foreground-fallback; discoverability-restored-after-acl-teardown; correlated-auth-failure-drops-only-stale-known-key; outgoing-only-during-active-pairing-window; encryption-gated-bootstrap-and-output; hardware-not-tested",
     "bluetoothInputBootstrap": "strict-01-liveness-only; native-state-32-before-feature-05-09-20; bounded-feature-bootstrap-retries; neutral-output-fallback; strict-length-crc-valid-31-required",
     "flashSafety": "pico-sdk-flash-safe-execute; 64-bit-deadlines; safe-radio-init-failure",
     "runtimeConfiguration": "speaker-headset-monitor-volume-speaker-gain-trigger-reduction-idle-suspend-optional-serial-safe-status-gpio; PS-shortcut-persisted-not-consumed; audio-buffer-persisted-with-USB-audio-disabled",
@@ -117,23 +117,23 @@
     "weightedProvenPercent": 54.4,
     "referenceUf2Bytes": 1525248,
     "uf2RelativeSizePercent": 59.3,
-    "uf2BytesSmallerThanReference": 621056,
+    "uf2BytesSmallerThanReference": 620032,
     "artifacts": {
       "bin": {
-        "bytes": 451868,
-        "sha256": "9F0F21908CCC9A4B47EB21CBD14C728EAA27008107190454C03E8319201A056A"
+        "bytes": 452300,
+        "sha256": "53923A5D24D4FD7FAD6E04179B34FA84CA7CC0CECD0B373FAF91551AC1BF34BA"
       },
       "elf": {
-        "bytes": 2989380,
-        "sha256": "4E8661371E21F9780A04A76712C4F8CD4601FB8BEBD4EED0F3A8927DC3E1458C"
+        "bytes": 2991964,
+        "sha256": "F8F9E02F57BCA76C857D30986F20F3F5BA0C8C4FF6D473B567107D2431D3FE34"
       },
       "hex": {
-        "bytes": 1271053,
-        "sha256": "8E5F3BDB333B064A0397B837EA4D2C590C57D27D71088C2F80E2616D3D6B6FDA"
+        "bytes": 1272268,
+        "sha256": "BAEEC35924E65E6405DC2EA25AD7960B81F76E65DD9DDCB95CDFB76CDC5D3C11"
       },
       "uf2": {
-        "bytes": 904704,
-        "sha256": "E497C984AF845CED5BADF900EB88D16F986D12780157FC5E4C6ECC38B877C4F1"
+        "bytes": 905216,
+        "sha256": "287D17005E9CE30798764B3544DCC4C18A00CC32A596C8D41C70A95673DC98D6"
       }
     }
   },

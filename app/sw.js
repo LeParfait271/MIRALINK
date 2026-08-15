@@ -1,4 +1,4 @@
-const CACHE = 'miralink-shell-0.54-tombstone-rearm';
+const CACHE = 'miralink-shell-0.55-encryption-gate';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
