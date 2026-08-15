@@ -51,6 +51,14 @@ constexpr bool should_rearm_after_hci_disconnection(const bool hci_working,
     return hci_working && !idle_suspended;
 }
 
+// DS5Dongle restores discoverability together with connectability at the ACL
+// teardown boundary.  DualSense PS-only reconnects have been observed to
+// require that complete radio state even when the address is already bonded.
+constexpr bool should_restore_discoverable(const bool hci_working,
+    const bool idle_suspended) {
+    return hci_working && !idle_suspended;
+}
+
 // A completed ACL teardown is authoritative even if HID host is still
 // finishing SDP/L2CAP bookkeeping. The foreground can retire the stale host
 // slot before rearming passive page scan.
@@ -80,6 +88,9 @@ static_assert(!accepts_incoming_controller(false, false));
 static_assert(should_rearm_after_hci_disconnection(true, false));
 static_assert(!should_rearm_after_hci_disconnection(false, false));
 static_assert(!should_rearm_after_hci_disconnection(true, true));
+static_assert(should_restore_discoverable(true, false));
+static_assert(!should_restore_discoverable(false, false));
+static_assert(!should_restore_discoverable(true, true));
 static_assert(should_recover_after_hci_disconnection(true, false, true));
 static_assert(!should_recover_after_hci_disconnection(true, false, false));
 static_assert(!should_recover_after_hci_disconnection(true, true, true));

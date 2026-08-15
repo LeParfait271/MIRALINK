@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.48 - 2026-08-15
+
+- Re-enabled Bluetooth discoverability together with page scan after ACL/HID
+  teardown, matching the official DS5Dongle reconnect lifecycle for bonded
+  PS-only reconnection. The HID admission policy remains restricted to a
+  remembered address outside an explicit pairing window.
+- Compared the change against DS5Dongle v0.7.2-hotfix source. No board was
+  flashed and no new physical validation is claimed for 0.48.
+
 ## 0.47 - 2026-08-15
 
 - Compared DS5Dongle's authentication-failure path before changing MiraLink.

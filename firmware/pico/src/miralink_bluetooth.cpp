@@ -754,7 +754,12 @@ void service_page_scan_rearm() {
         gap_discoverable_control(1);
         start_inquiry();
     } else {
-        gap_discoverable_control(0);
+        // Match DS5Dongle's reconnect lifecycle: re-enable discoverability as
+        // well as page scan after ACL teardown.  The HID admission policy still
+        // accepts only a remembered address outside an explicit pairing window;
+        // discoverability alone does not authorize a new controller.
+        gap_discoverable_control(reconnect::should_restore_discoverable(
+            g_hci_working, g_idle_suspended) ? 1 : 0);
     }
 }
 

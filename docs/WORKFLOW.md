@@ -81,11 +81,11 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.47`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.47.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.47`.
-La source CMake peut employer `0.47.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.47`.
+La version publique actuelle du site est `0.48`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.48.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.48`.
+La source CMake peut employer `0.48.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.48`.
 
 La correction firmware `0.46` venait d'une comparaison directe avec DS5Dongle
 `v0.7.2-hotfix` : la référence réactive le page scan après
@@ -94,7 +94,8 @@ dans le callback puis réalise la transition `0 -> 1` depuis le polling foregrou
 La découvrabilité reste désactivée hors appairage ; l’acceptation d’un appareil
 hors fenêtre reste limitée aux adresses déjà mémorisées.
 
-La correction firmware `0.47` compare aussi l'échec d'authentification HCI
+La correction firmware `0.48` compare aussi la découvrabilité de reconnexion
+à DS5Dongle, en plus de l'échec d'authentification HCI
 au chemin DS5Dongle : seule la clé de l'adresse active, déjà connue avant la
 tentative et non encore validée par un rapport `0x31`, peut être supprimée.
 Une nouvelle association et une liaison déjà validée ne sont jamais effacées
