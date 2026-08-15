@@ -9,7 +9,7 @@
   <title>MiraLink — Centre de contrôle local</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=50-output-fifo">
+  <link rel="stylesheet" href="styles.css?ui=51-reconnect-bootstrap">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Aller au contenu</a>
@@ -21,7 +21,7 @@
         <span class="site-brand-copy"><strong>MIRALINK</strong><small>PICO 2 W / LOCAL CONTROL</small></span>
       </a>
       <div class="site-chrome-meta">
-        <span class="version-chip" id="version-chip">v0.50</span>
+        <span class="version-chip" id="version-chip">v0.51</span>
         <span class="status-chip" id="global-status" data-state="ready">
           <span class="status-dot" aria-hidden="true"></span>
           <span id="global-status-text" data-i18n="statusReady">Prêt</span>
@@ -182,7 +182,7 @@
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">02</span><div><h3 data-i18n="performanceTitle">Performance</h3><p data-i18n="performanceCopy">Fréquence d’interrogation et rythme audio.</p></div></div>
           <label class="field" for="polling-mode"><span class="field-label" data-i18n="pollingMode">Mode d’interrogation</span><select id="polling-mode" disabled><option value="0">250 Hz</option><option value="1">500 Hz</option><option value="2">Temps réel</option></select></label>
-          <label class="field unavailable-field" for="audio-buffer"><span class="field-label" data-i18n="audioBuffer">Tampon audio</span><span class="field-value" id="audio-buffer-value">64</span><input id="audio-buffer" type="range" min="16" max="127" step="1" value="64" aria-describedby="audio-buffer-hint" disabled><span class="field-hint" id="audio-buffer-hint">Indisponible en 0.50 — transport audio USB non exposé.</span></label>
+          <label class="field unavailable-field" for="audio-buffer"><span class="field-label" data-i18n="audioBuffer">Tampon audio</span><span class="field-value" id="audio-buffer-value">64</span><input id="audio-buffer" type="range" min="16" max="127" step="1" value="64" aria-describedby="audio-buffer-hint" disabled><span class="field-hint" id="audio-buffer-hint">Indisponible en 0.51 — transport audio USB non exposé.</span></label>
         </article>
         <article class="settings-card">
           <div class="card-heading"><span class="card-kicker">03</span><div><h3 data-i18n="powerTitle">Énergie et témoins</h3><p data-i18n="powerCopy">Veille, lumière et réveil de l’hôte.</p></div></div>
@@ -194,7 +194,7 @@
           <div class="card-heading"><span class="card-kicker">04</span><div><h3 data-i18n="compatibilityTitle">Compatibilité</h3><p data-i18n="compatibilityCopy">Mode manette et comportement USB.</p></div></div>
           <label class="field" for="controller-mode"><span class="field-label" data-i18n="controllerMode">Mode manette</span><select id="controller-mode" disabled><option value="0">DualSense</option><option value="1">DualSense Edge</option><option value="2">Automatique</option></select></label>
           <label class="switch-field"><input id="enable-usb-sn" type="checkbox" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="enableUsbSerial">Activer le numéro de série USB</span></label>
-          <label class="switch-field unavailable-field"><input id="ps-shortcut" type="checkbox" aria-describedby="ps-shortcut-hint" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="psShortcut">Activer le raccourci PS</span><span class="field-hint" id="ps-shortcut-hint">Indisponible en 0.50 — commande non exposée par le firmware actuel.</span></label>
+          <label class="switch-field unavailable-field"><input id="ps-shortcut" type="checkbox" aria-describedby="ps-shortcut-hint" disabled><span class="switch-ui" aria-hidden="true"></span><span class="field-label" data-i18n="psShortcut">Activer le raccourci PS</span><span class="field-hint" id="ps-shortcut-hint">Indisponible en 0.51 — commande non exposée par le firmware actuel.</span></label>
         </article>
       </div>
       <div class="notice warning usb-reconnect-notice" id="usb-reconnect-notice" role="status" hidden>
@@ -339,7 +339,7 @@
           <label class="button primary file-button" for="firmware-file"><span>Vérifier un fichier .UF2</span><input id="firmware-file" type="file" accept=".uf2,application/octet-stream"></label>
           <p>Le fichier est analysé localement avant toute manipulation du Pico 2 W.</p>
         </div>
-          <a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/tag/v0.50" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a>
+          <a class="button quiet firmware-release-link" href="https://github.com/LeParfait271/MIRALINK/releases/tag/v0.51" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Télécharger la release GitHub</a>
         <div id="firmware-result" class="verification-result" hidden aria-live="polite"></div>
       </div>
     </section>
@@ -361,7 +361,7 @@
   </main>
 
   <footer class="footer">
-    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.50</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-15</span>
+    <span>MIRALINK</span><span>LOCAL / OPEN</span><span id="footer-version">v0.51</span><span>MARUCHIWA</span><span id="footer-updated">2026-08-15</span>
   </footer>
 
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title">
@@ -373,6 +373,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="src/app.js?ui=50-output-fifo"></script>
+  <script type="module" src="src/app.js?ui=51-reconnect-bootstrap"></script>
 </body>
 </html>

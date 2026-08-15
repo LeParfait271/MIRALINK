@@ -40,6 +40,8 @@ constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 constexpr std::uint32_t kInquiryRetryDelayMs = 1000;
 constexpr std::uint32_t kOutputFlightGuardMs = 4;
 constexpr std::size_t kOutputPacketCapacity = 4;
+constexpr std::uint8_t kInitialStateOutputMaxAttempts = 3;
+constexpr std::uint32_t kInitialStateOutputRetryMs = 25;
 constexpr std::uint32_t kIgnoredHidDisconnectRetryMs = 250;
 constexpr std::uint32_t kIgnoredHidDisconnectWindowMs = 10000;
 constexpr std::uint8_t kIgnoredHidDisconnectMaxAttempts = 40;
@@ -91,6 +93,10 @@ std::uint8_t g_last_feature_status = 0;
 bool g_protocol_handshake_pending = false;
 std::array<std::uint8_t, dualsense::kBluetoothOutputReportBytes> g_bootstrap_output_packet{};
 std::uint64_t g_bootstrap_output_flight_deadline_ms = 0;
+std::array<std::uint8_t, dualsense::kBluetoothStateOutputReportBytes> g_initial_state_output_packet{};
+bool g_initial_state_output_pending = false;
+std::uint8_t g_initial_state_output_attempts = 0;
+std::uint64_t g_initial_state_output_retry_deadline_ms = 0;
 std::uint64_t g_inquiry_retry_deadline_ms = 0;
 std::uint64_t g_output_flight_deadline_ms = 0;
 bool g_connection_failure_recorded = false;
@@ -129,6 +135,7 @@ InquiryCandidate g_candidate{};
 void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_t* packet, std::uint16_t size);
 std::uint64_t now_ms();
 void try_send_output();
+void service_initial_state_output();
 void service_feature_bootstrap();
 void service_page_scan_rearm();
 void set_connection_closed();
@@ -163,6 +170,17 @@ void reset_feature_bootstrap() {
     g_last_feature_status = 0;
     g_bootstrap_output_packet.fill(0);
     g_bootstrap_output_flight_deadline_ms = 0;
+    g_initial_state_output_packet.fill(0);
+    g_initial_state_output_pending = false;
+    g_initial_state_output_attempts = 0;
+    g_initial_state_output_retry_deadline_ms = 0;
+}
+
+void arm_initial_state_output() {
+    g_initial_state_output_packet = dualsense::build_bluetooth_state_output_report();
+    g_initial_state_output_pending = true;
+    g_initial_state_output_attempts = 0;
+    g_initial_state_output_retry_deadline_ms = now_ms();
 }
 
 void clear_ignored_hid_teardown() {
@@ -517,6 +535,45 @@ void disconnect_after_bootstrap_failure(const ConnectionError error,
     const auto failed_cid = g_hid_cid;
     reset_feature_bootstrap();
     if (failed_cid != 0) hid_host_disconnect(failed_cid);
+}
+
+void service_initial_state_output() {
+    if (!g_initial_state_output_pending || g_hid_cid == 0
+        || g_protocol_handshake_pending) return;
+
+    const auto current_ms = now_ms();
+    if (current_ms < g_initial_state_output_retry_deadline_ms) return;
+    if (g_initial_state_output_attempts >= kInitialStateOutputMaxAttempts) {
+        // Some controller revisions do not expose the native state report in
+        // their SDP descriptor.  Treat that as a best-effort activation and
+        // continue the feature bootstrap instead of tearing down a usable HID
+        // link.
+        g_initial_state_output_pending = false;
+        return;
+    }
+
+    ++g_initial_state_output_attempts;
+    const auto status = hid_host_send_report(g_hid_cid,
+        dualsense::kBluetoothStateOutputReportId,
+        g_initial_state_output_packet.data() + 1,
+        static_cast<std::uint16_t>(g_initial_state_output_packet.size() - 1));
+    if (status == ERROR_CODE_SUCCESS) {
+        // BTstack retains this pointer until CAN_SEND_NOW. The packet is a
+        // connection-lifetime buffer and is not rewritten until the next HID
+        // connection, so no transient stack storage can corrupt the send.
+        g_initial_state_output_pending = false;
+        return;
+    }
+    if (status == ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER) {
+        record_connection_failure(ConnectionError::ProtocolHandshake, status);
+        set_connection_closed();
+        return;
+    }
+    if (g_initial_state_output_attempts < kInitialStateOutputMaxAttempts) {
+        g_initial_state_output_retry_deadline_ms = current_ms + kInitialStateOutputRetryMs;
+    } else {
+        g_initial_state_output_pending = false;
+    }
 }
 
 void service_feature_bootstrap() {
@@ -1014,9 +1071,18 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
 
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             // DS5Dongle re-enables its connectable/discoverable state at this
-            // lifecycle boundary. MiraLink records the same boundary here,
-            // then performs all BTstack writes from the foreground poll so
-            // the HCI callback cannot race the SDK's state transition.
+            // lifecycle boundary. This event is the controller's last
+            // authoritative teardown edge; deferring the first scan-enable
+            // command until the next foreground poll can miss the short
+            // page window used by a PS-only reconnect. Issue the same bounded
+            // radio re-arm immediately, and retain the foreground request as
+            // a retry for adapters that reject a command while busy.
+            if (g_hci_working && !g_idle_suspended) {
+                gap_set_page_scan_activity(kPageScanInterval, kPageScanWindow);
+                gap_set_page_scan_type(PAGE_SCAN_MODE_INTERLACED);
+                gap_connectable_control(1);
+                gap_discoverable_control(1);
+            }
             g_hci_disconnection_recovery_pending = reconnect::should_recover_after_hci_disconnection(
                 g_hci_working, g_idle_suspended,
                 g_hid_cid != 0 || g_connection_pending);
@@ -1202,6 +1268,12 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                         critical_section_exit(&g_state_lock);
                         clear_output_queue();
                         reset_feature_bootstrap();
+                        // A DualSense can remain in its compact BT report
+                        // mode after a PS-only reconnect.  Queue the native
+                        // state report for poll() once SET_PROTOCOL has
+                        // returned, matching the proven DS5Dongle lifecycle
+                        // without issuing BTstack writes from this callback.
+                        arm_initial_state_output();
                     } else {
                         record_connection_failure(ConnectionError::ConnectionOpen,
                             hid_subevent_connection_opened_get_status(packet));
@@ -1430,6 +1502,7 @@ void poll() {
     if (!g_initialized) return;
     service_ignored_hid_disconnect();
     service_page_scan_rearm();
+    service_initial_state_output();
     service_feature_bootstrap();
     const auto inactive_minutes = configured_inactive_minutes();
     if (!g_idle_suspended && inactive_minutes != 0 && g_hid_cid != 0) {

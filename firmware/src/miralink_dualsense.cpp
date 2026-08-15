@@ -103,7 +103,7 @@ InputReportResult parse_common_input(const std::uint8_t* report, const std::size
 }
 
 std::uint32_t output_crc32(const std::uint8_t* report, const std::size_t length) {
-    if (report == nullptr || length != kBluetoothOutputReportBytes) return 0;
+    if (report == nullptr || length < kBluetoothCrcBytes) return 0;
     const std::array<std::uint8_t, 1> seed{0xa2};
     std::uint32_t crc = crc32_update(0xffffffffu, seed.data(), seed.size());
     crc = crc32_update(crc, report, length - kBluetoothCrcBytes);
@@ -435,6 +435,40 @@ std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_rep
     report[kBluetoothOutputCrcOffset + 1] = static_cast<std::uint8_t>((crc >> 8u) & 0xffu);
     report[kBluetoothOutputCrcOffset + 2] = static_cast<std::uint8_t>((crc >> 16u) & 0xffu);
     report[kBluetoothOutputCrcOffset + 3] = static_cast<std::uint8_t>((crc >> 24u) & 0xffu);
+    return report;
+}
+
+std::array<std::uint8_t, kBluetoothStateOutputReportBytes> build_bluetooth_state_output_report() {
+    std::array<std::uint8_t, kBluetoothStateOutputReportBytes> report{};
+    report[0] = kBluetoothStateOutputReportId;
+    // Native DualSense BT state report header: sequence, tag, and 63-byte
+    // state section.  The report is intentionally neutral (no rumble/light
+    // request); its purpose is to switch the controller to enhanced input.
+    report[1] = 0x10;
+    report[2] = 0x90;
+    report[3] = 0x3f;
+
+    // Packed 47-byte SetStateData body.  Enable the controller-side output
+    // sections needed for normal reports, while leaving motors, triggers and
+    // RGB light values at their neutral values.
+    auto* state = report.data() + 4;
+    state[0] = 0xfdu; // rumble/triggers/audio control permissions
+    state[1] = 0xf7u; // mute/light/player/audio permissions
+    state[4] = 0x7fu; // headphone volume (native maximum-safe range)
+    state[5] = 0x7fu; // speaker volume
+    state[6] = 0xffu; // microphone volume
+    state[7] = 0x09u; // internal mic + noise cancellation
+    state[9] = 0x0fu; // keep sensor/haptic/audio power domains awake
+    state[37] = 0x01u; // conservative speaker pre-gain
+    state[38] = 0x07u; // brightness/fade/improved-rumble capabilities
+    state[41] = 0x02u; // fade-out, no visible light request
+    state[42] = 0x01u; // mid brightness if a host later enables light
+
+    const auto crc = output_crc32(report.data(), report.size());
+    report[kBluetoothStateOutputReportBytes - kBluetoothCrcBytes] = static_cast<std::uint8_t>(crc & 0xffu);
+    report[kBluetoothStateOutputReportBytes - kBluetoothCrcBytes + 1] = static_cast<std::uint8_t>((crc >> 8u) & 0xffu);
+    report[kBluetoothStateOutputReportBytes - kBluetoothCrcBytes + 2] = static_cast<std::uint8_t>((crc >> 16u) & 0xffu);
+    report[kBluetoothStateOutputReportBytes - kBluetoothCrcBytes + 3] = static_cast<std::uint8_t>((crc >> 24u) & 0xffu);
     return report;
 }
 

@@ -19,7 +19,7 @@ import {
   inspectMiraLinkHidIdentity
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=50-output-fifo';
+import { applyTranslations, translate } from './i18n.js?ui=51-reconnect-bootstrap';
 import { inspectUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { commitProfileApplication, createBuiltInProfiles, createProfile, diffConfig, previewProfileApplication } from './profiles.js';
@@ -40,7 +40,7 @@ import {
   transactFeatureReport
 } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, compareControllerAnalyses, createCalibrationRevision } from './controller-lab.js';
-import { scrollToRouteTarget } from './site-effects.js?ui=50-output-fifo';
+import { scrollToRouteTarget } from './site-effects.js?ui=51-reconnect-bootstrap';
 
 const state = {
   devices: new Map(),
@@ -49,7 +49,7 @@ const state = {
   draft: null,
   savedConfig: null,
   logs: logStore.get(),
-  version: { version: '0.50', developer: 'MaruChiwa', lastUpdated: '2026-08-15' }
+  version: { version: '0.51', developer: 'MaruChiwa', lastUpdated: '2026-08-15' }
 };
 
 const CONTROLLER_POLL_INTERVAL_MS = 100;
@@ -443,7 +443,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=50-output-fifo', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=51-reconnect-bootstrap', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -1586,7 +1586,7 @@ function init() {
     showHidWarning(initialHidStatus);
     addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=50-output-fifo').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=51-reconnect-bootstrap').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

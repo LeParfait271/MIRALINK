@@ -49,6 +49,12 @@ constexpr std::uint8_t kBluetoothInputReportId = 0x31;
 constexpr std::size_t kBluetoothInputReportBytes = 78;
 constexpr std::uint8_t kBluetoothOutputReportId = 0x31;
 constexpr std::size_t kBluetoothOutputReportBytes = 78;
+// DualSense Bluetooth controllers leave their compact input mode after the
+// host sends the native state/output report.  This is deliberately kept as a
+// separate builder from the 0x31 effect report: it is sent once per HID link
+// during reconnect/bootstrap and carries no user haptics.
+constexpr std::uint8_t kBluetoothStateOutputReportId = 0x32;
+constexpr std::size_t kBluetoothStateOutputReportBytes = 142;
 constexpr std::uint8_t kBluetoothAudioReportId = 0x36;
 constexpr std::size_t kBluetoothAudioReportBytes = 398;
 constexpr std::size_t kBluetoothAudioHapticHeaderOffset = 76;
@@ -152,6 +158,7 @@ struct OutputRequest {
 };
 
 std::array<std::uint8_t, kBluetoothOutputReportBytes> build_bluetooth_output_report(const OutputRequest& request, std::uint8_t sequence);
+std::array<std::uint8_t, kBluetoothStateOutputReportBytes> build_bluetooth_state_output_report();
 std::uint32_t bluetooth_output_crc32(const std::uint8_t* report, std::size_t length);
 std::uint32_t bluetooth_output_crc32(const std::vector<std::uint8_t>& report);
 void apply_usb_output_trigger_reduction(std::array<std::uint8_t, kUsbOutputPayloadBytes>& payload, std::uint8_t reduction);

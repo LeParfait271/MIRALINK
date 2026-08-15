@@ -551,6 +551,24 @@ void test_dualsense_bluetooth_output_builder() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+void test_dualsense_bluetooth_state_output_builder() {
+    const auto report = miralink::dualsense::build_bluetooth_state_output_report();
+    assert(report.size() == miralink::dualsense::kBluetoothStateOutputReportBytes);
+    assert(report[0] == miralink::dualsense::kBluetoothStateOutputReportId);
+    assert(report[1] == 0x10);
+    assert(report[2] == 0x90);
+    assert(report[3] == 0x3f);
+    // State body starts after the four-byte native report header.
+    assert(report[4] == 0xfd);
+    assert(report[5] == 0xf7);
+    assert(report[11] == 0x09);
+    const auto crc = static_cast<std::uint32_t>(report[138])
+        | (static_cast<std::uint32_t>(report[139]) << 8u)
+        | (static_cast<std::uint32_t>(report[140]) << 16u)
+        | (static_cast<std::uint32_t>(report[141]) << 24u);
+    assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
+}
+
 void test_dualsense_controller_output_mapping() {
     miralink::dualsense::OutputRequest request{};
     request.usb_output = true;
@@ -684,6 +702,6 @@ void test_dualsense_audio_report_validation() {
 }
 
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_commit_config_ack_contract(); test_usb_identity_mode_mapping(); test_config_round_trip(); test_config_rejects_noncanonical_wire_payloads(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_user_controller_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_bootstrap_report_classification(); test_dualsense_bluetooth_reconnect_policy(); test_dualsense_bluetooth_feature_bootstrap_sequence(); test_dualsense_bluetooth_feature_bootstrap_races(); test_dualsense_bluetooth_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_commit_config_ack_contract(); test_usb_identity_mode_mapping(); test_config_round_trip(); test_config_rejects_noncanonical_wire_payloads(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_user_controller_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_bootstrap_report_classification(); test_dualsense_bluetooth_reconnect_policy(); test_dualsense_bluetooth_feature_bootstrap_sequence(); test_dualsense_bluetooth_feature_bootstrap_races(); test_dualsense_bluetooth_output_builder(); test_dualsense_bluetooth_state_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }

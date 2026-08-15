@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(miralink_core VERSION 0.50.0 LANGUAGES CXX)
+project(miralink_core VERSION 0.51.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

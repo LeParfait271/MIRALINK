@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.51 - 2026-08-15
+
+- Compared the failed PS-only reconnect with the official DS5Dongle
+  `v0.7.2-hotfix` source before changing MiraLink.
+- Re-arm interlaced page scan, connectability and discoverability immediately
+  at `HCI_EVENT_DISCONNECTION_COMPLETE`, retaining the foreground re-arm as a
+  bounded fallback for busy adapters.
+- Send one neutral, CRC-protected native Bluetooth state report `0x32` after
+  `SET_PROTOCOL` on every HID link, with three bounded attempts if BTstack is
+  temporarily busy. This asks the controller to leave compact Bluetooth input
+  mode before the existing Feature bootstrap.
+- Keep the hardware score at `54.4%` until the physical PS-only reconnect
+  matrix passes.
+
 ## 0.50 - 2026-08-15
 
 - Replaced the single Bluetooth output slot with a bounded four-packet FIFO.

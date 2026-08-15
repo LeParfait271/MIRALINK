@@ -6,7 +6,7 @@ This document defines a new MiraLink protocol. It is deliberately independent of
 
 The first transport is a vendor-defined USB HID Feature-report collection
 inside the single root Gamepad Application collection of MiraLink's
-experimental DualSense-family interface. Firmware 0.50 uses
+experimental DualSense-family interface. Firmware 0.51 uses
 Sony VID `0x054c` and PID `0x0ce6` or `0x0df2` for host compatibility; this is
 not an assigned MiraLink identity, Sony firmware or an affiliation claim.
 
@@ -56,7 +56,7 @@ The firmware rejects a frame if the report is not exactly 64 bytes, the
 declared payload is outside the report, the CRC fails, the padding is not zero,
 or the command is not supported.
 
-The binary frame protocol remains version `1` in firmware `0.50`; no report ID,
+The binary frame protocol remains version `1` in firmware `0.51`; no report ID,
 command ID, payload schema or wire size changes in this release. After a valid
 command, the firmware retains the corresponding `0x71` response and returns it
 on repeated `GET_REPORT` requests until the next MiraLink command report
@@ -94,7 +94,7 @@ reopen the five-minute window later.
 
 ### 3.1 Configuration commit acknowledgement
 
-Firmware `0.50` returns exactly two payload bytes after a successful
+Firmware `0.51` returns exactly two payload bytes after a successful
 `COMMIT_CONFIG`:
 
 | Offset | Meaning |
@@ -143,7 +143,7 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 44..47 | 4 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
-claim that a controller is connected. Firmware 0.50 exposes one HID-only USB
+claim that a controller is connected. Firmware 0.51 exposes one HID-only USB
 interface with one root Gamepad Application collection and a nested MiraLink
 vendor collection. The
 UAC2 audio source remains source-compatible but is disabled from the active USB
@@ -159,7 +159,7 @@ validated DualSense input report has been received.
 
 ### 3.3 Pico controller state payload
 
-`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.50
+`GET_CONTROLLER_STATE` returns a 48-byte payload for schema `2`. Firmware 0.51
 does not declare or emit an asynchronous management Input report under the
 Sony persona; the application starts the next poll 100 ms after the previous
 transaction finishes and applies bounded 250/500 ms backoff after transient
@@ -197,11 +197,11 @@ The command does not flash firmware or write configuration. Outgoing
 A controller with a known local key may reconnect inbound outside the pairing
 window; an unknown incoming controller is declined. Page scan is configured
 only after `HCI_STATE_WORKING`, connectability is rearmed after close, and
-discoverability remains disabled outside the pairing window. The pairing
-window closes after the first complete CRC-valid enhanced `0x31` input. Passive
-page-scan recovery is requested after `HCI_EVENT_DISCONNECTION_COMPLETE` and
-executed from the foreground poll; discoverability remains disabled outside
-the pairing window.
+discoverability is rearmed at `HCI_EVENT_DISCONNECTION_COMPLETE` for the
+short PS-only page window, with the foreground poll repeating the transition
+if the adapter was busy. Unknown incoming controllers are still declined
+outside the explicit pairing window. The pairing window closes after the first
+complete CRC-valid enhanced `0x31` input.
 
 ### 3.4 Local diagnostics and recovery commands
 
@@ -271,12 +271,13 @@ minimal input report `0x01`. That report proves only that traffic is arriving:
 it does not carry the complete state expected by MiraLink and cannot set the
 `connected` or `input-valid` controller flags.
 
-After accepting a valid Bluetooth HID descriptor, firmware `0.50` advances a
+After accepting a valid Bluetooth HID descriptor, firmware `0.51` advances a
 bounded asynchronous bootstrap through controller Feature reports `0x05`,
 `0x09` and `0x20`. At most one request is outstanding. Transient busy/not-ready
 results and response timeouts stay inside the Bluetooth state machine instead
 of blocking a callback. If the Feature path does not produce the enhanced
-stream, the firmware may send one bounded neutral enhanced-output fallback.
+stream, the firmware first sends one bounded neutral native state report `0x32`
+after `SET_PROTOCOL`, then may send one bounded neutral enhanced-output fallback.
 
 Only a complete Bluetooth input report `0x31` with the strict expected length
 and a valid CRC can complete the handshake, expose controller input or make a

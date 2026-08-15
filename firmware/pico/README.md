@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.50
+## Firmware 0.51
 
 The firmware exposes one experimental HID-only DualSense-family persona. It
 uses Sony VID `0x054c` with PID `0x0ce6` (standard/Auto) or `0x0df2` (Edge)
@@ -35,10 +35,18 @@ unvalidated UAC2 composite descriptor is not active. The audio pipeline remains
 in source and is not exposed as a working USB capability.
 
 The 0.49 inactivity fix distinguishes continuous unchanged Bluetooth telemetry
-from real user activity. Firmware 0.50 additionally keeps a bounded four-packet FIFO for
+from real user activity. Firmware 0.51 additionally keeps a bounded four-packet FIFO for
 Bluetooth output reports. One packet may be in flight and up to three remain
 queued, so rapid haptic, lightbar, trigger and audio-output requests stay
 ordered until BTstack accepts them.
+
+Firmware 0.51 additionally follows the DS5Dongle reconnect lifecycle at the
+authoritative HCI disconnection boundary: interlaced page scan, connectability
+and discoverability are re-armed immediately, with the foreground poll as a
+fallback. Each HID link also receives one neutral CRC-protected native state
+report `0x32` after `SET_PROTOCOL`, asking a DualSense to leave compact
+Bluetooth input mode before Feature bootstrap. This is software-only until a
+physical PS-only reconnect test passes.
 
 ## Functional coverage
 
@@ -60,10 +68,11 @@ ordered until BTstack accepts them.
   for first association.
 - Bluetooth page scan is configured only after the radio reports
   `HCI_STATE_WORKING`. The HCI disconnection-complete event requests a
-  foreground rearm after the old ACL/HID teardown, while connectability is
-  rearmed only after that lifecycle boundary,
-  discoverability remains disabled outside an active pairing window, and that
-  window closes after the first complete CRC-valid enhanced `0x31` report.
+  direct radio rearm at the authoritative ACL teardown boundary and the
+  foreground poll repeats it if the adapter is busy. Connectability and
+  discoverability are restored for the short PS-only page window; unknown
+  incoming controllers remain declined outside an active pairing window, and
+  that window closes after the first complete CRC-valid enhanced `0x31` report.
 - A newly observed Bluetooth address is kept provisional until its first valid
   DualSense input report. If that new attempt closes before validation, only
   the new unvalidated link key is discarded; keys that predated the attempt
