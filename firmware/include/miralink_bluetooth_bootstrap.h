@@ -185,12 +185,13 @@ constexpr bool output_safe(const State& state) {
     return state.phase == Phase::Complete;
 }
 
-// The native state packet shares BTstack's HID transport with the Feature
-// bootstrap. It is safe only after a Feature response has returned (or after
-// the bootstrap has completed); never spend output retries while a GET_REPORT
-// transaction still owns the HID host state.
+// The native state packet is the activation edge for controllers that begin
+// with the compact Bluetooth input report. Send it before the first Feature
+// GET, as the reference lifecycle does; subsequent GET_REPORT attempts are
+// retried by the foreground once BTstack has released the interrupt send.
 constexpr bool initial_state_output_safe(const State& state) {
-    return state.phase == Phase::WaitingForEnhancedInput
+    return state.phase == Phase::FeatureRequestReady
+        || state.phase == Phase::WaitingForEnhancedInput
         || state.phase == Phase::Complete;
 }
 

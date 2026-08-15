@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.52 - 2026-08-15
+
+- Compared the reconnect bootstrap against the official DS5Dongle
+  `v0.7.2-hotfix` lifecycle.
+- Send the neutral native Bluetooth state report `0x32` immediately after the
+  HID report-mode handshake, before Feature GET requests, so a remembered
+  DualSense can leave compact Bluetooth report mode after a PS-only wake.
+- Keep Feature requests bounded and retry them after BTstack releases the
+  interrupt send; no physical 0.52 validation is claimed yet.
+
 ## 0.51 - 2026-08-15
 
 - Compared the failed PS-only reconnect with the official DS5Dongle

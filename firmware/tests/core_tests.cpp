@@ -484,7 +484,7 @@ void test_dualsense_bluetooth_feature_bootstrap_sequence() {
     bootstrap::begin(state);
     assert(state.phase == bootstrap::Phase::FeatureRequestReady);
     assert(bootstrap::feature_report_id(state) == 0x05);
-    assert(!bootstrap::initial_state_output_safe(state));
+    assert(bootstrap::initial_state_output_safe(state));
 
     assert(bootstrap::feature_request_sent(state, 0x05));
     assert(state.phase == bootstrap::Phase::FeatureResponsePending);
