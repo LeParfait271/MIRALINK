@@ -44,6 +44,12 @@ l’utilisateur.
 - L’ancien UF2 peut uniquement servir de référence observée en lecture seule
   pour les capacités attendues ; ne jamais en extraire ni réutiliser du code,
   du binaire ou une structure interne.
+- Pour chaque problème firmware, consulter obligatoirement le fichier UF2 officiel
+  DS5Dongle `v0.7.2-hotfix` et son code source avant de proposer une cause ou une
+  modification. Comparer le comportement concerné, classer OBSERVÉ / INFÉRÉ /
+  PROUVÉ, puis écrire la cause probable et le test discriminant. Cette référence
+  reste clean-room : aucun code, binaire, protocole interne ou structure n’est
+  copié.
 - Demander confirmation avant une action dangereuse, un flash ou une publication ; le push Git est autorisé par la règle permanente du 2026-08-14 après un prompt qui modifie MiraLink.
 - Après une correction USB, conserver séparément la preuve du build, du
   descripteur, du paquet UF2 et du test de l’échange sur la carte réellement
@@ -75,11 +81,18 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.42`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.42.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.42`.
-La source CMake peut employer `0.42.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.42`.
+La version publique actuelle du site est `0.45`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.45.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.45`.
+La source CMake peut employer `0.45.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.45`.
+
+La correction firmware `0.45` vient d’une comparaison directe avec DS5Dongle
+`v0.7.2-hotfix` : la référence réactive le page scan après
+`HCI_EVENT_DISCONNECTION_COMPLETE`. MiraLink enregistre désormais cette frontière
+dans le callback puis réalise la transition `0 -> 1` depuis le polling foreground.
+La découvrabilité reste désactivée hors appairage ; l’acceptation d’un appareil
+hors fenêtre reste limitée aux adresses déjà mémorisées.
 
 La release `0.42` conserve l'ouverture automatique pendant cinq minutes de la
 fenêtre Bluetooth locale quand la banque de clés BTstack ne contient encore

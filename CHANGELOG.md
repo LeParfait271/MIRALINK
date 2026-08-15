@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.45 - 2026-08-15
+
+- Made the official DS5Dongle `v0.7.2-hotfix` UF2 and source a mandatory
+  read-only behavioral reference for every firmware diagnosis. Each firmware
+  issue now records OBSERVED / INFERRED / PROVEN facts, a probable cause and a
+  discriminating test before a correction is written.
+- Compared the failed remembered reconnect with DS5Dongle and moved MiraLink's
+  passive page-scan rearm trigger from the earlier HID close boundary to
+  `HCI_EVENT_DISCONNECTION_COMPLETE`; BTstack writes still run only in the
+  foreground poll.
+- Kept discoverability disabled outside pairing, the binary protocol at `1`,
+  the desktop-only scope, manual flashing and the DS5Dongle proven score at
+  `54.4%` pending new physical evidence.
+- Synchronized the public site, firmware metadata, documentation and release
+  candidate to `0.45` / `0.45.0`.
+
 ## 0.42 - 2026-08-14
 
 - Kept the passive remembered-controller policy and the 0.41 foreground

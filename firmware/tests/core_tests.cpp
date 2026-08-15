@@ -401,6 +401,12 @@ void test_dualsense_bluetooth_reconnect_policy() {
     assert(!reconnect::should_rearm_after_idle_resume(false, true));
     assert(!reconnect::should_rearm_after_idle_resume(true, false));
 
+    // The passive reconnect rearm is triggered by the completed HCI teardown,
+    // not merely by the earlier HID channel-close callback.
+    assert(reconnect::should_rearm_after_hci_disconnection(true, false));
+    assert(!reconnect::should_rearm_after_hci_disconnection(false, false));
+    assert(!reconnect::should_rearm_after_hci_disconnection(true, true));
+
     assert(reconnect::completes_pairing_window(true, true));
     assert(!reconnect::completes_pairing_window(true, false));
     assert(!reconnect::completes_pairing_window(false, true));

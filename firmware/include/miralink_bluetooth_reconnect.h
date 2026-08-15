@@ -43,6 +43,14 @@ constexpr bool should_rearm_after_idle_resume(const bool hci_working,
     return hci_working && resume_from_idle;
 }
 
+// DS5Dongle re-enables its page-scannable state when the controller's ACL
+// teardown is complete. MiraLink keeps the actual BTstack writes in the
+// foreground poll, but the HCI event is the authoritative trigger.
+constexpr bool should_rearm_after_hci_disconnection(const bool hci_working,
+    const bool idle_suspended) {
+    return hci_working && !idle_suspended;
+}
+
 constexpr bool completes_pairing_window(const bool pairing_window_active,
     const bool first_valid_enhanced_input) {
     return pairing_window_active && first_valid_enhanced_input;
@@ -51,5 +59,8 @@ constexpr bool completes_pairing_window(const bool pairing_window_active,
 static_assert(!allows_outgoing_hid_connect(RadioAction::PassiveReconnect));
 static_assert(accepts_incoming_controller(false, true));
 static_assert(!accepts_incoming_controller(false, false));
+static_assert(should_rearm_after_hci_disconnection(true, false));
+static_assert(!should_rearm_after_hci_disconnection(false, false));
+static_assert(!should_rearm_after_hci_disconnection(true, true));
 
 } // namespace miralink::bluetooth::reconnect

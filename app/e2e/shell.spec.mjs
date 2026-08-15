@@ -362,7 +362,7 @@ test('identifies the Pico bridge and exposes actionable diagnostics', async ({ p
   await expect(page.locator('#audio-buffer')).toHaveValue('96');
   await expect(page.locator('#ps-shortcut')).toBeDisabled();
   await expect(page.locator('#ps-shortcut')).toBeChecked();
-  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.42');
+  await expect(page.locator('#ps-shortcut-hint')).toContainText('Indisponible en 0.45');
   await expect(page.locator('#save-config-button')).toBeDisabled();
   await page.locator('#haptics-gain').evaluate((input) => {
     input.value = '1.4';

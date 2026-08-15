@@ -8,8 +8,8 @@
 - Développeur affiché : **MaruChiwa**
 - Dossier actif vérifié : `C:\MIRALINK\MIRALINK`, branche `main`
 - Version initiale : `0.1.0`
-- Version publique actuelle du site : `0.42`
-- Version firmware alignée au site : `0.42`
+- Version publique actuelle du site : `0.45`
+- Version firmware alignée au site : `0.45`
 - Date de démarrage : `2026-08-12`
 - Livraison par source GitHub et release firmware manuelle lorsqu'elle est
   explicitement autorisée ; aucun flash n'est automatique.
@@ -29,6 +29,7 @@
 11. Préserver les fichiers existants tant qu'une suppression n'est pas explicitement autorisée.
 12. Toute nouvelle règle donnée par l'utilisateur doit être ajoutée à ce fichier avant de poursuivre.
 13. Un correctif WebHID limité à l'application peut cibler le VID/PID MiraLink sans imposer un reflash du firmware compatible déjà installé ; l'énumération du Pico et l'appairage de la manette restent des validations séparées.
+14. Pour chaque problème firmware, consulter d'abord le firmware et le code source officiels DS5Dongle `v0.7.2-hotfix` comme référence comportementale obligatoire ; comparer le chemin concerné avant tout correctif, sans copier code, binaire, protocole interne ou structure.
 
 ## Produit attendu
 
@@ -36,7 +37,7 @@
 - Thème sombre uniquement.
 - Design original, sobre et futuriste, avec une palette reposante et des accents lumineux parcimonieux ; aucun néon dominant.
 - Inspiration HUD de combat VR uniquement ; aucune copie de ressources protégées.
-- L'interface `0.42` est livrée en français ; l'anglais par défaut et la
+- L'interface `0.45` est livrée en français ; l'anglais par défaut et la
   couverture des langues européennes restent une cible d'architecture future,
   pas une capacité actuellement annoncée.
 - Sauvegardes locales exportables/importables, comparaison avant écriture et restauration.
@@ -61,7 +62,7 @@ Le firmware est une nouvelle implémentation Pico 2 W avec :
 
 La compatibilité avec les contrôleurs est réimplémentée selon les contraintes matérielles et protocolaires nécessaires, sans réutiliser le code précédent.
 
-Le lot `0.42` vise à atteindre puis dépasser les capacités observables de
+Le lot `0.45` vise à atteindre puis dépasser les capacités observables de
 DS5Dongle `v0.7.2-hotfix` par une implémentation clean-room. La persona USB
 expérimentale utilise le VID Sony `0x054c` avec le PID `0x0ce6` en mode
 standard/Auto ou `0x0df2` en mode Edge, conformément à l'autorisation explicite
@@ -79,8 +80,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.39` → `0.40` → `0.41` → `0.42`. La version technique du paquet npm utilise `0.42.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.42`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.42.0`, mais le firmware affiché et livré reste `0.42`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.39` → `0.40` → `0.41` → `0.42` → `0.43` → `0.44` → `0.45`. La version technique du paquet npm utilise `0.45.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.45`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.45.0`, mais le firmware affiché et livré reste `0.45`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.
@@ -94,15 +95,20 @@ Avant chaque intervention :
 1. Relire ce fichier entièrement.
 2. Vérifier l'état du dossier sans l'écraser.
 3. Définir l'objectif et le périmètre autorisé.
-4. Réaliser une étape réduite et vérifiable.
-5. Modifier uniquement les fichiers nécessaires.
-6. Tester immédiatement.
-7. Conserver les résultats, erreurs et limites.
-8. Mettre à jour le workflow et les garde-fous avant le commit si le prompt ajoute une règle, une décision ou une limite.
-9. Mettre à jour version et date avant le commit.
-10. Vérifier que le commit contient toutes les modifications du prompt et aucun fichier hors périmètre.
-11. Créer un seul commit local complet ; pour tout prompt qui modifie MiraLink, pousser immédiatement ce commit vers le remote configuré et vérifier la branche distante.
-12. Demander une décision si une ambiguïté change l'architecture, la compatibilité ou la sécurité.
+4. Pour tout problème firmware, lire la référence DS5Dongle officielle et le
+   chemin MiraLink correspondant ; consigner séparément OBSERVÉ, INFÉRÉ et
+   PROUVÉ.
+5. Établir la cause probable et le test discriminant avant toute écriture de
+   correctif matériel.
+6. Réaliser une étape réduite et vérifiable.
+7. Modifier uniquement les fichiers nécessaires.
+8. Tester immédiatement.
+9. Conserver les résultats, erreurs et limites.
+10. Mettre à jour le workflow et les garde-fous avant le commit si le prompt ajoute une règle, une décision ou une limite.
+11. Mettre à jour version et date avant le commit.
+12. Vérifier que le commit contient toutes les modifications du prompt et aucun fichier hors périmètre.
+13. Créer un seul commit local complet ; pour tout prompt qui modifie MiraLink, pousser immédiatement ce commit vers le remote configuré et vérifier la branche distante.
+14. Demander une décision si une ambiguïté change l'architecture, la compatibilité ou la sécurité.
 
 ## Contrôles avant livraison
 
@@ -200,3 +206,5 @@ automatique.
 - `2026-08-14` — Le correctif firmware `0.41` a été compilé, inspecté avec picotool et empaqueté avec SHA-256. Comme il est destiné à un test matériel, la release GitHub `v0.41` doit être publiée avec ces artefacts avant de demander le flash manuel ; cette publication ne vaut pas preuve matérielle et n'autorise aucun flash automatique.
 - `2026-08-14` — Le lot `0.41` est la mission corrective ciblée de reconnexion passive ; il conserve le protocole binaire `1`, le desktop-only, le flash manuel et l'interdiction de lancer `miralink-core-tests.exe` sous Windows. Aucun score DS5Dongle ne peut augmenter avant une nouvelle preuve matérielle.
 - `2026-08-14` — Le candidat firmware `0.42` corrige uniquement la reprise Bluetooth après suspension locale : un commit de configuration ne rappelle plus directement BTstack depuis le callback USB et demande un réarmement traité par le polling foreground. Le protocole binaire reste `1`, le flash reste manuel, le desktop-only est conservé et aucune preuve matérielle ni hausse de score DS5Dongle n'est déclarée.
+- `2026-08-15` — Pour tout problème firmware, DS5Dongle `v0.7.2-hotfix` est désormais la référence comportementale obligatoire : le fichier UF2 officiel et son code source sont consultés avant le diagnostic, les différences sont classées OBSERVÉ / INFÉRÉ / PROUVÉ, puis une cause probable et un test discriminant sont écrits avant le correctif. MiraLink reste clean-room, aucun score DS5Dongle n'augmente sans nouvelle preuve matérielle et le score courant reste `54,4 %`.
+- `2026-08-15` — Le candidat unifié `0.45` aligne le réarmement passif sur la fin de déconnexion HCI observée dans DS5Dongle, tout en conservant les écritures BTstack dans le polling foreground, le protocole `1`, le desktop-only, le flash manuel et l'interdiction de lancer `miralink-core-tests.exe` sous Windows.

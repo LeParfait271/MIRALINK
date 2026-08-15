@@ -6,10 +6,10 @@ Document de conception local. Il ne constitue pas une promesse de support matér
 - Développeur : MaruChiwa
 - Cible matérielle : Raspberry Pi Pico 2 W uniquement
 - Politique : local-first, sans télémétrie, cloud ni synchronisation ; source et artefacts publiables, opérations matérielles locales
-- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.42
-- Version produit actuelle : 0.42 candidate
+- État du document : roadmap active ; snapshot 2026-08-12 supersédé par l’état candidat 0.45
+- Version produit actuelle : 0.45 candidate
 - Étude initiale : 2026-08-12
-- Dernier alignement : 2026-08-14
+- Dernier alignement : 2026-08-15
 
 ## 1. Décisions transversales
 
@@ -912,5 +912,38 @@ brute `76 %`, score pondéré prouvé `54,4 %`, DS5Dongle fixé à `100 %`.
   une reconnexion PS sans nouvelle association ni doublon Windows.
 - [ ] Répéter après redémarrage du Pico et conserver les journaux ; aucune
   réussite logicielle ou de build ne vaut une preuve matérielle.
+- [ ] Ne pas augmenter le score avant une preuve matérielle nouvelle et
+  reproductible.
+
+### 9.7 Candidat 0.45 - 2026-08-15
+
+#### Référence et cause ciblée
+
+- [x] La comparaison obligatoire avec DS5Dongle `v0.7.2-hotfix` montre que la
+  référence réactive le page scan après `HCI_EVENT_DISCONNECTION_COMPLETE`,
+  alors que MiraLink réarmait principalement à la fermeture HID.
+- [x] **OBSERVÉ** : la manette 0.42 clignote une fois puis ne revient pas par
+  reconnexion PS sans réappairage.
+- [x] **INFÉRÉ** : le réarmement MiraLink pouvait arriver avant la fin du
+  nettoyage ACL et être neutralisé par la transition HCI finale.
+- [x] **PROUVÉ** : MiraLink ne traitait pas explicitement
+  `HCI_EVENT_DISCONNECTION_COMPLETE` avant ce candidat ; la référence le fait.
+
+#### Correction candidate
+
+- [x] Le lot `0.45` déclenche la demande de réarmement sur la déconnexion HCI
+  complète, puis réapplique les paramètres et la transition connectable `0 -> 1`
+  dans le polling foreground.
+- [x] La découvrabilité reste désactivée hors appairage et les connexions
+  entrantes restent limitées aux adresses mémorisées.
+- [x] Le protocole binaire `1`, le desktop-only, le flash manuel et le score
+  DS5Dongle `54,4 %` sont conservés.
+
+#### Test discriminant requis
+
+- [ ] Flasher manuellement `0.45` et conserver la clé Bluetooth existante.
+- [ ] Éteindre la DualSense puis appuyer une fois sur PS, sans mode association
+  ni bouton d’appairage dans MiraLink ; vérifier la reconnexion et les entrées.
+- [ ] Répéter après redémarrage du Pico et après une perte brutale de liaison.
 - [ ] Ne pas augmenter le score avant une preuve matérielle nouvelle et
   reproductible.

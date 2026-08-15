@@ -93,7 +93,7 @@ The `0.38` hardware run confirmed one bridge-owned controller and
 buttons/sticks in `joy.cpl`. The `0.39` run confirmed initial pairing, a live
 quick-test sample, Controller Lab, diagnostics and configuration read, but
 disproved remembered reconnect after controller power-off: re-pairing was required. Candidate
-`0.42` keeps the passive remembered-key policy, applies page scan only after
+`0.45` keeps the passive remembered-key policy, applies page scan only after
 `HCI_STATE_WORKING`, and defers a forced page-scan rearm after close. The build
 still serializes the relevant BTstack output calls with the polling execution
 path. The manual `0.40` run confirmed WebHID bridge recovery and radio
@@ -101,6 +101,9 @@ readiness after a Pico restart, but the known DualSense remained offline; the
 `0.41` close-rearm correction remains unvalidated on hardware. The `0.42`
 candidate also queues the same scan recovery when a configuration commit exits
 local idle suspension, so USB callback dispatch does not call BTstack directly.
+The `0.45` candidate compares this lifecycle with DS5Dongle
+`v0.7.2-hotfix` and waits for `HCI_EVENT_DISCONNECTION_COMPLETE` before the
+foreground page-scan rearm. This is still software evidence only.
 
 During an active pairing window the Pico performs a bounded Bluetooth inquiry and
 filters Sony DualSense identities before attempting a Classic HID connection.

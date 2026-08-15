@@ -678,14 +678,16 @@ void set_connection_closed() {
     critical_section_exit(&g_state_lock);
     clear_candidate();
     g_connection_failure_recorded = false;
-    g_page_scan_rearm_pending = g_hci_working;
 }
 
 void service_page_scan_rearm() {
     if (!g_page_scan_rearm_pending) return;
     const bool hid_link_active = g_hid_cid != 0 || g_connection_pending;
     if (!reconnect::should_rearm_page_scan(g_hci_working, g_idle_suspended, hid_link_active)) {
-        if (hid_link_active || !g_hci_working || g_idle_suspended) {
+        // A HID close can precede the ACL teardown event. Keep the request
+        // pending until HCI_EVENT_DISCONNECTION_COMPLETE confirms that the
+        // controller has finished disabling the old page scan.
+        if (!g_hci_working || g_idle_suspended) {
             g_page_scan_rearm_pending = false;
         }
         return;
@@ -881,6 +883,15 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_snapshot.state = LinkState::Unavailable;
                 critical_section_exit(&g_state_lock);
             }
+            break;
+
+        case HCI_EVENT_DISCONNECTION_COMPLETE:
+            // DS5Dongle re-enables its connectable/discoverable state at this
+            // lifecycle boundary. MiraLink records the same boundary here,
+            // then performs all BTstack writes from the foreground poll so
+            // the HCI callback cannot race the SDK's state transition.
+            g_page_scan_rearm_pending = reconnect::should_rearm_after_hci_disconnection(
+                g_hci_working, g_idle_suspended);
             break;
 
         case HCI_EVENT_PIN_CODE_REQUEST: {
