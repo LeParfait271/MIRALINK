@@ -19,7 +19,7 @@ import {
   inspectMiraLinkHidIdentity
 } from './protocol.js';
 import { createBackup, downloadJson, logs as logStore, validateBackup } from './storage.js';
-import { applyTranslations, translate } from './i18n.js?ui=51-focus-config';
+import { applyTranslations, translate } from './i18n.js?ui=51-clarity-signal';
 import { inspectUf2 } from './uf2.js';
 import { createDualSenseAdapter, dualSenseWebHidFilters, isDualSenseDevice } from './dualsense.js';
 import { commitProfileApplication, createBuiltInProfiles, createProfile, diffConfig, previewProfileApplication } from './profiles.js';
@@ -40,7 +40,7 @@ import {
   transactFeatureReport
 } from './hid-transport.js';
 import { analyzeControllerInputs, appendCalibrationRevision, compareControllerAnalyses, createCalibrationRevision } from './controller-lab.js';
-import { scrollToRouteTarget } from './site-effects.js?ui=51-focus-config';
+import { scrollToRouteTarget } from './site-effects.js?ui=51-clarity-signal';
 
 const state = {
   devices: new Map(),
@@ -436,7 +436,7 @@ function readDraftFromControls() {
 
 async function loadMetadata() {
   try {
-    const response = await fetch('./build-info.json?ui=51-focus-config', { cache: 'no-store' });
+    const response = await fetch('./build-info.json?ui=51-clarity-signal', { cache: 'no-store' });
     if (response.ok) state.version = { ...state.version, ...(await response.json()) };
   } catch { addLog('info', 'Development metadata is not available; using local defaults.'); }
   const label = `v${state.version.version}`;
@@ -1579,7 +1579,7 @@ function init() {
     showHidWarning(initialHidStatus);
     addLog('info', `MiraLink bridge transport is unavailable until connection: ${initialHidStatus.reason}.`);
   }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=51-focus-config').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?ui=51-clarity-signal').catch((error) => addLog('info', `Offline shell unavailable: ${error.message}`));
   loadMetadata();
   addLog('info', 'MiraLink démarré en mode local uniquement.');
 }

@@ -105,6 +105,7 @@ h1,
 h2,
 h3 {
   margin-top: 0;
+  text-wrap: balance;
 }
 
 p:last-child,
@@ -891,8 +892,35 @@ h3:last-child {
 }
 
 .live-console {
+  position: relative;
   min-width: 0;
   background: var(--surface);
+}
+
+.live-console::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(22rem, 42%);
+  height: 1px;
+  background: linear-gradient(90deg, var(--acid), transparent);
+  box-shadow: 0 0 1rem rgba(157, 184, 173, 0.18);
+  content: "";
+  pointer-events: none;
+}
+
+.live-console::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 0 58%, rgba(157, 184, 173, 0.025) 68%, transparent 82%);
+  content: "";
+  pointer-events: none;
+}
+
+.live-console > * {
+  position: relative;
+  z-index: 1;
 }
 
 .console-heading {
@@ -1096,8 +1124,26 @@ h3:last-child {
   transition: box-shadow 220ms ease;
 }
 
+.tab-panel::after {
+  position: absolute;
+  top: 0;
+  left: var(--gutter);
+  width: 3rem;
+  height: 1px;
+  background: var(--acid);
+  box-shadow: 0 0 0.8rem rgba(157, 184, 173, 0.2);
+  content: "";
+  opacity: 0;
+  transition: width 240ms ease, opacity 240ms ease;
+}
+
 .tab-panel:target {
   box-shadow: inset 0 2px 0 rgba(157, 184, 173, 0.5);
+}
+
+.tab-panel:target::after {
+  width: min(12rem, 30%);
+  opacity: 1;
 }
 
 .tab-panel:nth-of-type(even) {

@@ -43,21 +43,21 @@ const COMPACT_EN = Object.freeze({
 });
 
 const COMPACT_FR = Object.freeze({
-  heroLede: 'Bridge, manette, firmware. Tout reste local.',
-  overviewTitle: 'Les trois gestes essentiels.',
-  safetyTitle: 'Aucune écriture silencieuse.',
-  safetyBody: 'Un brouillon local. Une confirmation. Puis l’écriture.',
-  calibrationCopy: 'Centre, amplitude et circularité des entrées reçues.',
-  quickTestCopy: 'Sticks, gâchettes et boutons. Aucun output envoyé.',
-  historyTitle: 'Instantanés',
-  historyCopy: 'Comparaison locale, sans restauration firmware.',
-  diagnosticEyebrow: 'OBSERVER / VÉRIFIER',
-  diagnosticTitle: 'Diagnostic',
+  heroLede: 'Pico → Bluetooth → manette. Tout reste ici.',
+  overviewTitle: 'Relier. Régler. Vérifier.',
+  safetyTitle: 'Chaque écriture est visible.',
+  safetyBody: 'Brouillon local → confirmation → Pico.',
+  calibrationCopy: 'Centre, amplitude et circularité des entrées.',
+  quickTestCopy: 'Sticks, gâchettes, boutons. Aucun output.',
+  historyTitle: 'Instantanés de session',
+  historyCopy: 'Comparaison locale. Rien n’est restauré.',
+  diagnosticEyebrow: 'ÉTAT / VÉRIFICATION',
+  diagnosticTitle: 'État du système',
   controllerNoticeBody: 'Aucun numéro de série, adresse Bluetooth ou échantillon ne quitte cet ordinateur.',
   exportCopy: 'Un fichier local, versionné.',
   importCopy: 'Charger dans un brouillon.',
-  profileCopy: 'Nommés, locaux, confirmés avant écriture.',
-  backupNoticeBody: 'Jamais synchronisées ni téléversées.'
+  profileCopy: 'Locaux, nommés, confirmés avant écriture.',
+  backupNoticeBody: 'Jamais synchronisées. Jamais téléversées.'
 });
 
 const EN = Object.freeze({

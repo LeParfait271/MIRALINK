@@ -9,7 +9,7 @@
   <title>MiraLink — Centre de contrôle local</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?ui=51-focus-config">
+  <link rel="stylesheet" href="styles.css?ui=51-clarity-signal">
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Aller au contenu</a>
@@ -71,7 +71,7 @@
             </div>
             <span class="panel-status" data-i18n="localOnly">LOCAL UNIQUEMENT</span>
           </div>
-          <p class="connection-copy">WebHID local. Aucune donnée du périphérique n’est téléversée.</p>
+          <p class="connection-copy">WebHID local · aucune donnée ne sort de cet ordinateur.</p>
           <div class="connection-surface-actions">
             <button class="button primary" id="connect-button" type="button" data-i18n="connect" disabled>Connecter un appareil</button>
             <button class="button quiet" id="refresh-devices-button" type="button" data-i18n="refresh" disabled>Actualiser</button>
@@ -84,7 +84,7 @@
           <div id="device-list" class="device-list" aria-live="polite">
             <div class="empty-state" id="empty-devices">
               <span class="empty-glyph" aria-hidden="true">◇</span>
-              <div><p class="empty-title" data-i18n="noDevices">Aucun appareil connecté</p><p class="empty-copy" data-i18n="noDevicesCopy">Lancez la recherche pour connecter un appareil MiraLink.</p></div>
+              <div><p class="empty-title" data-i18n="noDevices">Aucun appareil connecté</p><p class="empty-copy" data-i18n="noDevicesCopy">Connectez le pont MiraLink pour commencer.</p></div>
             </div>
           </div>
         </section>
@@ -141,7 +141,7 @@
         <article class="workflow-card">
           <div class="workflow-index"><span>01</span><i></i><span>ACQUÉRIR</span></div>
           <h3>Relier le matériel</h3>
-          <p>WebHID relie le navigateur au Pico. Le Pico gère le Bluetooth.</p>
+          <p>WebHID atteint le Pico. Le Pico gère le Bluetooth.</p>
           <button class="text-action" type="button" data-sequence-tab="overview" data-route-target="#workspace">Revenir à la connexion <span aria-hidden="true">↗</span></button>
         </article>
         <article class="workflow-card">
@@ -153,7 +153,7 @@
         <article class="workflow-card workflow-card-accent">
           <div class="workflow-index"><span>03</span><i></i><span>OBSERVER</span></div>
           <h3>Isoler le signal</h3>
-          <p>Chaque couche est vérifiée séparément.</p>
+          <p>USB, radio et manette sont lus séparément.</p>
           <button class="text-action" type="button" data-sequence-tab="diagnostics" data-route-target="#tab-diagnostics">Lire le protocole <span aria-hidden="true">↗</span></button>
         </article>
       </div>
@@ -372,6 +372,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="src/app.js?ui=51-focus-config"></script>
+  <script type="module" src="src/app.js?ui=51-clarity-signal"></script>
 </body>
 </html>
