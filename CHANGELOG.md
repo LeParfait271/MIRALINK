@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.53 - 2026-08-15
+
+- Compared bonded inbound admission with the official DS5Dongle lifecycle.
+- Request authentication for every completed ACL and admit an active inbound
+  HID link while authentication and descriptor events are still in flight;
+  the strict descriptor and CRC-valid `0x31` boundaries remain authoritative.
+- This removes the reboot-time dependency on MiraLink's RAM address cache.
+  Physical validation is intentionally still pending.
+
 ## 0.52 - 2026-08-15
 
 - Compared the reconnect bootstrap against the official DS5Dongle

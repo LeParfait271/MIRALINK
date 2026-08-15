@@ -416,9 +416,10 @@ void test_dualsense_bluetooth_reconnect_policy() {
     assert(!reconnect::allows_outgoing_hid_connect(RadioAction::PassiveReconnect));
     assert(reconnect::allows_outgoing_hid_connect(RadioAction::ExplicitPairingInquiry));
 
-    assert(reconnect::accepts_incoming_controller(false, true));
-    assert(reconnect::accepts_incoming_controller(true, false));
-    assert(!reconnect::accepts_incoming_controller(false, false));
+    assert(reconnect::accepts_incoming_controller(false, true, false));
+    assert(reconnect::accepts_incoming_controller(true, false, false));
+    assert(reconnect::accepts_incoming_controller(false, false, true));
+    assert(!reconnect::accepts_incoming_controller(false, false, false));
 
     assert(reconnect::should_rearm_page_scan(true, false, false));
     assert(!reconnect::should_rearm_page_scan(false, false, false));

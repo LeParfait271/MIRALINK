@@ -1084,12 +1084,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                 g_acl_address_valid = true;
                 g_acl_address_known_before_attempt = paired_address_known(address);
                 // DS5Dongle explicitly starts the Classic authentication
-                // phase after the ACL is complete.  Keep that lifecycle
-                // boundary explicit here too; HID admission is still gated
-                // separately by the remembered-address/pairing-window policy.
-                if (pairing_window_active() || g_acl_address_known_before_attempt) {
-                    (void) hci_send_cmd(&hci_authentication_requested, handle);
-                }
+                // phase after the ACL is complete. Keep that lifecycle
+                // boundary explicit here too; HID input remains gated by
+                // descriptor parsing and a CRC-valid enhanced report.
+                // Request authentication for every completed ACL.  The
+                // reference accepts an incoming gamepad before HID opens;
+                // relying only on the RAM address cache breaks after reboot
+                // even when BTstack restored the valid link key from flash.
+                (void) hci_send_cmd(&hci_authentication_requested, handle);
             } else {
                 const bool hid_attempt_pending = g_connection_pending;
                 if (hid_attempt_pending) {
@@ -1326,7 +1328,9 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     bd_addr_t address{};
                     hid_subevent_incoming_connection_get_address(packet, address);
                     const bool address_is_remembered = paired_address_known(address);
-                    if (reconnect::accepts_incoming_controller(pairing_window_active(), address_is_remembered)) {
+                    if (reconnect::accepts_incoming_controller(
+                            pairing_window_active(), address_is_remembered,
+                            g_acl_address_valid)) {
                         begin_controller_attempt(address);
                         note_activity();
                         stop_inquiry();
