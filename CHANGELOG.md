@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.56 - 2026-08-16
+
+- Reproduce the DS5Dongle passive reconnect boundary: explicitly accept a
+  gamepad Classic ACL request, stop inquiry, and let authentication/encryption
+  complete before the HID bootstrap.
+- Keep non-gamepad/unknown ACL requests outside the active pairing policy and
+  retain the strict enhanced-input trust boundary.
+- Physical validation remains pending.
+
 ## 0.55 - 2026-08-15
 
 - Gate the native Bluetooth activation report, Feature bootstrap and controller

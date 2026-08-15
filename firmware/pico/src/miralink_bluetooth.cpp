@@ -1115,6 +1115,33 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             break;
         }
 
+        case HCI_EVENT_CONNECTION_REQUEST: {
+            // A PS-only reconnect starts as a Classic ACL page from the
+            // controller.  DS5Dongle accepts this event explicitly, stops
+            // inquiry, and lets the controller open the HID services after
+            // authentication/encryption.  Relying on BTstack's deferred
+            // auto-accept leaves the inquiry/accept decision racing the
+            // single HID-host slot and is the reason the initial pairing can
+            // work while a later PS reconnect never reaches HID.
+            bd_addr_t address{};
+            hci_event_connection_request_get_bd_addr(packet, address);
+            const auto class_of_device =
+                hci_event_connection_request_get_class_of_device(packet);
+            const bool address_is_remembered = paired_address_known(address);
+            if (reconnect::accepts_connection_request(
+                    class_of_device, pairing_window_active(), address_is_remembered)) {
+                stop_inquiry();
+                hci_send_cmd(&hci_accept_connection_request, address, HCI_ROLE_SLAVE);
+            } else {
+                // Let BTstack's normal security policy reject unknown devices
+                // outside the pairing window; do not open an HID slot for a
+                // non-gamepad ACL request.
+                hci_send_cmd(&hci_reject_connection_request, address,
+                    ERROR_CODE_CONNECTION_REJECTED_DUE_TO_SECURITY_REASONS);
+            }
+            break;
+        }
+
         case GAP_EVENT_RSSI_MEASUREMENT: {
             const auto handle = gap_event_rssi_measurement_get_con_handle(packet);
             if (handle != g_acl_handle) break;

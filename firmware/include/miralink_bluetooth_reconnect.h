@@ -39,6 +39,21 @@ constexpr bool accepts_incoming_controller(const bool pairing_window_active,
     return pairing_window_active || address_is_remembered || acl_link_present;
 }
 
+// DS5Dongle handles the Classic ACL request explicitly before the HID
+// services are opened.  The Bluetooth Class of Device uses bits 8..11 for
+// the major device class; 0x05 is the gamepad/peripheral class.  Keep this
+// predicate deliberately independent from the bond table: the authentication
+// and HID descriptor/CRC checks remain the actual trust boundaries.
+constexpr bool is_gamepad_class_of_device(const std::uint32_t class_of_device) {
+    return (class_of_device & 0x00000f00u) == 0x00000500u;
+}
+
+constexpr bool accepts_connection_request(const std::uint32_t class_of_device,
+    const bool pairing_window_active, const bool address_is_remembered) {
+    return is_gamepad_class_of_device(class_of_device)
+        && (pairing_window_active || address_is_remembered);
+}
+
 constexpr bool should_rearm_page_scan(const bool hci_working,
     const bool idle_suspended, const bool hid_link_active) {
     return hci_working && !idle_suspended && !hid_link_active;
@@ -126,6 +141,12 @@ static_assert(accepts_incoming_controller(false, true, false));
 static_assert(accepts_incoming_controller(true, false, false));
 static_assert(accepts_incoming_controller(false, false, true));
 static_assert(!accepts_incoming_controller(false, false, false));
+static_assert(is_gamepad_class_of_device(0x000508u));
+static_assert(!is_gamepad_class_of_device(0x000400u));
+static_assert(accepts_connection_request(0x000508u, true, false));
+static_assert(accepts_connection_request(0x000508u, false, true));
+static_assert(!accepts_connection_request(0x000508u, false, false));
+static_assert(!accepts_connection_request(0x000400u, true, true));
 static_assert(should_rearm_after_hci_disconnection(true, false));
 static_assert(!should_rearm_after_hci_disconnection(false, false));
 static_assert(!should_rearm_after_hci_disconnection(true, true));
