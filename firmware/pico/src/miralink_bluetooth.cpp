@@ -546,9 +546,9 @@ void service_initial_state_output() {
     if (!g_initial_state_output_pending || g_hid_cid == 0
         || g_protocol_handshake_pending
         // DS5Dongle primes the controller with its Feature reads before the
-        // native 0x32 state packet.  Do not let the state packet race the
-        // first GET_REPORT when BTstack is still ready to issue it.
-        || g_feature_bootstrap.phase == bootstrap::Phase::FeatureRequestReady) return;
+        // native 0x32 state packet. Do not spend the bounded state-output
+        // retries while BTstack is still processing a GET_REPORT.
+        || !bootstrap::initial_state_output_safe(g_feature_bootstrap)) return;
     bool descriptor_available = false;
     critical_section_enter_blocking(&g_state_lock);
     descriptor_available = g_snapshot.descriptor_available;
