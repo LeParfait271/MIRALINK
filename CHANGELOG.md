@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.57 - 2026-08-16
+
+- Match DS5Dongle's ACL admission policy: accept a Bluetooth gamepad request
+  before relying on the RAM address cache; authentication and the strict HID
+  descriptor/CRC boundary remain the security gates.
+- Physical validation remains pending.
+
 ## 0.56 - 2026-08-16
 
 - Reproduce the DS5Dongle passive reconnect boundary: explicitly accept a

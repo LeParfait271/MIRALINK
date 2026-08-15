@@ -48,10 +48,12 @@ constexpr bool is_gamepad_class_of_device(const std::uint32_t class_of_device) {
     return (class_of_device & 0x00000f00u) == 0x00000500u;
 }
 
-constexpr bool accepts_connection_request(const std::uint32_t class_of_device,
-    const bool pairing_window_active, const bool address_is_remembered) {
-    return is_gamepad_class_of_device(class_of_device)
-        && (pairing_window_active || address_is_remembered);
+constexpr bool accepts_connection_request(const std::uint32_t class_of_device) {
+    // DS5Dongle accepts the gamepad ACL before it knows whether the stored
+    // link key will authenticate.  The link-key/SSP exchange is the security
+    // boundary; a RAM address cache must never be a prerequisite for PS-only
+    // reconnect after reboot.
+    return is_gamepad_class_of_device(class_of_device);
 }
 
 constexpr bool should_rearm_page_scan(const bool hci_working,
@@ -143,10 +145,8 @@ static_assert(accepts_incoming_controller(false, false, true));
 static_assert(!accepts_incoming_controller(false, false, false));
 static_assert(is_gamepad_class_of_device(0x000508u));
 static_assert(!is_gamepad_class_of_device(0x000400u));
-static_assert(accepts_connection_request(0x000508u, true, false));
-static_assert(accepts_connection_request(0x000508u, false, true));
-static_assert(!accepts_connection_request(0x000508u, false, false));
-static_assert(!accepts_connection_request(0x000400u, true, true));
+static_assert(accepts_connection_request(0x000508u));
+static_assert(!accepts_connection_request(0x000400u));
 static_assert(should_rearm_after_hci_disconnection(true, false));
 static_assert(!should_rearm_after_hci_disconnection(false, false));
 static_assert(!should_rearm_after_hci_disconnection(true, true));

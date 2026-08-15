@@ -1127,15 +1127,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             hci_event_connection_request_get_bd_addr(packet, address);
             const auto class_of_device =
                 hci_event_connection_request_get_class_of_device(packet);
-            const bool address_is_remembered = paired_address_known(address);
-            if (reconnect::accepts_connection_request(
-                    class_of_device, pairing_window_active(), address_is_remembered)) {
+            if (reconnect::accepts_connection_request(class_of_device)) {
                 stop_inquiry();
                 hci_send_cmd(&hci_accept_connection_request, address, HCI_ROLE_SLAVE);
             } else {
-                // Let BTstack's normal security policy reject unknown devices
-                // outside the pairing window; do not open an HID slot for a
-                // non-gamepad ACL request.
+                // Reject non-gamepad ACL requests before they can reserve the
+                // single HID-host slot. Authentication still decides whether
+                // the accepted gamepad is a remembered bond or an explicit
+                // pairing-window candidate.
                 hci_send_cmd(&hci_reject_connection_request, address,
                     ERROR_CODE_CONNECTION_REJECTED_DUE_TO_SECURITY_REASONS);
             }
