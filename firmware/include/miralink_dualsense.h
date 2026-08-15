@@ -123,6 +123,9 @@ InputReportResult parse_usb_input_report(const std::uint8_t* report, std::size_t
 InputReportResult parse_usb_input_report(const std::vector<std::uint8_t>& report);
 std::array<std::uint8_t, kUsbInputReportBytes> build_usb_input_report(const InputState& state);
 bool has_explicit_usb_wake_activity(const InputState& previous, const InputState& current);
+// Returns true for a control transition or a control that is actively held.
+// Telemetry (sequence, sensors and battery) is intentionally ignored.
+bool has_user_controller_activity(const InputState& previous, const InputState& current);
 InputReportResult parse_bluetooth_input_report(const std::uint8_t* report, std::size_t length);
 InputReportResult parse_bluetooth_input_report(const std::vector<std::uint8_t>& report);
 std::uint32_t bluetooth_input_crc32(const std::uint8_t* report, std::size_t length);

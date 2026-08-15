@@ -795,11 +795,18 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
         // when the newly paired controller is switched off.
         complete_pairing_window();
     }
+    bool user_activity = false;
     critical_section_enter_blocking(&g_state_lock);
     if (parsed) {
+        // DualSense sends enhanced reports continuously, including while it
+        // is completely idle.  Treating every sample as activity makes the
+        // configured inactivity timeout ineffective.  Compare only the
+        // controls/touch state; sequence, sensors and battery telemetry are
+        // deliberately excluded by this helper.
+        user_activity = dualsense::has_user_controller_activity(
+            g_snapshot.input, parsed.state);
         bootstrap::enhanced_input_received(g_feature_bootstrap);
         g_feature_activation_deadline_ms = 0;
-        note_activity();
         g_snapshot.input = parsed.state;
         g_snapshot.input_available = true;
         g_snapshot.sample_count += 1;
@@ -810,6 +817,7 @@ void handle_report(const std::uint8_t* report, const std::uint16_t length) {
         g_snapshot.rejected_report_count += 1;
     }
     critical_section_exit(&g_state_lock);
+    if (user_activity) note_activity();
 }
 
 void handle_feature_response(const std::uint8_t* packet) {

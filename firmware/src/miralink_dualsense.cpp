@@ -307,6 +307,34 @@ bool has_explicit_usb_wake_activity(const InputState& previous, const InputState
     return false;
 }
 
+bool has_user_controller_activity(const InputState& previous, const InputState& current) {
+    if (previous.dpad_face != current.dpad_face
+        || previous.shoulder != current.shoulder
+        || previous.system != current.system) {
+        return true;
+    }
+
+    constexpr std::uint8_t kStickDeadzone = 8;
+    const auto away_from_center = [](const std::uint8_t value) {
+        const auto delta = value > 0x80u ? value - 0x80u : 0x80u - value;
+        return delta >= kStickDeadzone;
+    };
+    if (away_from_center(current.left_x) || away_from_center(current.left_y)
+        || away_from_center(current.right_x) || away_from_center(current.right_y)
+        || current.left_trigger >= kStickDeadzone
+        || current.right_trigger >= kStickDeadzone) {
+        return true;
+    }
+
+    for (std::size_t index = 0; index < current.touch.size(); ++index) {
+        if (previous.touch[index].active != current.touch[index].active
+            || current.touch[index].active) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::uint32_t bluetooth_input_crc32(const std::uint8_t* report, const std::size_t length) {
     if (report == nullptr || length < kBluetoothInputReportBytes) return 0;
     const std::size_t prefix = report[0] == kBluetoothHidInputHeader ? 1 : 0;

@@ -4,7 +4,7 @@ This directory contains MiraLink's independent firmware for Raspberry Pi Pico
 2 W. It is built from MiraLink source only and does not reuse previous
 projects or the supplied UF2.
 
-## Firmware 0.48
+## Firmware 0.49
 
 The firmware exposes one experimental HID-only DualSense-family persona. It
 uses Sony VID `0x054c` with PID `0x0ce6` (standard/Auto) or `0x0df2` (Edge)
@@ -33,6 +33,10 @@ does not claim to be Sony firmware or a Sony product.
 The HID-only configuration is intentional for connection recovery. The
 unvalidated UAC2 composite descriptor is not active. The audio pipeline remains
 in source and is not exposed as a working USB capability.
+
+Firmware 0.49 distinguishes continuous unchanged Bluetooth telemetry from real
+user activity. The configured inactivity timer now reacts to button, stick,
+trigger and touch transitions instead of being reset by every enhanced report.
 
 ## Functional coverage
 

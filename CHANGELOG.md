@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.49 - 2026-08-15
+
+- Fixed the inactivity timer: continuous unchanged DualSense reports no longer
+  keep an idle controller permanently active; button, stick, trigger and touch
+  transitions still reset the timer.
+- Bluetooth reconnect behavior is unchanged and remains pending fresh hardware
+  evidence.
+
 ## 0.48 - 2026-08-15
 
 - Re-enabled Bluetooth discoverability together with page scan after ACL/HID

@@ -23,13 +23,13 @@ const NAVIGATION_FR = Object.freeze({
 });
 
 const RUNTIME_EN = Object.freeze({
-  audioBufferUnavailableHint: 'Unavailable in 0.48 — USB audio transport is not exposed.',
-  psShortcutUnavailableHint: 'Unavailable in 0.48 — the current firmware does not expose this command.'
+  audioBufferUnavailableHint: 'Unavailable in 0.49 — USB audio transport is not exposed.',
+  psShortcutUnavailableHint: 'Unavailable in 0.49 — the current firmware does not expose this command.'
 });
 
 const RUNTIME_FR = Object.freeze({
-  audioBufferUnavailableHint: 'Indisponible en 0.48 — le transport audio USB n’est pas exposé.',
-  psShortcutUnavailableHint: 'Indisponible en 0.48 — cette commande n’est pas exposée par le firmware actuel.'
+  audioBufferUnavailableHint: 'Indisponible en 0.49 — le transport audio USB n’est pas exposé.',
+  psShortcutUnavailableHint: 'Indisponible en 0.49 — cette commande n’est pas exposée par le firmware actuel.'
 });
 
 const EN = Object.freeze({

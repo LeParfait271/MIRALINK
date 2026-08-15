@@ -81,11 +81,11 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-La version publique actuelle du site est `0.48`. Le paquet npm peut représenter
-cette même version sous la forme technique `0.48.0`, mais l'application, le
-manifeste de livraison, la documentation et le firmware affichent `0.48`.
-La source CMake peut employer `0.48.0`, mais la métadonnée du Pico et l'UF2
-livré utilisent exactement `0.48`.
+La version publique actuelle du site est `0.49`. Le paquet npm peut représenter
+cette même version sous la forme technique `0.49.0`, mais l'application, le
+manifeste de livraison, la documentation et le firmware affichent `0.49`.
+La source CMake peut employer `0.49.0`, mais la métadonnée du Pico et l'UF2
+livré utilisent exactement `0.49`.
 
 La correction firmware `0.46` venait d'une comparaison directe avec DS5Dongle
 `v0.7.2-hotfix` : la référence réactive le page scan après
