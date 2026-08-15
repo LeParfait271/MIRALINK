@@ -49,6 +49,8 @@ struct Snapshot {
     std::uint32_t connection_attempt_count = 0;
     std::uint32_t connection_failure_count = 0;
     std::uint32_t reconnect_attempt_count = 0;
+    bool rssi_valid = false;
+    std::int8_t rssi_dbm = 0;
 };
 
 void init();

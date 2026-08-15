@@ -1307,7 +1307,8 @@ async function runDiagnostics() {
     const connectionIssue = diagnostics.lastConnectionError
       ? ` Last Bluetooth issue: ${connectionErrorLabel(diagnostics.lastConnectionError)} (status 0x${diagnostics.lastConnectionStatus.toString(16).padStart(2, '0')}).`
       : '';
-    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio ${audioState}.${connectionIssue}`;
+    const signal = diagnostics.rssiAvailable ? ` RSSI ${diagnostics.rssiDbm} dBm.` : '';
+    $('#diagnostic-summary').textContent = `USB ${diagnostics.usbMounted ? 'mounted' : 'not mounted'}; flash ${diagnostics.configLoaded ? 'loaded' : 'safe defaults'}; Bluetooth ${radioState}; audio ${audioState}.${signal}${connectionIssue}`;
     entry.lastDiagnostics = diagnostics;
     entry.connectionSummary = 'Les diagnostics du pont répondent.';
     entry.nextAction = diagnostics.inputAvailable

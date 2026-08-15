@@ -38,6 +38,7 @@ constexpr std::uint32_t kFallbackActivationTimeoutMs = 1000;
 constexpr std::uint8_t kFeatureMaxAttempts = 4;
 constexpr std::uint32_t kAudioStreamingTimeoutMs = 250;
 constexpr std::uint32_t kInquiryRetryDelayMs = 1000;
+constexpr std::uint32_t kRssiPollIntervalMs = 1000;
 constexpr std::uint32_t kOutputFlightGuardMs = 4;
 constexpr std::size_t kOutputPacketCapacity = 4;
 constexpr std::uint8_t kInitialStateOutputMaxAttempts = 3;
@@ -100,6 +101,7 @@ bool g_initial_state_output_pending = false;
 std::uint8_t g_initial_state_output_attempts = 0;
 std::uint64_t g_initial_state_output_retry_deadline_ms = 0;
 std::uint64_t g_inquiry_retry_deadline_ms = 0;
+std::uint64_t g_rssi_next_poll_ms = 0;
 std::uint64_t g_output_flight_deadline_ms = 0;
 bool g_connection_failure_recorded = false;
 std::uint16_t g_ignored_hid_cid = 0;
@@ -142,6 +144,7 @@ void service_feature_bootstrap();
 void service_page_scan_rearm();
 void set_connection_closed();
 void remember_paired_address(const bd_addr_t address);
+void service_rssi_measurement();
 
 void record_connection_attempt(const bool reconnect) {
     g_connection_failure_recorded = false;
@@ -383,6 +386,27 @@ void clear_acl_context() {
     g_acl_address_valid = false;
     g_acl_address_known_before_attempt = false;
     g_acl_authenticated = false;
+    g_rssi_next_poll_ms = 0;
+    if (g_initialized) {
+        critical_section_enter_blocking(&g_state_lock);
+        g_snapshot.rssi_valid = false;
+        g_snapshot.rssi_dbm = 0;
+        critical_section_exit(&g_state_lock);
+    }
+}
+
+void service_rssi_measurement() {
+    if (!g_hci_working || !g_acl_authenticated
+        || g_acl_handle == HCI_CON_HANDLE_INVALID) {
+        g_rssi_next_poll_ms = 0;
+        return;
+    }
+    const auto current_ms = now_ms();
+    if (g_rssi_next_poll_ms != 0 && current_ms < g_rssi_next_poll_ms) return;
+    g_rssi_next_poll_ms = current_ms + kRssiPollIntervalMs;
+    // BTstack emits GAP_EVENT_RSSI_MEASUREMENT asynchronously. Keep this at
+    // 1 Hz so diagnostics never competes with HID bootstrap or output traffic.
+    (void)gap_read_rssi(g_acl_handle);
 }
 
 void discard_unvalidated_controller_attempt() {
@@ -788,6 +812,7 @@ void set_connection_closed() {
     discard_unvalidated_controller_attempt();
     g_connection_pending = false;
     g_connection_deadline_ms = 0;
+    g_rssi_next_poll_ms = 0;
     reset_feature_bootstrap();
     g_protocol_handshake_pending = false;
     clear_output_queue();
@@ -1071,6 +1096,17 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
             } else {
                 clear_acl_context();
             }
+            break;
+        }
+
+        case GAP_EVENT_RSSI_MEASUREMENT: {
+            const auto handle = gap_event_rssi_measurement_get_con_handle(packet);
+            if (handle != g_acl_handle) break;
+            critical_section_enter_blocking(&g_state_lock);
+            g_snapshot.rssi_dbm = static_cast<std::int8_t>(
+                gap_event_rssi_measurement_get_rssi(packet));
+            g_snapshot.rssi_valid = true;
+            critical_section_exit(&g_state_lock);
             break;
         }
 
@@ -1560,6 +1596,7 @@ void poll() {
     if (!g_initialized) return;
     service_ignored_hid_disconnect();
     service_page_scan_rearm();
+    service_rssi_measurement();
     // Keep the first Feature GET ahead of the native state packet, matching
     // DS5Dongle's HID-open lifecycle and avoiding two control/interrupt
     // transactions competing during the compact-to-enhanced transition.

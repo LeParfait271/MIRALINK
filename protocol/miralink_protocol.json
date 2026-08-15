@@ -149,7 +149,9 @@
       { "name": "connectionAttemptCount", "offset": 32, "type": "u32le" },
       { "name": "connectionFailureCount", "offset": 36, "type": "u32le" },
       { "name": "reconnectAttemptCount", "offset": 40, "type": "u32le" },
-      { "name": "reservedTail", "offset": 44, "bytes": 4, "type": "zero" }
+      { "name": "rssiAvailable", "offset": 44, "type": "bool" },
+      { "name": "rssiDbm", "offset": 45, "type": "i8" },
+      { "name": "reservedTail", "offset": 46, "bytes": 2, "type": "zero" }
     ],
     "legacyPayloadBytes": [3, 18, 28]
   },

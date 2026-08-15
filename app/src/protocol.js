@@ -295,6 +295,8 @@ export function decodeDiagnosticsPayload(input) {
     result.connectionAttemptCount = view.getUint32(32, true);
     result.connectionFailureCount = view.getUint32(36, true);
     result.reconnectAttemptCount = view.getUint32(40, true);
+    result.rssiAvailable = Boolean(bytes[44]);
+    result.rssiDbm = result.rssiAvailable ? (bytes[45] << 24) >> 24 : null;
   }
   return Object.freeze(result);
 }

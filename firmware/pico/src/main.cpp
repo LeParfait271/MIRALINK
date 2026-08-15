@@ -370,6 +370,8 @@ std::vector<std::uint8_t> diagnostics_payload() {
     write_u32(payload, snapshot.connection_failure_count);
     write_u32(payload, snapshot.reconnect_attempt_count);
     payload.resize(48, 0);
+    payload[44] = static_cast<std::uint8_t>(snapshot.rssi_valid ? 1 : 0);
+    payload[45] = static_cast<std::uint8_t>(snapshot.rssi_dbm);
     return payload;
 }
 

@@ -613,10 +613,14 @@ test('diagnostics payload keeps unavailable capabilities out of binary status', 
   new DataView(detailed.buffer).setUint32(32, 9, true);
   new DataView(detailed.buffer).setUint32(36, 3, true);
   new DataView(detailed.buffer).setUint32(40, 2, true);
+  detailed[44] = 1;
+  detailed[45] = 0xd8;
   assert.deepEqual(
     (({ lastConnectionError, lastConnectionStatus, connectionAttemptCount, connectionFailureCount, reconnectAttemptCount }) => ({ lastConnectionError, lastConnectionStatus, connectionAttemptCount, connectionFailureCount, reconnectAttemptCount }))(decodeDiagnosticsPayload(detailed)),
     { lastConnectionError: 5, lastConnectionStatus: 0x0e, connectionAttemptCount: 9, connectionFailureCount: 3, reconnectAttemptCount: 2 }
   );
+  assert.equal(decodeDiagnosticsPayload(detailed).rssiAvailable, true);
+  assert.equal(decodeDiagnosticsPayload(detailed).rssiDbm, -40);
   assert.throws(() => decodeDiagnosticsPayload(Uint8Array.from([1])), /diagnostics/i);
 });
 

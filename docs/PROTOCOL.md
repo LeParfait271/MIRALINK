@@ -140,7 +140,9 @@ keeps accepting the historical three-byte schema `1`, 18-byte schema `2` and
 | 32 | 4 | Bluetooth connection attempts, little-endian |
 | 36 | 4 | Bluetooth connection failures, little-endian |
 | 40 | 4 | Automatic-reconnect attempts, little-endian |
-| 44..47 | 4 | Reserved and zero-filled |
+| 44 | 1 | RSSI available (`1` when a connected ACL measurement is fresh) |
+| 45 | 1 | Signed RSSI in dBm-like Classic Bluetooth units |
+| 46..47 | 2 | Reserved and zero-filled |
 
 `bluetoothAvailable` means that the Pico radio host initialized; it does not
 claim that a controller is connected. Firmware 0.51 exposes one HID-only USB
