@@ -120,9 +120,17 @@ set_property(TARGET pico_btstack_classic PROPERTY INTERFACE_SOURCES
 target_sources(pico_btstack_classic INTERFACE
     "${MIRALINK_BTSTACK_HID_HOST_PATCHED_SOURCE}")
 
-# MiraLink uses the standard Opus encoder for the DualSense audio HID packet.
-# The codec is vendored under firmware/third_party so a clean local checkout
-# does not need a network fetch during the build.
+# USB Audio is disabled in the shipped persona until its UAC descriptors and
+# host behavior are validated on real hardware. Keeping the codec backend as
+# a separate explicit option makes the cost visible: the default image does
+# not compile/link dormant Opus code, while codec-only experiments can opt in
+# without pretending that a UAC descriptor is ready.
+option(MIRALINK_AUDIO_BACKEND_ENABLED "Build the experimental Opus backend (USB Audio remains disabled)" OFF)
+
+# MiraLink uses the standard Opus encoder for the DualSense audio HID packet
+# only when the experimental USB Audio path is enabled. The codec is vendored
+# under firmware/third_party so a clean local checkout does not need a network
+# fetch during the build.
 set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
@@ -136,7 +144,9 @@ set(OPUS_STACK_PROTECTOR OFF CACHE BOOL "" FORCE)
 set(OPUS_VAR_ARRAYS ON CACHE BOOL "" FORCE)
 set(OPUS_INSTALL_PKG_CONFIG_MODULE OFF CACHE BOOL "" FORCE)
 set(OPUS_INSTALL_CMAKE_CONFIG_MODULE OFF CACHE BOOL "" FORCE)
-add_subdirectory(../third_party/opus opus-build EXCLUDE_FROM_ALL)
+if(MIRALINK_AUDIO_BACKEND_ENABLED)
+    add_subdirectory(../third_party/opus opus-build EXCLUDE_FROM_ALL)
+endif()
 
 add_executable(miralink_pico_firmware
     src/main.cpp
@@ -157,6 +167,7 @@ target_include_directories(miralink_pico_firmware PRIVATE
 target_compile_definitions(miralink_pico_firmware PRIVATE
     CFG_TUD_HID=1
     CFG_TUD_AUDIO=0
+    MIRALINK_AUDIO_BACKEND_ENABLED=$<BOOL:${MIRALINK_AUDIO_BACKEND_ENABLED}>
     CFG_TUD_HID_EP_BUFSIZE=65
     CFG_TUD_ENDPOINT0_SIZE=64
     MIRALINK_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -178,8 +189,11 @@ target_link_libraries(miralink_pico_firmware PRIVATE
     pico_cyw43_arch_poll
     pico_btstack_cyw43
     pico_btstack_classic
-    opus
 )
+
+if(MIRALINK_AUDIO_BACKEND_ENABLED)
+    target_link_libraries(miralink_pico_firmware PRIVATE opus)
+endif()
 
 pico_set_program_name(miralink_pico_firmware "MiraLink Pico 2 W")
 pico_set_program_version(miralink_pico_firmware "0.51")

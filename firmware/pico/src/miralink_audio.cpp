@@ -8,11 +8,18 @@
 #include <cstdint>
 #include <cstring>
 
+#ifndef MIRALINK_AUDIO_BACKEND_ENABLED
+#define MIRALINK_AUDIO_BACKEND_ENABLED 0
+#endif
+
+#if MIRALINK_AUDIO_BACKEND_ENABLED
 #include <opus.h>
+#endif
 
 #include "pico/stdlib.h"
 
 namespace miralink::audio {
+#if MIRALINK_AUDIO_BACKEND_ENABLED
 namespace {
 
 constexpr std::size_t kRingFrames = 2048;
@@ -363,5 +370,26 @@ Snapshot snapshot() {
         g_capture_underflow_frame_count
     };
 }
+
+#else
+
+// USB Audio is intentionally not part of the shipped MiraLink USB persona
+// yet (CFG_TUD_AUDIO=0). Keep the public API inert in the default build instead of
+// constructing an Opus encoder and several ring buffers that no USB callback
+// can ever feed. Enabling MIRALINK_AUDIO_BACKEND_ENABLED restores only the
+// codec backend; UAC descriptors remain a separate future task.
+void init() {}
+void poll() {}
+void push_usb_pcm(const std::uint8_t*, const std::size_t) {}
+void set_usb_playback_endpoint_active(const bool) {}
+void set_usb_capture_endpoint_active(const bool) {}
+void set_usb_playback_mute(const bool) {}
+void set_usb_playback_volume_q8_8(const std::int16_t) {}
+void apply_config(const Config&) {}
+bool usb_volume_locked() { return false; }
+std::size_t pull_usb_capture_pcm(std::uint8_t*, const std::size_t) { return 0; }
+Snapshot snapshot() { return {}; }
+
+#endif
 
 } // namespace miralink::audio

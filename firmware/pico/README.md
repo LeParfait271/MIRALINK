@@ -104,8 +104,10 @@ physical PS-only reconnect test passes.
 - Bounded rumble, lightbar, player LED, microphone-mute and fixed 47-byte
   controller-output forwarding. Trigger effects use that validated controller
   output route and still require a physical effect test.
-- Local Opus speaker/haptic encoding remains compiled for a later validated
-  transport, with no audio persistence or external transmission.
+- The default HID-only build excludes the dormant Opus speaker/haptic encoder
+  and its ring buffers. The codec backend remains available behind
+  `-DMIRALINK_AUDIO_BACKEND_ENABLED=ON` for experiments; this does not enable
+  USB Audio or claim that the UAC descriptors are ready.
 - Runtime application of saved controller mode, haptic gain, speaker volume,
   headset monitor volume, bounded speaker gain, speaker/microphone disable,
   volume lock, audio prebuffer, gamepad reporting mode and Pico status LED

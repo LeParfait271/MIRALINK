@@ -15,7 +15,9 @@
 
 #define CFG_TUD_ENABLED 1
 #define CFG_TUD_HID 1
+#ifndef CFG_TUD_AUDIO
 #define CFG_TUD_AUDIO 0
+#endif
 #define CFG_TUD_ENDPOINT0_SIZE 64
 // MiraLink control Feature reports carry 64 data bytes plus one non-zero
 // report ID. TinyUSB uses this value for the control-transfer buffer as well as
