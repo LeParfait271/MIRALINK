@@ -81,11 +81,10 @@ l’utilisateur.
 Les prompts purement conversationnels qui ne modifient pas le dépôt ne créent
 pas de commit vide artificiel.
 
-Le candidat source actuel est `0.61`. Le paquet npm peut représenter cette
+La version publique actuelle est `0.61`. Le paquet npm peut représenter cette
 même version sous la forme technique `0.61.0`; le manifeste et le dossier de
-release restent volontairement sur `0.60` jusqu'au packaging de l'UF2 0.61.
-La source CMake peut employer `0.61.0`, et le build local du Pico affiche
-exactement `0.61`.
+release `0.61` correspondent aux artefacts publiés. La source CMake peut
+employer `0.61.0`, et le build du Pico affiche exactement `0.61`.
 
 La correction firmware `0.60` vient d'une comparaison directe avec DS5Dongle
 `v0.7.2-hotfix` : la référence réactive le page scan après
