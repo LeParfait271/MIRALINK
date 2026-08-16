@@ -150,6 +150,7 @@ endif()
 
 add_executable(miralink_pico_firmware
     src/main.cpp
+    src/miralink_bootsel.cpp
     src/usb_descriptors.cpp
     src/miralink_audio.cpp
     src/miralink_bluetooth.cpp

@@ -1508,6 +1508,14 @@ void packet_handler(std::uint8_t packet_type, std::uint16_t channel, std::uint8_
                     g_snapshot.descriptor_available = descriptor_status == ERROR_CODE_SUCCESS;
                     critical_section_exit(&g_state_lock);
                     if (descriptor_status == ERROR_CODE_SUCCESS) {
+                        // Incoming PS-only reconnects can reach descriptor
+                        // discovery without a separate CONNECTION_OPENED
+                        // callback in BTstack's Report-mode path. Arm the
+                        // same native 0x32 activation used by DS5Dongle at
+                        // the descriptor boundary, so compact 0x01 input is
+                        // promoted to the enhanced 0x31 stream in either
+                        // incoming or outgoing lifecycle.
+                        arm_initial_state_output();
                         bootstrap::begin(g_feature_bootstrap);
                         g_feature_retry_deadline_ms = now_ms();
                     }
@@ -1647,6 +1655,46 @@ bool open_pairing_window() {
     // The HID close event clears the CID and starts inquiry.  If there is no
     // stale link, start immediately as before.
     if (g_hid_cid == 0 && !g_connection_pending) start_inquiry();
+    return true;
+}
+
+bool forget_all_pairings() {
+    if (!g_initialized || !g_hci_working) return false;
+
+    // Disconnect first, but keep the local gates conservative: BTstack may
+    // emit the close event asynchronously while the next pairing window is
+    // already being prepared.
+    if (g_hid_cid != 0) {
+        g_ignored_hid_cid = g_hid_cid;
+        hid_host_disconnect(g_hid_cid);
+        arm_ignored_hid_disconnect();
+    }
+    gap_delete_all_link_keys();
+    g_paired_addresses = {};
+    g_paired_address_count = 0;
+    g_active_controller_attempt = {};
+    g_acl_address = {};
+    g_acl_address_valid = false;
+    g_acl_authenticated = false;
+    g_acl_encrypted = false;
+    g_pairing_window_deadline_ms = 0;
+    g_pairing_requested = false;
+    g_connection_pending = false;
+    g_connection_deadline_ms = 0;
+    g_inquiry_retry_deadline_ms = 0;
+    reset_feature_bootstrap();
+    g_protocol_handshake_pending = false;
+    clear_output_queue();
+    clear_candidate();
+
+    critical_section_enter_blocking(&g_state_lock);
+    g_snapshot.paired_controller_known = false;
+    g_snapshot.pairing_window_open = false;
+    g_snapshot.connection_pending = false;
+    g_snapshot.descriptor_available = false;
+    g_snapshot.input_available = false;
+    g_snapshot.state = LinkState::Disconnected;
+    critical_section_exit(&g_state_lock);
     return true;
 }
 

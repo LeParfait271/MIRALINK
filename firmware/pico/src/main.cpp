@@ -1,5 +1,6 @@
 #include "miralink_config_store.h"
 #include "miralink_bluetooth.h"
+#include "miralink_bootsel.h"
 #include "miralink_audio.h"
 #include "miralink_protocol.h"
 #include "miralink_usb_identity.h"
@@ -735,6 +736,7 @@ int main() {
         if (g_cyw43_ready) cyw43_arch_poll();
         miralink::audio::poll();
         miralink::bluetooth::poll();
+        miralink::bootsel::poll();
         update_status_led();
         publish_gamepad_report();
         service_deferred_actions();

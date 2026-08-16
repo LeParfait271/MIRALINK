@@ -85,6 +85,12 @@ physical PS-only reconnect test passes.
   one request is in flight, transient BTstack busy/not-ready responses are
   handled without blocking callbacks, and a bounded neutral-output fallback is
   available if the Feature path does not activate the enhanced input stream.
+- The physical BOOTSEL button provides an offline recovery path adapted from
+  DS5Dongle's MIT-licensed gesture handler: one click opens the five-minute
+  pairing window, two clicks warm-reboot the application, three clicks enter
+  BOOTSEL mass-storage mode, and a protected 1.5-second hold erases Bluetooth
+  link keys then opens a fresh pairing window. Configuration and firmware are
+  never erased by the hold gesture.
 - Minimal Bluetooth input report `0x01` is treated as liveness evidence only.
   It cannot mark the controller connected or populate game input. Those
   transitions require a complete enhanced report `0x31` with the expected

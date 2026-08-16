@@ -10,6 +10,7 @@
 #undef NDEBUG
 #endif
 #include <cassert>
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -567,6 +568,475 @@ void test_dualsense_bluetooth_output_builder() {
     assert(crc == miralink::dualsense::bluetooth_output_crc32(report.data(), report.size()));
 }
 
+// Contract-level simulation of the DS5Dongle/MiraLink lifecycle. This does
+// not pretend to emulate CYW43 RF or BTstack's L2CAP scheduler; it exercises
+// the exact event order that the firmware must implement around those layers:
+// passive PS reconnect, descriptor discovery, native 0x32 activation, Feature
+// reads, enhanced 0x31 input, teardown, and a second passive reconnect.
+void test_dualsense_passive_reconnect_simulation() {
+    namespace bootstrap = miralink::bluetooth::bootstrap;
+    namespace reconnect = miralink::bluetooth::reconnect;
+
+    enum class Event : std::uint8_t {
+        IncomingAccepted,
+        ConnectionOpened,
+        DescriptorAvailable,
+        StateActivation32,
+        Feature05,
+        Feature09,
+        Feature20,
+        Enhanced31,
+        ConnectionClosed,
+    };
+
+    struct SimulatedController {
+        bool powered = false;
+        bool enhanced = false;
+        std::size_t activation_count = 0;
+
+        void power_on() {
+            powered = true;
+            enhanced = false;
+        }
+
+        void receive_state_activation() {
+            assert(powered);
+            ++activation_count;
+            enhanced = true;
+        }
+    } controller;
+
+    struct SimulatedBridge {
+        bootstrap::State bootstrap_state{};
+        std::vector<Event> events;
+        bool hci_working = true;
+        bool pairing_window = false;
+        bool connected = false;
+        bool page_scan_rearmed = true;
+        bool initial_state_pending = false;
+        std::size_t remembered_keys = 1;
+        std::size_t outgoing_connects = 0;
+
+        void boot_with_remembered_key() {
+            const auto action = reconnect::radio_action(hci_working,
+                pairing_window, remembered_keys);
+            assert(action == reconnect::RadioAction::PassiveReconnect);
+            assert(!reconnect::allows_outgoing_hid_connect(action));
+            page_scan_rearmed = true;
+        }
+
+        void ps_reconnect(SimulatedController& device) {
+            assert(device.powered);
+            assert(reconnect::accepts_connection_request(0x000508u));
+            assert(!reconnect::allows_outgoing_hid_connect(
+                reconnect::RadioAction::PassiveReconnect));
+            events.push_back(Event::IncomingAccepted);
+            events.push_back(Event::ConnectionOpened);
+            events.push_back(Event::DescriptorAvailable);
+            initial_state_pending = true;
+            bootstrap::begin(bootstrap_state);
+        }
+
+        void tick(SimulatedController& device) {
+            assert(initial_state_pending);
+            initial_state_pending = false;
+            events.push_back(Event::StateActivation32);
+            device.receive_state_activation();
+
+            while (bootstrap::feature_request_ready(bootstrap_state)) {
+                const auto id = bootstrap::feature_report_id(bootstrap_state);
+                bootstrap::feature_request_sent(bootstrap_state, id);
+                events.push_back(id == 0x05 ? Event::Feature05
+                    : id == 0x09 ? Event::Feature09 : Event::Feature20);
+                bootstrap::feature_response_received(bootstrap_state, id, true);
+                // Hold the enhanced report until the ordered Feature
+                // sequence has been exercised. A real controller can emit
+                // 0x31 earlier; the production state machine explicitly
+                // handles that race too.
+                if (bootstrap_state.phase == bootstrap::Phase::WaitingForEnhancedInput) {
+                    bootstrap::enhanced_input_timed_out(bootstrap_state);
+                }
+            }
+            if (device.enhanced) {
+                // A real controller may emit 0x31 between any two Feature
+                // responses. This deterministic path emits it after the
+                // ordered bootstrap so the complete 0x05 -> 0x09 -> 0x20
+                // contract is also exercised.
+                bootstrap::enhanced_input_received(bootstrap_state);
+                events.push_back(Event::Enhanced31);
+                connected = bootstrap::output_safe(bootstrap_state);
+            }
+        }
+
+        void power_off(SimulatedController& device) {
+            device.powered = false;
+            device.enhanced = false;
+            connected = false;
+            events.push_back(Event::ConnectionClosed);
+            page_scan_rearmed = reconnect::should_rearm_after_hci_disconnection(
+                hci_working, false);
+        }
+    } bridge;
+
+    controller.power_on();
+    bridge.boot_with_remembered_key();
+    bridge.ps_reconnect(controller);
+    bridge.tick(controller);
+    assert(bridge.connected);
+    assert(controller.activation_count == 1);
+    assert(bridge.outgoing_connects == 0);
+    assert(bridge.events.size() >= 8);
+    const auto activation = std::find(bridge.events.begin(), bridge.events.end(), Event::StateActivation32);
+    const auto first_feature = std::find_if(bridge.events.begin(), bridge.events.end(), [](const Event event) {
+        return event == Event::Feature05 || event == Event::Feature09 || event == Event::Feature20;
+    });
+    assert(activation != bridge.events.end());
+    assert(first_feature != bridge.events.end());
+    assert(activation < first_feature);
+
+    bridge.power_off(controller);
+    assert(!bridge.connected);
+    assert(bridge.page_scan_rearmed);
+
+    controller.power_on();
+    bridge.ps_reconnect(controller);
+    bridge.tick(controller);
+    assert(bridge.connected);
+    assert(controller.activation_count == 2);
+    assert(bridge.outgoing_connects == 0);
+    assert(!bridge.pairing_window);
+}
+
+// Deterministic event-replay harness.  This deliberately sits above the pure
+// bootstrap/reconnect contracts: it does not claim to emulate RF, encryption,
+// CYW43 timing, or BTstack's L2CAP scheduler.  It does exercise the failure
+// boundaries that are otherwise hard to reproduce on a bench: missing HID
+// events, delayed Feature responses, compact 0x01 reports, malformed 0x31,
+// and ACL/HID teardown arriving in either order.
+namespace {
+
+enum class ReplayEvent : std::uint8_t {
+    IncomingAccepted,
+    ConnectionOpened,
+    DescriptorAvailable,
+    StateActivation32,
+    Simple01,
+    FeatureRequest,
+    FeatureRetry,
+    FeatureResponse,
+    FallbackOutput,
+    Enhanced31,
+    MalformedInput,
+    HidClosed,
+    HciDisconnected,
+};
+
+struct ReplayFaults {
+    bool drop_connection_opened = false;
+    bool drop_descriptor = false;
+    bool close_before_enhanced = false;
+    bool malformed_enhanced = false;
+    bool hci_before_hid_close = false;
+    bool unrelated_hci_close = false;
+    std::array<bool, 3> feature_timeout{};
+    std::array<bool, 3> feature_malformed{};
+    bool duplicate_enhanced = false;
+    std::size_t simple_reports = 0;
+};
+
+struct ReplayResult {
+    bool handshake_succeeded = false;
+    bool cleaned_up = false;
+    bool page_scan_rearmed = false;
+    bool hung = false;
+    std::size_t ticks = 0;
+    std::size_t outgoing_connects = 0;
+    std::vector<ReplayEvent> events;
+};
+
+ReplayResult replay_bluetooth_lifecycle(const ReplayFaults& faults) {
+    namespace bootstrap = miralink::bluetooth::bootstrap;
+    namespace reconnect = miralink::bluetooth::reconnect;
+
+    ReplayResult result;
+    bootstrap::State bootstrap_state{};
+    bool hci_working = true;
+    bool pairing_window = false;
+    bool page_scan = true;
+    bool hid_slot_reserved = false;
+    bool hid_link_active = false;
+    bool connected = false;
+    bool active_acl_handle_valid = false;
+    std::uint16_t active_acl_handle = 0x0042;
+    const std::size_t remembered_keys = 1;
+
+    const auto cleanup = [&]() {
+        connected = false;
+        hid_link_active = false;
+        hid_slot_reserved = false;
+        active_acl_handle_valid = false;
+        page_scan = reconnect::should_rearm_after_hci_disconnection(
+            hci_working, false);
+        bootstrap::reset(bootstrap_state);
+        result.cleaned_up = true;
+        result.page_scan_rearmed = page_scan;
+    };
+
+    const auto action = reconnect::radio_action(
+        hci_working, pairing_window, remembered_keys);
+    assert(action == reconnect::RadioAction::PassiveReconnect);
+    assert(!reconnect::allows_outgoing_hid_connect(action));
+    assert(reconnect::accepts_connection_request(0x000508u));
+    page_scan = true;
+
+    // A remembered controller must page the Pico; the Pico must not reserve
+    // the single HID-host slot by starting an outgoing SDP/HID connection.
+    result.events.push_back(ReplayEvent::IncomingAccepted);
+    hid_slot_reserved = true;
+    hid_link_active = true;
+    page_scan = false;
+    if (faults.drop_connection_opened) {
+        assert(reconnect::should_recover_after_acl_failure(
+            hci_working, false, hid_slot_reserved));
+        cleanup();
+        result.ticks = 1;
+        return result;
+    }
+
+    result.events.push_back(ReplayEvent::ConnectionOpened);
+    active_acl_handle_valid = true;
+    if (faults.drop_descriptor) {
+        // A page/ACL can open while SDP/HID descriptor delivery is delayed.
+        // The bounded foreground timeout must retire the slot and rearm scan.
+        assert(reconnect::should_recover_after_acl_failure(
+            hci_working, false, hid_slot_reserved));
+        cleanup();
+        result.ticks = 2;
+        return result;
+    }
+
+    result.events.push_back(ReplayEvent::DescriptorAvailable);
+    bootstrap::begin(bootstrap_state);
+    assert(bootstrap::initial_state_output_safe(bootstrap_state));
+    result.events.push_back(ReplayEvent::StateActivation32);
+
+    // Compact reports are expected before the native activation/Feature
+    // sequence completes.  They are observed but never trusted as input.
+    std::array<std::uint8_t, bootstrap::kSimpleInputReportBytes> simple{};
+    simple[0] = bootstrap::kSimpleInputReportId;
+    for (std::size_t index = 0; index < faults.simple_reports; ++index) {
+        assert(bootstrap::classify_input_report(simple.data(), simple.size())
+            == bootstrap::InputReportKind::Simple);
+        result.events.push_back(ReplayEvent::Simple01);
+        ++result.ticks;
+    }
+
+    if (faults.close_before_enhanced) {
+        assert(bootstrap::feature_request_ready(bootstrap_state));
+        const auto id = bootstrap::feature_report_id(bootstrap_state);
+        assert(bootstrap::feature_request_sent(bootstrap_state, id));
+        result.events.push_back(ReplayEvent::FeatureRequest);
+        // The controller may power off while the control transaction is in
+        // flight.  Teardown must not leave a pending bootstrap or HID slot.
+        result.events.push_back(ReplayEvent::HidClosed);
+        cleanup();
+        result.ticks += 2;
+        return result;
+    }
+
+    // Run the ordered 0x05 -> 0x09 -> 0x20 sequence.  A timeout is retried
+    // once, then converted to a failed response so the state machine always
+    // makes bounded progress to the fallback output path.
+    for (std::size_t index = 0; index < bootstrap::kFeatureReportIds.size(); ++index) {
+        assert(bootstrap::feature_request_ready(bootstrap_state));
+        const auto id = bootstrap::feature_report_id(bootstrap_state);
+        assert(id == bootstrap::kFeatureReportIds[index]);
+        assert(bootstrap::feature_request_sent(bootstrap_state, id));
+        result.events.push_back(ReplayEvent::FeatureRequest);
+        ++result.ticks;
+
+        if (faults.feature_timeout[index]) {
+            assert(bootstrap::retry_feature_request(bootstrap_state, id));
+            result.events.push_back(ReplayEvent::FeatureRetry);
+            ++result.ticks;
+            assert(bootstrap::feature_request_sent(bootstrap_state, id));
+        }
+
+        if (faults.feature_malformed[index]) {
+            std::array<std::uint8_t, 64> malformed_feature{};
+            malformed_feature[0] = static_cast<std::uint8_t>(id ^ 0x01u);
+            assert(!bootstrap::valid_feature_response(
+                id, malformed_feature.data(), malformed_feature.size()));
+            assert(bootstrap::retry_feature_request(bootstrap_state, id));
+            result.events.push_back(ReplayEvent::FeatureRetry);
+            ++result.ticks;
+            assert(bootstrap::feature_request_sent(bootstrap_state, id));
+        }
+
+        if (faults.feature_timeout[index] || faults.feature_malformed[index]) {
+            assert(bootstrap::feature_response_received(bootstrap_state, id, false));
+            result.events.push_back(ReplayEvent::FeatureResponse);
+            ++result.ticks;
+            continue;
+        }
+
+        assert(bootstrap::feature_response_received(bootstrap_state, id, true));
+        result.events.push_back(ReplayEvent::FeatureResponse);
+        ++result.ticks;
+        if (bootstrap_state.phase == bootstrap::Phase::WaitingForEnhancedInput) {
+            // No enhanced report yet: exercise the bounded wait and advance.
+            assert(bootstrap::enhanced_input_timed_out(bootstrap_state));
+            ++result.ticks;
+        }
+    }
+
+    if (bootstrap::fallback_output_ready(bootstrap_state)) {
+        assert(bootstrap::fallback_output_sent(bootstrap_state));
+        result.events.push_back(ReplayEvent::FallbackOutput);
+        ++result.ticks;
+    }
+
+    std::array<std::uint8_t, bootstrap::kEnhancedInputReportBytes> enhanced{};
+    enhanced[0] = bootstrap::kEnhancedInputReportId;
+    if (faults.malformed_enhanced) {
+        enhanced[bootstrap::kEnhancedInputReportBytes - 1] = 0xa5;
+        assert(bootstrap::classify_input_report(
+            enhanced.data(), enhanced.size() - 1) == bootstrap::InputReportKind::Other);
+        result.events.push_back(ReplayEvent::MalformedInput);
+        assert(bootstrap::enhanced_input_timed_out(bootstrap_state));
+        ++result.ticks;
+    } else {
+        assert(bootstrap::classify_input_report(
+            enhanced.data(), enhanced.size()) == bootstrap::InputReportKind::Enhanced);
+        bootstrap::enhanced_input_received(bootstrap_state);
+        result.events.push_back(ReplayEvent::Enhanced31);
+        ++result.ticks;
+        connected = bootstrap::output_safe(bootstrap_state);
+        result.handshake_succeeded = connected;
+        if (faults.duplicate_enhanced) {
+            // Repeated full reports are harmless and must not reopen the
+            // bootstrap or flip a completed link back to pending.
+            bootstrap::enhanced_input_received(bootstrap_state);
+            assert(bootstrap::output_safe(bootstrap_state));
+            result.events.push_back(ReplayEvent::Enhanced31);
+            ++result.ticks;
+        }
+    }
+
+    // Teardown matrix: unrelated ACL events are ignored; a matching HCI
+    // disconnect may arrive before HID CLOSE, or after it.  Neither order may
+    // allow an old handle to clear a later connection.
+    if (faults.unrelated_hci_close) {
+        assert(!reconnect::matches_active_acl_disconnection(
+            active_acl_handle_valid, active_acl_handle,
+            static_cast<std::uint16_t>(active_acl_handle + 1), hid_link_active));
+    }
+    if (faults.hci_before_hid_close) {
+        if (active_acl_handle_valid && hid_link_active) {
+            assert(reconnect::matches_active_acl_disconnection(
+                true, active_acl_handle, active_acl_handle, true));
+            assert(reconnect::should_recover_after_hci_disconnection(
+                hci_working, false, true));
+            result.events.push_back(ReplayEvent::HciDisconnected);
+            cleanup();
+        }
+        // HID CLOSE can be delivered late after HCI already retired the slot.
+        result.events.push_back(ReplayEvent::HidClosed);
+    } else {
+        result.events.push_back(ReplayEvent::HidClosed);
+        cleanup();
+        // A stale HCI event must not match a new/empty slot after HID CLOSE.
+        assert(!reconnect::matches_active_acl_disconnection(
+            false, active_acl_handle, active_acl_handle, false));
+        result.events.push_back(ReplayEvent::HciDisconnected);
+    }
+
+    result.ticks += result.events.size();
+    result.hung = result.ticks > 96;
+    return result;
+}
+
+} // namespace
+
+void test_dualsense_bluetooth_event_replay_fault_matrix() {
+    // Exercise every combination of teardown ordering, missing lifecycle
+    // events, malformed input, compact-report noise, and Feature delays.  The
+    // matrix is intentionally deterministic so a failure is reproducible from
+    // the mask printed by a debugger without a radio or controller attached.
+    for (std::uint32_t mask = 0; mask < 32768; ++mask) {
+        ReplayFaults faults;
+        faults.drop_connection_opened = (mask & (1u << 0)) != 0;
+        faults.drop_descriptor = (mask & (1u << 1)) != 0;
+        faults.close_before_enhanced = (mask & (1u << 2)) != 0;
+        faults.malformed_enhanced = (mask & (1u << 3)) != 0;
+        faults.hci_before_hid_close = (mask & (1u << 4)) != 0;
+        faults.unrelated_hci_close = (mask & (1u << 5)) != 0;
+        faults.feature_timeout[0] = (mask & (1u << 6)) != 0;
+        faults.feature_timeout[1] = (mask & (1u << 7)) != 0;
+        faults.feature_timeout[2] = (mask & (1u << 8)) != 0;
+        faults.feature_malformed[0] = (mask & (1u << 11)) != 0;
+        faults.feature_malformed[1] = (mask & (1u << 12)) != 0;
+        faults.feature_malformed[2] = (mask & (1u << 13)) != 0;
+        faults.duplicate_enhanced = (mask & (1u << 14)) != 0;
+        faults.simple_reports = (mask >> 9) & 0x03u;
+
+        const auto result = replay_bluetooth_lifecycle(faults);
+        assert(!result.hung);
+        assert(result.outgoing_connects == 0);
+        assert(result.cleaned_up);
+        assert(result.page_scan_rearmed);
+        const bool interrupted = faults.drop_connection_opened
+            || faults.drop_descriptor || faults.close_before_enhanced
+            || faults.malformed_enhanced;
+        assert(result.handshake_succeeded != interrupted);
+    }
+}
+
+void test_dualsense_reconnect_generation_stress() {
+    namespace bootstrap = miralink::bluetooth::bootstrap;
+    namespace reconnect = miralink::bluetooth::reconnect;
+    bootstrap::State state{};
+    std::uint16_t active_handle = 0x0042;
+
+    // Reuse the same remembered bond through hundreds of complete power
+    // cycles.  Each iteration also injects the previous ACL close after a new
+    // handle is active; generation/handle correlation must keep it harmless.
+    for (std::size_t generation = 0; generation < 512; ++generation) {
+        assert(reconnect::radio_action(true, false, 1)
+            == reconnect::RadioAction::PassiveReconnect);
+        assert(!reconnect::allows_outgoing_hid_connect(
+            reconnect::RadioAction::PassiveReconnect));
+        assert(reconnect::accepts_connection_request(0x000508u));
+
+        bootstrap::reset(state);
+        bootstrap::begin(state);
+        assert(bootstrap::initial_state_output_safe(state));
+        for (const auto id : bootstrap::kFeatureReportIds) {
+            assert(bootstrap::feature_request_sent(state, id));
+            // A controller that does not answer a Feature request still gets
+            // the bounded fallback output rather than a permanently pending
+            // control transaction.
+            assert(bootstrap::feature_response_received(state, id, false));
+        }
+        assert(bootstrap::fallback_output_ready(state));
+        assert(bootstrap::fallback_output_sent(state));
+        bootstrap::enhanced_input_received(state);
+        assert(bootstrap::output_safe(state));
+
+        assert(reconnect::matches_active_acl_disconnection(
+            true, active_handle, active_handle, true));
+        assert(reconnect::should_recover_after_hci_disconnection(
+            true, false, true));
+        bootstrap::reset(state);
+        const auto previous_handle = active_handle;
+        ++active_handle;
+        assert(!reconnect::matches_active_acl_disconnection(
+            true, active_handle, previous_handle, true));
+        assert(!reconnect::matches_active_acl_disconnection(
+            false, active_handle, previous_handle, false));
+    }
+}
+
 void test_dualsense_bluetooth_state_output_builder() {
     const auto report = miralink::dualsense::build_bluetooth_state_output_report();
     assert(report.size() == miralink::dualsense::kBluetoothStateOutputReportBytes);
@@ -718,6 +1188,6 @@ void test_dualsense_audio_report_validation() {
 }
 
 int main() {
-    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_commit_config_ack_contract(); test_usb_identity_mode_mapping(); test_config_round_trip(); test_config_rejects_noncanonical_wire_payloads(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_user_controller_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_bootstrap_report_classification(); test_dualsense_bluetooth_reconnect_policy(); test_dualsense_bluetooth_feature_bootstrap_sequence(); test_dualsense_bluetooth_feature_bootstrap_races(); test_dualsense_bluetooth_output_builder(); test_dualsense_bluetooth_state_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
+    test_frame_round_trip(); test_frame_rejects_corruption(); test_frame_rejects_non_zero_padding(); test_commit_config_ack_contract(); test_usb_identity_mode_mapping(); test_config_round_trip(); test_config_rejects_noncanonical_wire_payloads(); test_config_rejects_reserved_status_gpio(); test_store_requires_validated_commit(); test_dualsense_usb_report_parser(); test_dualsense_usb_input_builder_neutral(); test_dualsense_usb_input_builder_round_trip(); test_dualsense_usb_input_builder_battery_states(); test_dualsense_explicit_usb_wake_activity(); test_dualsense_user_controller_activity(); test_dualsense_bluetooth_report_parser(); test_dualsense_bluetooth_bootstrap_report_classification(); test_dualsense_bluetooth_reconnect_policy(); test_dualsense_bluetooth_feature_bootstrap_sequence(); test_dualsense_bluetooth_feature_bootstrap_races(); test_dualsense_passive_reconnect_simulation(); test_dualsense_bluetooth_event_replay_fault_matrix(); test_dualsense_reconnect_generation_stress(); test_dualsense_bluetooth_output_builder(); test_dualsense_bluetooth_state_output_builder(); test_dualsense_controller_output_mapping(); test_dualsense_usb_output_normalization(); test_dualsense_synthetic_usb_calibration(); test_dualsense_trigger_reduction(); test_dualsense_audio_report_validation();
     std::cout << "MiraLink core tests passed\n";
 }
