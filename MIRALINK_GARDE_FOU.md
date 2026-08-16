@@ -80,8 +80,8 @@ non émis ; l'état de gestion de la manette est interrogé par polling.
 
 - La version, la date de dernière mise à jour et `MaruChiwa` doivent être visibles dans l'application et les livrables.
 - Version initiale : `0.1.0`.
-- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.58` → `0.59` → `0.60`. La version technique du paquet npm utilise `0.60.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.60`.
-- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.60.0`, mais le firmware affiché et livré reste `0.60`.
+- Chaque commit qui modifie le site ou l'application augmente la version publique de `0.01` : `0.10` → `0.11` → `0.12` → … → `0.59` → `0.60` → `0.61`. La version technique du paquet npm utilise `0.61.0` pour respecter le format semver, tandis que la version affichée et livrée du site reste `0.61`.
+- La version affichée du firmware est toujours exactement celle du site. Une nouvelle version implique un build firmware documenté et un UF2 dont la métadonnée embarquée est identique à la version publique. CMake peut utiliser la forme technique `0.61.0`, mais le firmware affiché et livré reste `0.61`.
 - Version et date sont modifiées dans le même commit que le changement.
 - Chaque prompt utilisateur qui demande une intervention sur le projet est clôturé par un seul commit local complet regroupant toutes les modifications du prompt ; aucun commit partiel.
 - Avant chaque commit, `MIRALINK_GARDE_FOU.md` et `docs/WORKFLOW.md` sont relus et mis à jour si le workflow, une règle ou une limite a changé.

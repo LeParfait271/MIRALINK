@@ -9,8 +9,8 @@ The project is intentionally created from zero. It has its own application, firm
 - Product: MiraLink
 - Developer: MaruChiwa
 - Initial version: `0.1.0`
-- Current site version: `0.60`
-- Current firmware version: `0.60` (incoming HID Report-mode handshake no longer deadlocks passive PS reconnect; USB audio remains source-only)
+- Current site version: `0.61`
+- Current firmware version: `0.61` (offline BOOTSEL recovery and passive-reconnect event hardening; USB audio remains source-only)
 - Last update: `2026-08-15`
 - First hardware target: Raspberry Pi Pico 2 W
 - Delivery mode: GitHub source and manual firmware release
@@ -65,7 +65,7 @@ DualSense run.
 
 The web application is an original desktop control deck with working WebHID
 discovery, guided diagnostics, local profiles, local UF2 inspection and an
-offline shell. Version `0.60` keeps the quick-access navigation introduced in
+offline shell. Version `0.61` keeps the quick-access navigation introduced in
 `0.39` and hardens WebHID command handling with a cancellable per-device FIFO,
 bounded response-read retries that never resend an ambiguously written
 command, 100 ms controller polling, and explicit USB-disappearance checks for

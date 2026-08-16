@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.61 - 2026-08-16
+
+- Add an offline BOOTSEL recovery path: pairing-window, reboot, BOOTSEL and
+  explicit bond-reset gestures are available without the web application.
+- Extend the Bluetooth lifecycle contract tests with deterministic event-fault
+  replay, teardown ordering and reconnect-generation stress coverage.
+- No new physical hardware validation has been performed yet for 0.61.
+
 ## 0.60 - 2026-08-16
 
 - Fix the passive PS-only reconnect deadlock: BTstack's incoming HID Report-mode

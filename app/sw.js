@@ -1,4 +1,4 @@
-const CACHE = 'miralink-shell-0.60-incoming-report-handshake';
+const CACHE = 'miralink-shell-0.61-incoming-report-handshake';
 const ASSETS = [
   './', './index.html', './styles.css', './src/app.js', './src/protocol.js',
   './src/storage.js', './src/i18n.js', './src/site-effects.js', './src/dualsense.js', './src/uf2.js', './src/controller-lab.js', './src/input-mapping.js', './src/emergency-mode.js', './src/hid-transport.js',
